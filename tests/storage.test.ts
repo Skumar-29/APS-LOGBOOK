@@ -2,11 +2,12 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, it, expect } from "vitest";
 import {
   closeDatabase,
+  openDatabase,
   loadWorkspace,
   saveWorkspace,
   recoveryWorkspace,
 } from "../src/storage";
-import { emptyState, clone } from "../src/domain/model";
+import { emptyState, clone, ensureDay } from "../src/domain/model";
 beforeEach(async () => {
   closeDatabase();
   await new Promise<void>((resolve, reject) => {
@@ -61,6 +62,7 @@ describe("offline documents and existing installations", () => {
     delete old.documents;
     delete old.settings.diaryLayoutVersion;
     old.settings.fullDay = false;
+    ensureDay(old, "2026-10-08").slots[0] = null;
     await new Promise<void>((resolve, reject) => {
       const request = indexedDB.open("aps-truck-workspace-v2", 1);
       request.onupgradeneeded = () => {
@@ -83,6 +85,18 @@ describe("offline documents and existing installations", () => {
     expect(loaded.notes[0].id).toBe("keep");
     expect(loaded.documents).toEqual([]);
     expect(loaded.settings.fullDay).toBe(true);
+    expect(loaded.days["2026-10-08"].slots[0]).toBe("rest");
+    await saveWorkspace(loaded, loaded.revision);
+    const db = await openDatabase();
+    const raw = await new Promise<any>((resolve, reject) => {
+      const r = db
+        .transaction("recovery")
+        .objectStore("recovery")
+        .get("previous");
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+    expect(raw.days["2026-10-08"].slots[0]).toBeNull();
   });
   it("stores file bytes separately, exports them and restores them on a clean device", async () => {
     const state = emptyState(),

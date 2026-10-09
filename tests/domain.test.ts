@@ -104,18 +104,18 @@ describe("calendar, clock changes and recording", () => {
       2,
     );
   });
-  it("starts blank and keeps explicit unknown gaps", () => {
+  it("defaults unselected blocks on a saved page to rest", () => {
     const s = driver();
     expect(totals(ensureDay(s, "2026-10-07").slots)).toEqual({
       work: 0,
-      rest: 0,
-      unknown: 1440,
+      rest: 1440,
+      unknown: 0,
     });
     editRange(s, "2026-10-07", 8, 12, "work");
     expect(totals(s.days["2026-10-07"].slots)).toEqual({
       work: 60,
-      rest: 0,
-      unknown: 1380,
+      rest: 1380,
+      unknown: 0,
     });
     expect(() => parseSlot("02:12")).toThrow();
   });
@@ -136,7 +136,7 @@ describe("calendar, clock changes and recording", () => {
       "work",
       "rest",
       "rest",
-      null,
+      "rest",
     ]);
     expect(s.activities).toHaveLength(2);
     expect(s.timer).toBeNull();
@@ -538,6 +538,7 @@ describe("long-period rest qualifications", () => {
       const date = dateAdd("2026-09-01", i),
         d = ensureDay(s, date);
       d.slots.fill("rest");
+      d.restDefault = "stationary";
       d.changes[0] = {
         slot: 0,
         location: "",
@@ -582,6 +583,7 @@ describe("long-period rest qualifications", () => {
     for (let i = 0; i < 3; i++) {
       const d = ensureDay(s, dateAdd("2026-09-01", i));
       d.slots.fill("rest");
+      d.restDefault = "stationary";
       d.changes[0] = {
         slot: 0,
         location: "",
@@ -619,7 +621,7 @@ describe("diary highlights and counted-window totals", () => {
     r = analyse(s, "2026-09-01T05:30");
     expect(r.breachSlots).toEqual({});
   });
-  it("carries a counted work window across midnight without treating blanks as rest", () => {
+  it("carries a counted work window across midnight without crediting future rest", () => {
     const s = driver();
     editRange(s, "2026-09-01", 0, 68, "rest");
     s.days["2026-09-01"].changes[0] = {
@@ -648,7 +650,8 @@ describe("diary highlights and counted-window totals", () => {
     expect(windowTotals(s, w!)).toMatchObject({
       work: 480,
       rest: 60,
-      unknown: 900,
+      unknown: 0,
+      future: 900,
     });
   });
   it("does not present highlights or calculated windows for unsupported rules", () => {

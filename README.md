@@ -1,6 +1,6 @@
 # APS Logbook
 
-A local-first PWA combining Truck Work Diary and the truck Invoice Generator. Version **2.0.0-beta.5**. The APS Carpenter invoice app is not included.
+A local-first PWA combining Truck Work Diary and the truck Invoice Generator. Version **2.0.0-beta.6**. The APS Carpenter invoice app is not included.
 
 ## Run and build
 
@@ -37,6 +37,14 @@ npm run test:e2e
 `src/screens` contains the compact React screens. `src/documents` renders the original layouts, PDF pages and XLSX files. Hours calculations run in a worker. Screens and PDF generation load on demand; all production chunks are included in the offline cache.
 
 Driver identity is captured on diary days and timer events. Paper pages have separate IDs and book/number mappings, so cancellation retains a snapshot while a replacement can refer to the same date. Issued invoices and signed forms retain their contents; new revisions/trips have separate IDs.
+
+## Beta 6 calculation changes
+
+Saved diary pages treat unselected work blocks as rest. Erase work restores rest; missing days remain unknown. Existing blank cells are migrated with an audit entry and a pre-migration recovery checkpoint; cancelled page snapshots retain their original contents.
+
+Rest duration labels update automatically across midnight. Settings → Display & diary chooses the physical rest setting for new pages; Day details chooses it for one page. Individual break settings override that default. Duration alone never establishes whether a vehicle was stationary or an approved sleeper was used.
+
+The engine retains overlapping short, 24-hour, 7-day and 14-day counting periods. The diary shows the limiting 24-hour period touching its page, while Driving assesses only elapsed time. Future planned rest earns no live rest credit. Historical BFM long/night and 84-hour excesses remain visible after later rest. See [engine rules and tests](docs/FATIGUE_ENGINE.md) for the rule mapping, assumptions and release limits.
 
 ## Beta 2 changes
 

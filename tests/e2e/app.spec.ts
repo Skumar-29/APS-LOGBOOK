@@ -75,7 +75,9 @@ test("first use, work/rest blocks, persisted location and offline reload", async
   await start(page);
   const grid = await page.locator(".diary-grid-section").first().boundingBox();
   expect(grid?.width).toBeLessThanOrEqual(430);
-  const slot = await page.locator('[data-slot="0"][data-row="work"]').boundingBox();
+  const slot = await page
+    .locator('[data-slot="0"][data-row="work"]')
+    .boundingBox();
   expect(slot?.width).toBeLessThanOrEqual(16.1);
   await page.getByRole("button", { name: "Time range", exact: true }).click();
   await fill(page, "From", "06:00");
@@ -102,14 +104,19 @@ test("first use, work/rest blocks, persisted location and offline reload", async
   await fill(page, "From", "12:00");
   await fill(page, "To (24:00 for midnight)", "13:00");
   await page.getByRole("button", { name: "Save rest", exact: true }).click();
-  await expect(page.locator(".totals")).toContainText("Rest 1h 00m");
+  await expect(page.locator(".totals")).toContainText("Rest 18h 00m");
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("diary.png"), fullPage: true });
   await page.reload();
   await expect(page.locator(".totals")).toContainText("6h 00m");
   await page.getByRole("button", { name: "06–12", exact: true }).click();
   await expect(
-    page.getByLabel("Location", { exact: true }).first(),
+    page
+      .locator(".change-table tr")
+      .filter({
+        has: page.getByRole("rowheader", { name: "06:00", exact: true }),
+      })
+      .getByLabel("Location", { exact: true }),
   ).toHaveValue("Laverton North");
   await page.evaluate(() => navigator.serviceWorker.ready);
   await context.setOffline(true);
@@ -217,7 +224,8 @@ test("restores legacy diary, jumps to exact page, imports a trip and downloads P
   await noOverflow(page);
 });
 test("reusable signature, all-clear answers, exact two-page PDF and fresh next-trip review", async ({
-  page, context,
+  page,
+  context,
 }, info) => {
   await start(page);
   await more(page, "Settings");
@@ -287,23 +295,32 @@ test("reusable signature, all-clear answers, exact two-page PDF and fresh next-t
   await page.getByRole("button", { name: "Download PDF", exact: true }).click();
   const file = await event;
   await file.saveAs(info.outputPath("safe-driving.pdf"));
-  const pdf = await PDFDocument.load(await readFile(info.outputPath("safe-driving.pdf")));
+  const pdf = await PDFDocument.load(
+    await readFile(info.outputPath("safe-driving.pdf")),
+  );
   expect(pdf.getPageCount()).toBe(2);
-  const original = await PDFDocument.load(await readFile("public/templates/safe-driving-original-v1.pdf"));
+  const original = await PDFDocument.load(
+    await readFile("public/templates/safe-driving-original-v1.pdf"),
+  );
   // Preserve the actual original PDF artwork/content streams, not a redrawn approximation.
   function formStreams(resources: PDFDict): string[] {
     const objects = resources.lookup(PDFName.of("XObject"), PDFDict);
-    return objects.keys().flatMap(key => {
+    return objects.keys().flatMap((key) => {
       const object = objects.lookup(key, PDFRawStream);
-      if (object.dict.get(PDFName.of("Subtype"))?.toString() !== "/Form") return [];
+      if (object.dict.get(PDFName.of("Subtype"))?.toString() !== "/Form")
+        return [];
       const children = object.dict.lookup(PDFName.of("Resources"), PDFDict);
-      return [Buffer.from(object.getContents()).toString("base64"),
-        ...(children.has(PDFName.of("XObject")) ? formStreams(children) : [])];
+      return [
+        Buffer.from(object.getContents()).toString("base64"),
+        ...(children.has(PDFName.of("XObject")) ? formStreams(children) : []),
+      ];
     });
   }
   for (const [index, pdfPage] of pdf.getPages().entries()) {
     expect(pdfPage.getSize()).toEqual(original.getPage(index).getSize());
-    expect(formStreams(pdfPage.node.Resources()!)).toEqual(formStreams(original.getPage(index).node.Resources()!));
+    expect(formStreams(pdfPage.node.Resources()!)).toEqual(
+      formStreams(original.getPage(index).node.Resources()!),
+    );
     const resources = pdfPage.node.Resources()!;
     const fonts = resources.lookup(PDFName.of("Font"), PDFDict);
     expect(fonts.keys().length).toBeGreaterThan(0);
@@ -311,7 +328,9 @@ test("reusable signature, all-clear answers, exact two-page PDF and fresh next-t
     for (const key of objects.keys()) {
       const object = objects.lookup(key, PDFRawStream);
       if (object.dict.get(PDFName.of("Subtype"))?.toString() === "/Image") {
-        expect(Number(object.dict.get(PDFName.of("Height"))?.toString())).toBeLessThan(500);
+        expect(
+          Number(object.dict.get(PDFName.of("Height"))?.toString()),
+        ).toBeLessThan(500);
       }
     }
   }
@@ -414,7 +433,7 @@ test("drag selection, Undo, full-rest action and narrow screen layout", async ({
     .getByRole("button", { name: "Full day · stationary rest", exact: true })
     .click();
   await expect(page.locator(".totals")).toContainText("Rest 24h 00m");
-  await expect(page.getByLabel("Rest", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("Rest setting", { exact: true })).toHaveValue(
     "stationary",
   );
   await noOverflow(page);
@@ -518,13 +537,11 @@ test("documents open offline and a full backup restores the actual file", async 
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWZkAAAAASUVORK5CYII=",
     "base64",
   );
-  await page
-    .getByLabel("Add document", { exact: true })
-    .setInputFiles({
-      name: "Certificate.png",
-      mimeType: "image/png",
-      buffer: bytes,
-    });
+  await page.getByLabel("Add document", { exact: true }).setInputFiles({
+    name: "Certificate.png",
+    mimeType: "image/png",
+    buffer: bytes,
+  });
   await fill(page, "Document name", "My BFM certificate");
   await page
     .getByLabel("Document type", { exact: true })
@@ -573,13 +590,11 @@ test("documents open offline and a full backup restores the actual file", async 
     .getByRole("button", { name: "Delete document", exact: true })
     .click();
   await more(page, "Records");
-  await page
-    .getByLabel("Restore backup", { exact: true })
-    .setInputFiles({
-      name: "documents.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(backup),
-    });
+  await page.getByLabel("Restore backup", { exact: true }).setInputFiles({
+    name: "documents.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(backup),
+  });
   await page.getByRole("button", { name: "Merge backup", exact: true }).click();
   await expect(page.getByText("Backup imported successfully.")).toBeVisible();
   await more(page, "Documents");
@@ -730,56 +745,191 @@ test("state clock and red diary blocks stay clear on a narrow screen", async ({
   await expect(page.locator(".window-summary")).toContainText("QLD time");
 });
 
-test("compact sticky header, immediate colour modes, settings return and safe touch scrolling", async ({ page, context }, info) => {
+test("compact sticky header, immediate colour modes, settings return and safe touch scrolling", async ({
+  page,
+  context,
+}, info) => {
   await start(page);
-  await page.setViewportSize({width:390,height:740});
-  const first=page.locator('[data-slot="0"][data-row="work"]');
-  const box=await first.boundingBox();
+  await page.setViewportSize({ width: 390, height: 740 });
+  const first = page.locator('[data-slot="0"][data-row="work"]');
+  const box = await first.boundingBox();
   expect(box!.y).toBeLessThan(240);
-  await expect(page.locator('.base-clock')).toContainText(/Mon|Tue|Wed|Thu|Fri|Sat|Sun/);
-  await page.getByRole('button',{name:'Appearance',exact:true}).click();
-  await page.getByRole('button',{name:'Night mode',exact:true}).click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
-  await page.screenshot({path:info.outputPath('compact-night.png'),fullPage:false});
-  await page.getByRole('button',{name:'Appearance',exact:true}).click();
-  await page.getByRole('button',{name:'Day mode',exact:true}).click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
-  await page.screenshot({path:info.outputPath('compact-day.png'),fullPage:false});
-  const before=await page.locator('.totals').textContent();
-  const cdp=await context.newCDPSession(page);
-  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true});
+  await expect(page.locator(".base-clock")).toContainText(
+    /Mon|Tue|Wed|Thu|Fri|Sat|Sun/,
+  );
+  await page.getByRole("button", { name: "Appearance", exact: true }).click();
+  await page.getByRole("button", { name: "Night mode", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({
+    path: info.outputPath("compact-night.png"),
+    fullPage: false,
+  });
+  await page.getByRole("button", { name: "Appearance", exact: true }).click();
+  await page.getByRole("button", { name: "Day mode", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.screenshot({
+    path: info.outputPath("compact-day.png"),
+    fullPage: false,
+  });
+  const before = await page.locator(".totals").textContent();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
   // A real browser touch scroll beginning on a block must never write diary slots.
-  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box!.x+box!.width/2,y:box!.y+22}]});
-  for(let i=1;i<=6;i++) await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box!.x+box!.width/2+2,y:box!.y+22-i*23}]});
-  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeGreaterThan(40);
-  expect(await page.locator('.totals').textContent()).toBe(before);
-  expect((await page.locator('.workspace-header').boundingBox())!.y).toBe(0);
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ x: box!.x + box!.width / 2, y: box!.y + 22 }],
+  });
+  for (let i = 1; i <= 6; i++)
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [
+        { x: box!.x + box!.width / 2 + 2, y: box!.y + 22 - i * 23 },
+      ],
+    });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(40);
+  expect(await page.locator(".totals").textContent()).toBe(before);
+  expect((await page.locator(".workspace-header").boundingBox())!.y).toBe(0);
   // Horizontal touch movement still records a range, and Undo restores it.
-  await page.evaluate(()=>window.scrollTo(0,0));
-  const a=(await first.boundingBox())!, b=(await page.locator('[data-slot="3"][data-row="work"]').boundingBox())!;
-  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:a.x+a.width/2,y:a.y+20}]});
-  for(let i=1;i<=6;i++) await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x+a.width/2+(b.x-a.x)*i/6,y:a.y+20}]});
-  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  await expect(page.locator('.totals')).toContainText('Work 1h 00m');
-  await page.getByRole('button',{name:'Undo',exact:true}).click();
-  await expect(page.locator('.totals')).toContainText('Work 0h 00m');
-  await page.getByRole('button',{name:'Refresh saved records',exact:true}).click();
-  await expect(page.locator('.totals')).toContainText('Work 0h 00m');
-  await page.evaluate(()=>window.scrollTo(0,280));
-  const diaryScroll=await page.evaluate(()=>window.scrollY);
-  await more(page,'Settings');
-  await fill(page,'Driver name','Updated Driver');
-  await page.getByRole('button',{name:'Save driver settings',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Work diary',exact:true})).toBeVisible();
-  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBe(diaryScroll);
-  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const a = (await first.boundingBox())!,
+    b = (await page.locator('[data-slot="3"][data-row="work"]').boundingBox())!;
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ x: a.x + a.width / 2, y: a.y + 20 }],
+  });
+  for (let i = 1; i <= 6; i++)
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [
+        { x: a.x + a.width / 2 + ((b.x - a.x) * i) / 6, y: a.y + 20 },
+      ],
+    });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await expect(page.locator(".totals")).toContainText("Work 1h 00m");
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(page.locator(".totals")).toContainText("Work 0h 00m");
+  await page
+    .getByRole("button", { name: "Refresh saved records", exact: true })
+    .click();
+  await expect(page.locator(".totals")).toContainText("Work 0h 00m");
+  await page.evaluate(() => window.scrollTo(0, 280));
+  const diaryScroll = await page.evaluate(() => window.scrollY);
+  await more(page, "Settings");
+  await fill(page, "Driver name", "Updated Driver");
+  await page
+    .getByRole("button", { name: "Save driver settings", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Work diary", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBe(diaryScroll);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
-  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
-  await more(page,'Settings');
-  await expect(page.getByLabel('Driver name',{exact:true})).toHaveValue('Updated Driver');
-  await page.setViewportSize({width:320,height:700});
-  await page.getByRole('button',{name:'Diary',exact:true}).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await more(page, "Settings");
+  await expect(page.getByLabel("Driver name", { exact: true })).toHaveValue(
+    "Updated Driver",
+  );
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.getByRole("button", { name: "Diary", exact: true }).click();
   await noOverflow(page);
-  await page.screenshot({path:info.outputPath('compact-320.png'),fullPage:false});
+  await page.screenshot({
+    path: info.outputPath("compact-320.png"),
+    fullPage: false,
+  });
+});
+
+test("BFM overlapping windows, automatic rest labels and erase-to-rest persist", async ({
+  page,
+}, info) => {
+  await page.clock.setFixedTime(new Date("2026-10-09T12:15:00Z"));
+  await start(page);
+  const { emptyState, ensureDay } = await import("../../src/domain/model");
+  const { editRange } = await import("../../src/domain/diary");
+  const { dateAdd } = await import("../../src/domain/time");
+  const s = emptyState();
+  s.onboarded = true;
+  Object.assign(s.profile, {
+    name: "Synthetic BFM Driver",
+    licence: "TEST",
+    scheme: "BFM",
+    base: "QLD",
+    zone: "Australia/Brisbane",
+    certificate: "TEST",
+    certificateExpiry: "2027-01-01",
+  });
+  s.settings.diaryRestDefault = "stationary";
+  for (let n = 0; n < 29; n++) ensureDay(s, dateAdd("2026-09-11", n));
+  for (const [a, b] of [
+    [0, 24],
+    [26, 46],
+    [48, 60],
+    [88, 96],
+  ])
+    editRange(s, "2026-10-09", a, b, "work");
+  await page.evaluate(async (state) => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open("aps-truck-workspace-v2", 2);
+      request.onsuccess = () => {
+        const db = request.result,
+          tx = db.transaction("workspace", "readwrite"),
+          store = tx.objectStore("workspace");
+        const previous = store.get("current");
+        previous.onsuccess = () => {
+          state.revision = previous.result.revision + 1;
+          store.put(state, "current");
+        };
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }, s);
+  await page.reload();
+  await expect(page.locator(".block.breach")).toHaveCount(8);
+  await expect(page.locator('[aria-label="Page totals"]')).toContainText(
+    "Rest 8h 00m",
+  );
+  await page.locator(".window-summary > summary").click();
+  await expect(page.locator(".window-details")).toContainText(
+    "09/10/2026 00:00",
+  );
+  await expect(page.locator(".window-details")).toContainText(
+    "Over work cap: 2h 00m",
+  );
+  await expect(page.locator(".change-table")).toContainText(
+    "Major stationary rest · 7h 00m",
+  );
+  await page.setViewportSize({ width: 320, height: 800 });
+  await noOverflow(page);
+  await page.screenshot({
+    path: info.outputPath("bfm-overlapping-windows.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Erase work", exact: true }).click();
+  await page.locator('[data-slot="88"][data-row="work"]').click();
+  await expect(page.locator(".block.breach")).toHaveCount(7);
+  await expect(
+    page.locator('[data-slot="88"][data-row="rest"]'),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(page.locator(".block.breach")).toHaveCount(7);
+  await page.getByRole("button", { name: "Driving", exact: true }).click();
+  await expect(page.getByText("Today’s work").locator("..")).toContainText(
+    "14h 00m",
+  );
 });

@@ -38,6 +38,7 @@ export interface Day {
   date: string;
   slots: Activity[];
   changes: Record<string, Change>;
+  restDefault?: RestType;
   profile: Profile;
   vehicle: string;
   comments: string;
@@ -218,6 +219,8 @@ export interface Workspace {
     theme: "system" | "light" | "dark";
     fullDay: boolean;
     diaryLayoutVersion?: number;
+    diaryRestDefault?: RestType;
+    restDefaultsVersion?: number;
     locationPicker: boolean;
     autoPages: boolean;
     backupDays: number;
@@ -320,7 +323,8 @@ export function recordProfile(p: Profile): Profile {
 export function emptyDay(s: Workspace, date: string): Day {
   return {
     date,
-    slots: Array(96).fill(null),
+    slots: Array(96).fill("rest"),
+    restDefault: s.settings.diaryRestDefault || "unknown",
     changes: {},
     profile: recordProfile(profileOn(s, date)),
     vehicle: s.registry.find((r) => r.type === "vehicle")?.name || "",
@@ -385,6 +389,16 @@ export function upgradeWorkspace(s: Workspace): Workspace {
   if (!s.settings.diaryLayoutVersion) {
     s.settings.fullDay = true;
     s.settings.diaryLayoutVersion = 1;
+  }
+  {
+    for (const d of Object.values(s.days)) {
+      if (!d.slots.includes(null)) continue;
+      const before = clone(d);
+      d.slots = d.slots.map((kind) => kind || "rest");
+      d.revision++;
+      audit(s, "Apply unselected blocks as rest", d.date, before, d);
+    }
+    s.settings.restDefaultsVersion = 1;
   }
   return s;
 }

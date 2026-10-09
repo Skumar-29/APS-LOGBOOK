@@ -100,7 +100,8 @@ export async function saveWorkspace(
           tx.abort();
           return;
         }
-        if (checkpoint && old) recovery.put(old, "previous");
+        if (old && (checkpoint || !old.settings.restDefaultsVersion))
+          recovery.put(old, "previous");
         for (const d of next.documents) {
           if (d.data) assets.put(d.data, d.hash);
           else {

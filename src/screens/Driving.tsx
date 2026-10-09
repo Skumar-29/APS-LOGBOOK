@@ -138,8 +138,17 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
             </div>
             {report.nextBreak !== null && (
               <p>
-                Work-cap estimate remaining:{" "}
+                Conservative work-cap estimate:{" "}
                 <strong>{minutesLabel(report.nextBreak)}</strong>
+              </p>
+            )}
+            {report.controlling && (
+              <p className="small">
+                Limiting period: {report.controlling.label} from{" "}
+                {displayCivil(report.controlling.start)}.{" "}
+                {report.nextBreak === null
+                  ? "Allowance needs history / rule review."
+                  : ""}
               </p>
             )}
             <p className="small">

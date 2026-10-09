@@ -1,3 +1,4 @@
+import { restTypeAt } from "./rest";
 import {
   audit,
   clone,
@@ -36,7 +37,7 @@ export function changes(d: Day) {
           slot,
           location: "",
           odometer: "",
-          restType: "unknown" as RestType,
+          restType: d.restDefault || ("unknown" as RestType),
           note: "",
           vehicle: d.vehicle,
         },
@@ -61,16 +62,25 @@ export function editRange(
     (!nextDay && to <= from)
   )
     throw Error("Check the date and time range.");
+  kind ||= "rest";
   const d = ensureDay(s, date),
     before = clone(d);
-  for (let i = from; i < (nextDay ? 96 : to); i++) d.slots[i] = kind;
+  for (let i = from; i < (nextDay ? 96 : to); i++) {
+    if (d.slots[i] === "work" && kind === "rest" && d.changes[i])
+      d.changes[i].restType = d.restDefault || "unknown";
+    d.slots[i] = kind;
+  }
   d.revision++;
   d.clockReview = clockChange(date, d.profile.zone);
   audit(s, "Record " + (kind || "unrecorded"), date, before, d);
   if (nextDay && to > 0) {
     const next = ensureDay(s, dateAdd(date, 1)),
       old = clone(next);
-    for (let i = 0; i < to; i++) next.slots[i] = kind;
+    for (let i = 0; i < to; i++) {
+      if (next.slots[i] === "work" && kind === "rest" && next.changes[i])
+        next.changes[i].restType = next.restDefault || "unknown";
+      next.slots[i] = kind;
+    }
     next.revision++;
     next.clockReview = clockChange(next.date, next.profile.zone);
     audit(s, "Overnight " + (kind || "unrecorded"), next.date, old, next);
@@ -276,7 +286,7 @@ export function diaryCsv(s: Workspace, from: string, to: string) {
         d.slots[c.slot] || "unrecorded",
         c.location,
         c.odometer,
-        c.restType,
+        d.slots[c.slot] === "rest" ? restTypeAt(s, d.date, c.slot) : c.restType,
         c.vehicle,
         d.profile.name,
         c.note,

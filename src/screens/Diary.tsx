@@ -1,3 +1,4 @@
+import { classifyRest, restTypeAt } from "../domain/rest";
 import { useReport } from "../components/useReport";
 import { selectWorkWindow, windowTotals } from "../domain/rules";
 import { displayCivil } from "../domain/time";
@@ -77,6 +78,7 @@ export function Diary({
     t = totals(d.slots),
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
+  const restWorkspace = readOnly ? { ...s, days: { ...s.days, [date]: d } } : s;
   const { report } = useReport(date + "T24:00", 2);
   const countedWindow =
     !readOnly && report && selectWorkWindow(report.workWindows, date);
@@ -113,6 +115,9 @@ export function Diary({
       editRange(w, date, a, b, kind, next);
       if (stationary) {
         const d = ensureDay(w, date);
+        for (const change of Object.values(d.changes))
+          if (change.slot >= a && change.slot < b)
+            change.restType = "stationary";
         d.changes[a] = {
           ...(d.changes[a] || {
             slot: a,
@@ -154,10 +159,17 @@ export function Diary({
 
   function change(c: Change, key: keyof Change, v: string) {
     return updateDay((day) => {
-      day.changes[c.slot] = { ...(day.changes[c.slot] || c), [key]: v };
+      const effective =
+        day.slots[c.slot] === "rest"
+          ? { ...c, restType: restTypeAt(restWorkspace, date, c.slot) }
+          : c;
+      day.changes[c.slot] = { ...(day.changes[c.slot] || effective), [key]: v };
     }, "Edit work/rest change");
   }
-  const summary = <div className="diary-totals">      <div className="row totals" aria-label="Page totals">
+  const summary = (
+    <div className="diary-totals">
+      {" "}
+      <div className="row totals" aria-label="Page totals">
         <strong>Page</strong>
         <span>
           <i className="dot work" />
@@ -167,75 +179,116 @@ export function Diary({
           <i className="dot rest" />
           Rest <b>{minutesLabel(t.rest)}</b>
         </span>
-        <span className="muted">Blank {minutesLabel(t.unknown)}</span>
+        {t.unknown > 0 && (
+          <span className="muted">Unrecorded {minutesLabel(t.unknown)}</span>
+        )}
       </div>
       <details className="window-summary" aria-label="Work window totals">
-        <summary><strong>24h window{windowSummary?.review || dayBreaches.length ? " · Review" : ""}</strong><span>{windowSummary ? `Work ${minutesLabel(windowSummary.work)} · Rest ${minutesLabel(windowSummary.rest)}` : "Needs history / review"}</span></summary>
+        <summary>
+          <strong>
+            24h window
+            {windowSummary?.review || dayBreaches.length ? " · Review" : ""}
+          </strong>
+          <span>
+            {windowSummary
+              ? `Work ${minutesLabel(windowSummary.work)} · Rest ${minutesLabel(windowSummary.rest)}`
+              : "Needs history / review"}
+          </span>
+        </summary>
         <div className="window-details">
-        <div className="row wrap">
-          <strong>24-hour work window</strong>
-          <span className="small">{d.profile.base} time</span>
-        </div>
-        {countedWindow && windowSummary ? (
-          <>
-            <p className="small">
-              {displayCivil(countedWindow.start)} →{" "}
-              {displayCivil(countedWindow.end)}
-            </p>
-            <div className="row wrap">
-              <span>
-                Work <b>{minutesLabel(windowSummary.work)}</b>
-              </span>
-              <span>
-                Rest <b>{minutesLabel(windowSummary.rest)}</b>
-              </span>
-              <span className="muted">
-                Blank {minutesLabel(windowSummary.unknown)}
-              </span>
-            </div>
-            {countedWindow.limit !== null && (
-              <p
-                className={
-                  windowSummary.work > countedWindow.limit
-                    ? "small bad"
-                    : "small"
-                }
-              >
-                {windowSummary.work > countedWindow.limit
-                  ? "Over work cap: "
-                  : "Work cap remaining: "}
-                {minutesLabel(
-                  Math.abs(countedWindow.limit - windowSummary.work),
-                )}
-                {windowSummary.review ? " · start / records need review" : ""}
+          <div className="row wrap">
+            <strong>Limiting 24-hour window on this page</strong>
+            <span className="small">{d.profile.base} time</span>
+          </div>
+          {countedWindow && windowSummary ? (
+            <>
+              <p className="small">
+                {displayCivil(countedWindow.start)} →{" "}
+                {displayCivil(countedWindow.end)}
               </p>
-            )}
-          </>
-        ) : (
-          <p className="small">
-            {readOnly
-              ? "Historical page copy · work-window totals use the current diary records."
-              : report
-                ? "Window needs qualifying rest history / rule review."
-                : "Calculating…"}
-          </p>
-        )}
-        {dayBreaches.length > 0 && (
-          <Action
-            danger
-            onClick={() =>
-              setBreach([
-                ...new Set(dayBreaches.flatMap(([, reasons]) => reasons)),
-              ])
-            }
-          >
-            {dayBreaches.length} red work{" "}
-            {dayBreaches.length === 1 ? "block" : "blocks"} · Review
-          </Action>
-        )}
+              <div className="row wrap">
+                <span>
+                  Work <b>{minutesLabel(windowSummary.work)}</b>
+                </span>
+                <span>
+                  Rest <b>{minutesLabel(windowSummary.rest)}</b>
+                </span>
+                {windowSummary.unknown > 0 && (
+                  <span className="muted">
+                    Missing {minutesLabel(windowSummary.unknown)}
+                  </span>
+                )}
+                {windowSummary.future > 0 && (
+                  <span className="muted">
+                    After assessment {minutesLabel(windowSummary.future)}
+                  </span>
+                )}
+              </div>
+              <p className="small">
+                Page assessment through{" "}
+                {displayCivil(countedWindow.assessedThrough)}. Future entries
+                are a plan; see Driving for the live allowance.
+              </p>
+              {countedWindow.limit !== null && (
+                <p
+                  className={
+                    windowSummary.work > countedWindow.limit
+                      ? "small bad"
+                      : "small"
+                  }
+                >
+                  {windowSummary.work > countedWindow.limit
+                    ? "Over work cap: "
+                    : "Unused work cap in this period: "}
+                  {minutesLabel(
+                    Math.abs(countedWindow.limit - windowSummary.work),
+                  )}
+                  {windowSummary.review ? " · start / records need review" : ""}
+                </p>
+              )}
+              <details>
+                <summary>Other overlapping 24-hour windows</summary>
+                {report?.workWindows
+                  .filter(
+                    (w) =>
+                      w !== countedWindow &&
+                      w.start.slice(0, 10) <= date &&
+                      w.end > date + " 00:00",
+                  )
+                  .map((w) => (
+                    <p className="small" key={w.start}>
+                      {displayCivil(w.start)} → {displayCivil(w.end)} · Work{" "}
+                      {minutesLabel(w.work)} · {w.status}
+                    </p>
+                  ))}
+              </details>
+            </>
+          ) : (
+            <p className="small">
+              {readOnly
+                ? "Historical page copy · work-window totals use the current diary records."
+                : report
+                  ? "Window needs qualifying rest history / rule review."
+                  : "Calculating…"}
+            </p>
+          )}
+          {dayBreaches.length > 0 && (
+            <Action
+              danger
+              onClick={() =>
+                setBreach([
+                  ...new Set(dayBreaches.flatMap(([, reasons]) => reasons)),
+                ])
+              }
+            >
+              {dayBreaches.length} red work{" "}
+              {dayBreaches.length === 1 ? "block" : "blocks"} · Review
+            </Action>
+          )}
         </div>
       </details>
-</div>;
+    </div>
+  );
   return (
     <>
       {graph && summary}
@@ -327,7 +380,7 @@ export function Diary({
                   disabled={readOnly}
                   onClick={() => setMode(mode === null ? "work" : null)}
                 >
-                  Clear
+                  Erase work
                 </button>
               </div>
               <div className="row">
@@ -415,7 +468,9 @@ export function Diary({
                               if (readOnly) return;
                               suppressClick.current = false;
                               drag.current = {
-                                slot, row, axis: "pending",
+                                slot,
+                                row,
+                                axis: "pending",
                                 end: slot,
                                 kind: mode === null ? null : row,
                                 x: e.clientX,
@@ -426,14 +481,24 @@ export function Diary({
                             onPointerMove={(e) => {
                               const a = drag.current;
                               if (!a) return;
-                              const dx = Math.abs(e.clientX-a.x), dy = Math.abs(e.clientY-a.y);
-                              if (a.axis === "pending" && Math.max(dx,dy) >= 8) a.axis = dy > dx ? "vertical" : "horizontal";
+                              const dx = Math.abs(e.clientX - a.x),
+                                dy = Math.abs(e.clientY - a.y);
+                              if (a.axis === "pending" && Math.max(dx, dy) >= 8)
+                                a.axis = dy > dx ? "vertical" : "horizontal";
                               if (a.axis !== "horizontal") return;
-                              const hit = document.elementFromPoint(e.clientX,e.clientY)?.closest("[data-slot]");
+                              const hit = document
+                                .elementFromPoint(e.clientX, e.clientY)
+                                ?.closest("[data-slot]");
                               if (hit?.getAttribute("data-row") === a.row) {
-                                const end = Number(hit.getAttribute("data-slot"));
-                                if (Math.floor(end/24) === Math.floor(a.slot/24)) {
-                                  a.end = end; setDragRange([a.slot,a.end]);
+                                const end = Number(
+                                  hit.getAttribute("data-slot"),
+                                );
+                                if (
+                                  Math.floor(end / 24) ===
+                                  Math.floor(a.slot / 24)
+                                ) {
+                                  a.end = end;
+                                  setDragRange([a.slot, a.end]);
                                 }
                               }
                             }}
@@ -444,8 +509,12 @@ export function Diary({
                             }}
                             onPointerUp={() => {
                               const a = drag.current;
-                              if (a?.axis === "vertical") suppressClick.current = true;
-                              if (a?.axis === "horizontal" && a.slot !== a.end) {
+                              if (a?.axis === "vertical")
+                                suppressClick.current = true;
+                              if (
+                                a?.axis === "horizontal" &&
+                                a.slot !== a.end
+                              ) {
                                 suppressClick.current = true;
                                 void blocks(
                                   Math.min(a.slot, a.end),
@@ -540,19 +609,40 @@ export function Diary({
                         </td>
                         <td>
                           {d.slots[c.slot] === "rest" ? (
-                            <Field
-                              label="Rest"
-                              value={c.restType}
-                              disabled={readOnly}
-                              options={[
-                                ["unknown", "Rest · type not set"],
-                                ["stationary", "Stationary rest"],
-                                ["sleeper-moving", "Sleeper berth · moving"],
-                              ]}
-                              onChange={(v) => {
-                                void change(c, "restType", v).catch(() => {});
-                              }}
-                            />
+                            <>
+                              <span className="small">
+                                {
+                                  classifyRest(
+                                    restWorkspace,
+                                    date,
+                                    c.slot,
+                                    date + "T24:00",
+                                  ).label
+                                }{" "}
+                                ·{" "}
+                                {minutesLabel(
+                                  classifyRest(
+                                    restWorkspace,
+                                    date,
+                                    c.slot,
+                                    date + "T24:00",
+                                  ).minutes,
+                                )}
+                              </span>
+                              <Field
+                                label="Rest setting"
+                                value={restTypeAt(restWorkspace, date, c.slot)}
+                                disabled={readOnly}
+                                options={[
+                                  ["unknown", "Rest · type not set"],
+                                  ["stationary", "Stationary rest"],
+                                  ["sleeper-moving", "Sleeper berth · moving"],
+                                ]}
+                                onChange={(v) => {
+                                  void change(c, "restType", v).catch(() => {});
+                                }}
+                              />
+                            </>
                           ) : (
                             <span className="activity-label">
                               {c.slot === 96
@@ -573,6 +663,21 @@ export function Diary({
             )}
           </section>
           <Fold title="Day details">
+            <Field
+              label="Rest setting for this page"
+              value={d.restDefault || "unknown"}
+              disabled={readOnly}
+              options={[
+                ["unknown", "Confirm each break"],
+                ["stationary", "Stationary unless specified"],
+                ["sleeper-moving", "Moving sleeper unless specified"],
+              ]}
+              onChange={(v) => {
+                void updateDay((day) => {
+                  day.restDefault = v as import("../domain/model").RestType;
+                }).catch(() => {});
+              }}
+            />
             <Check
               label="Fit for duty confirmed for this day"
               value={!!d.fitForDuty}
@@ -712,7 +817,7 @@ export function Diary({
             onChange={setOvernight}
           />
           <div className="row">
-            {(["work", "rest", null] as Activity[]).map((k) => (
+            {(["work", "rest"] as Activity[]).map((k) => (
               <Action
                 key={k || "clear"}
                 primary={k === mode}
@@ -730,7 +835,7 @@ export function Diary({
                   ? "Save work"
                   : k === "rest"
                     ? "Save rest"
-                    : "Clear range"}
+                    : "Erase work"}
               </Action>
             ))}
           </div>

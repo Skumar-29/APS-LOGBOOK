@@ -1,21 +1,14 @@
+import { activityAt, restTypeAt } from "./rest";
 import {
   type Workspace,
   type Activity,
   type RestType,
   profileOn,
 } from "./model";
-import {
-  civil,
-  clockChange,
-  dateAdd,
-  DAY,
-  hhmm,
-  minutesLabel,
-  totals,
-} from "./time";
+import { clockChange, dateAdd, hhmm, minutesLabel, totals } from "./time";
 export const RULE_SOURCE =
   "https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/counting-time";
-export const RULE_VERSION = "NHVR-2026-08-01-review-1";
+export const RULE_VERSION = "NHVR-2026-10-09-review-2";
 interface Cell {
   kind: Activity;
   rest: RestType;
@@ -53,6 +46,12 @@ export interface WorkWindow {
   end: string;
   limit: number | null;
   established: boolean;
+  assessedThrough: string;
+  work: number;
+  rest: number;
+  remaining: number;
+  status: Check["status"];
+  review: boolean;
 }
 export interface RuleReport {
   breachSlots: Record<string, string[]>;
@@ -66,6 +65,7 @@ export interface RuleReport {
   longNight: number;
   workSince24: number;
   nextBreak: number | null;
+  controlling: Check | null;
   source: string;
   version: string;
 }
@@ -75,9 +75,12 @@ function label(cell: Cell | undefined) {
 /** Conservative helper checks. Unknown records, rest types and certificate conditions never produce clearance. */
 export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
   const endDate = asOf.slice(0, 10),
+    rawSlot = Number(asOf.slice(11, 13)) * 4 + Number(asOf.slice(14, 16)) / 15,
+    // Work rounds outwards; an unfinished rest quarter is outside the assessment.
     endSlot =
-      Number(asOf.slice(11, 13)) * 4 +
-      Math.ceil(Number(asOf.slice(14, 16)) / 15),
+      rawSlot % 1 && activityAt(s, endDate, Math.floor(rawSlot)) === "rest"
+        ? Math.floor(rawSlot)
+        : Math.ceil(rawSlot),
     startDate = dateAdd(endDate, -28),
     cells: Cell[] = [],
     issues: string[] = [];
@@ -90,15 +93,6 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
     const date = dateAdd(startDate, offset),
       d = s.days[date],
       max = offset === 28 ? endSlot : 96;
-    const slots = d?.slots || Array(96).fill(null);
-    let rest: RestType = "unknown";
-    const last = s.days[dateAdd(date, -1)];
-    if (last?.slots[95] === "rest" && slots[0] === "rest")
-      rest =
-        Object.values(last.changes)
-          .filter((c) => c.slot <= 95)
-          .sort((a, b) => a.slot - b.slot)
-          .at(-1)?.restType || "unknown";
     if (d && clockChange(date, d.profile.zone)) clock = true;
     if (
       d &&
@@ -108,8 +102,14 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
     )
       changed = true;
     for (let i = 0; i < max; i++) {
-      if (d?.changes[i]) rest = d.changes[i].restType;
-      cells.push({ kind: slots[i], rest, date, slot: i, review: !!d?.review });
+      const kind = activityAt(s, date, i);
+      cells.push({
+        kind,
+        rest: kind === "rest" ? restTypeAt(s, date, i) : "unknown",
+        date,
+        slot: i,
+        review: !!d?.review || !!d?.clockReview,
+      });
     }
   }
   const end = cells.length,
@@ -129,17 +129,19 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
     else runs.push({ start: i, end: i + 1, kind: c.kind, stationary, sleeper });
   }
   const workPrefix = [0],
+    restPrefix = [0],
     unknownPrefix = [0];
   for (const c of cells) {
     workPrefix.push(workPrefix.at(-1)! + (c.kind === "work" ? 15 : 0));
+    restPrefix.push(restPrefix.at(-1)! + (c.kind === "rest" ? 15 : 0));
     unknownPrefix.push(
       unknownPrefix.at(-1)! + (c.kind === null || c.review ? 1 : 0),
     );
   }
   const work = (a: number, b: number) => workPrefix[b] - workPrefix[a],
+    rest = (a: number, b: number) => restPrefix[b] - restPrefix[a],
     unknown = (a: number, b: number) => unknownPrefix[b] - unknownPrefix[a];
-  const restRuns = runs.filter((r) => r.kind === "rest"),
-    workStarts = runs.filter((r) => r.kind === "work").map((r) => r.start);
+  const workStarts = runs.filter((r) => r.kind === "work").map((r) => r.start);
   const stationary = runs.filter((r) => r.stationary);
   const longest = (a: number, b: number, allowSleeper = false) => {
     let best = 0,
@@ -151,20 +153,31 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
         (c.rest === "stationary" ||
           (allowSleeper && c.rest === "sleeper-moving"))
       ) {
-        current += 15;
+        current = i > a && cells[i - 1].rest !== c.rest ? 15 : current + 15;
         best = Math.max(best, current);
       } else current = 0;
     }
     return best;
   };
-  const nightEvents: Array<{ at: number; anchor: number; day: number | null }> =
-    [];
+  const nightEvents: Array<{
+    start: number;
+    at: number;
+    anchor: number;
+    day: number | null;
+    required: number;
+  }> = [];
   for (let n = 0; n < 29; n++) {
     const a = n * 96 + 88,
       b = Math.min(end, a + 40);
     for (const r of stationary) {
       if (Math.min(b, r.end) - Math.max(a, r.start) >= 28) {
-        nightEvents.push({ at: Math.min(b, r.end), anchor: r.end, day: n });
+        nightEvents.push({
+          start: Math.max(a, r.start),
+          at: Math.min(b, r.end),
+          anchor: r.end,
+          day: n,
+          required: 28,
+        });
         break;
       }
     }
@@ -178,9 +191,11 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
       required = Math.floor((r.end - r.start) / 96);
     for (let n = count; n < required; n++)
       nightEvents.push({
+        start: r.start + n * 96,
         at: r.start + (n + 1) * 96,
         anchor: r.end,
         day: null,
+        required: 96,
       });
   }
   const nights = [...new Set(nightEvents.map((n) => n.anchor))].sort(
@@ -191,7 +206,9 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
     b: number,
     consecutiveNeeded: boolean,
   ) => {
-    const events = nightEvents.filter((n) => n.at > a && n.at <= b),
+    const events = nightEvents.filter(
+        (n) => Math.min(b, n.at) - Math.max(a, n.start) >= n.required,
+      ),
       days = [
         ...new Set(events.filter((n) => n.day !== null).map((n) => n.day!)),
       ].sort((a, b) => a - b);
@@ -208,15 +225,12 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
   for (const r of runs) {
     const eligible = r.stationary || (two && !bfm && r.sleeper);
     if (!eligible) continue;
-    const previous = major.at(-1);
-    if (previous && previous.end === r.start && two && !bfm)
-      previous.end = r.end;
-    else major.push({ ...r });
+    major.push({ ...r });
   }
   const minimumMajor = two ? (bfm ? 40 : 20) : 28;
   for (let i = major.length - 1; i >= 0; i--)
     if (major[i].end - major[i].start < minimumMajor) major.splice(i, 1);
-  const anchored = (mins: number) => {
+  const qualifyingAnchors = (mins: number) => {
     if (mins < 1440 || (bfm && two && mins === 1440)) return workStarts;
     let anchors: number[] = [];
     if (mins === 1440) anchors = major.map((r) => r.end);
@@ -226,11 +240,19 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
         .map((r) => r.end);
     else if (mins === 10080) anchors = at24;
     else anchors = bfm && !two ? [...at24, ...nights] : nights;
-    return anchors.length
-      ? [...new Set(anchors)].sort((a, b) => a - b)
-      : workStarts;
+    return [...new Set(anchors)].sort((a, b) => a - b);
+  };
+  const anchored = (mins: number) => {
+    const qualified = qualifyingAnchors(mins);
+    // NHVR fallback: where the required major rest is absent, count from any rest.
+    // Do not silently drop overlapping older anchors when a newer break finishes.
+    const fallback = workStarts.filter(
+      (a) => !qualified.some((q) => q <= a && q > a - mins / 15),
+    );
+    return [...new Set([...qualified, ...fallback])].sort((a, b) => a - b);
   };
   const checks: Check[] = [],
+    allChecks: Check[] = [],
     workWindows: WorkWindow[] = [];
   const breachSlots: Record<string, string[]> = {};
   const supported =
@@ -282,19 +304,54 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
         b = Math.min(end, intended);
       if (b <= Math.max(0, end - range * 96)) continue;
       const w = work(a, b),
-        r = (b - a) * 15 - w - unknown(a, b) * 15,
+        r = rest(a, b),
         complete = intended <= end;
       const qualified =
         period < 1440 ? r : longest(a, b, two && period === 1440);
       let reason = "",
         status: Check["status"] = "Within work cap";
+      const lookback = Math.max(0, a - period / 15);
+      const verifiedMajor =
+        qualifyingAnchors(period).includes(a) &&
+        period >= 1440 &&
+        !(bfm && two && period === 1440);
+      const verifiedFallback =
+        a > 0 &&
+        cells[a - 1].kind === "rest" &&
+        !unknown(lookback, a) &&
+        !cells
+          .slice(lookback, a)
+          .some((c) => c.kind === "rest" && c.rest === "unknown");
+      const established =
+        verifiedMajor ||
+        verifiedFallback ||
+        (bfm &&
+          two &&
+          period === 1440 &&
+          a > 0 &&
+          cells[a - 1].kind === "rest");
+      const possibleSplitRest =
+        bfm &&
+        !two &&
+        period === 1440 &&
+        qualified >= 360 &&
+        qualified < 420 &&
+        r >= 480;
       const uncertain =
+        possibleSplitRest ||
+        (period >= 1440 && !established) ||
         unknown(a, b) > 0 ||
         clock ||
         changed ||
         cells
           .slice(a, b)
-          .some((c) => c.kind === "rest" && c.rest === "unknown") ||
+          .some(
+            (c) =>
+              period >= 1440 &&
+              !(bfm && two && period === 1440) &&
+              c.kind === "rest" &&
+              c.rest === "unknown",
+          ) ||
         a === 0;
       const stationaryMinutes = stationary.map(
         (r) => Math.max(0, Math.min(b, r.end) - Math.max(a, r.start)) * 15,
@@ -319,19 +376,7 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
         )
           extraRest += " Two 24-hour stationary rest breaks are required.";
       }
-      if (period === 1440)
-        workWindows.push({
-          start: label(cells[a]),
-          end: new Date(
-            Date.parse(startDate + "T00:00:00Z") + intended * 900000,
-          )
-            .toISOString()
-            .slice(0, 16)
-            .replace("T", " "),
-          limit,
-          established: major.some((r) => r.end === a) || (bfm && two),
-        });
-      if (limit !== null && w > limit) {
+      if (limit !== null && w > limit && (period < 1440 || established)) {
         status = "Exceeded";
         let first = a;
         while (first < b && work(a, first + 1) <= limit) first++;
@@ -346,8 +391,9 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
           ".";
       } else if (uncertain) {
         status = "Needs review";
-        reason =
-          "Missing history, imported records, clock changes or rest classification.";
+        reason = possibleSplitRest
+          ? "Possible split rest: check the BFM split-rest conditions before relying on this period."
+          : "Missing history, imported records, clock changes or rest classification.";
       } else if (complete && ((need && qualified < need) || extraRest)) {
         status = "Rest due";
         reason = extraRest || "Required rest was not recorded in this period.";
@@ -356,7 +402,13 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
         reason = extraRest;
       }
       const minutesLeft = (intended - end) * 15,
-        restStill = Math.max(0, need - qualified);
+        // If work resumes now, an unfinished continuous break is interrupted.
+        restStill =
+          period < 1440
+            ? Math.max(0, need - qualified)
+            : qualified >= need
+              ? 0
+              : need;
       const remaining = Math.max(
         0,
         Math.min(
@@ -364,9 +416,9 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
           Math.max(0, minutesLeft - restStill),
         ),
       );
-      rows.push({
+      const row: Check = {
         label:
-          period < 1440
+          period < 1440 || period % 1440 !== 0
             ? minutesLabel(period)
             : `${period / 1440} day${period === 1440 ? "" : "s"}`,
         start: label(cells[a]),
@@ -382,7 +434,27 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
         remaining,
         date: cells[a]?.date || endDate,
         reason,
-      });
+      };
+      rows.push(row);
+      allChecks.push(row);
+      if (period === 1440)
+        workWindows.push({
+          start: row.start,
+          end: row.end,
+          limit,
+          established,
+          assessedThrough: new Date(
+            Date.parse(startDate + "T00:00:00Z") + b * 900000,
+          )
+            .toISOString()
+            .slice(0, 16)
+            .replace("T", " "),
+          work: w,
+          rest: r,
+          remaining,
+          status,
+          review: uncertain,
+        });
     }
     const important = rows.filter(
       (r) => r.status === "Exceeded" || r.status === "Rest due",
@@ -413,21 +485,32 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
     const nightPrefix = [0];
     for (let i = 0; i < end; i++)
       nightPrefix.push(nightPrefix.at(-1)! + (nightWork.has(i) ? 15 : 0));
-    const candidates = workStarts.filter((a) => a < end && a + 672 > end);
+    const candidates = workStarts.filter(
+      (a) => a < end && a + 672 > end - range * 96,
+    );
     const selected = candidates
-      .map((a) => ({ a, used: nightPrefix[end] - nightPrefix[a] }))
+      .map((a) => ({
+        a,
+        used: nightPrefix[Math.min(end, a + 672)] - nightPrefix[a],
+      }))
       .sort((a, b) => b.used - a.used)[0];
+    // Historical excess remains highlighted after a later counting period starts.
+    for (const a of candidates) {
+      const b = Math.min(end, a + 672);
+      for (let i = a; i < b; i++)
+        if (nightWork.has(i) && nightPrefix[i + 1] - nightPrefix[a] > 2160)
+          mark(
+            i,
+            "Recorded long/night work exceeds 36 hours in a seven-day period counted from " +
+              label(cells[a]) +
+              ".",
+          );
+    }
     if (selected) {
       const a = selected.a,
+        b = Math.min(end, a + 672),
         w = selected.used,
-        uncertain = unknown(a, end) > 0 || clock || changed;
-      if (w > 2160)
-        for (let i = a; i < end; i++)
-          if (nightWork.has(i) && nightPrefix[i + 1] - nightPrefix[a] > 2160)
-            mark(
-              i,
-              "Recorded long/night work exceeds 36 hours in this counted seven-day period.",
-            );
+        uncertain = unknown(a, b) > 0 || clock || changed;
       checks.push({
         label: "7 days long/night",
         start: label(cells[a]),
@@ -440,7 +523,13 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
         rest: 0,
         requiredRest: 0,
         status:
-          w > 2160 ? "Exceeded" : uncertain ? "Needs review" : "Open period",
+          w > 2160
+            ? "Exceeded"
+            : uncertain
+              ? "Needs review"
+              : a + 672 <= end
+                ? "Within work cap"
+                : "Open period",
         remaining: Math.max(0, 2160 - w),
         date: cells[a].date,
         reason:
@@ -450,13 +539,19 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
   }
   const last24 = at24.filter((x) => x <= end).at(-1),
     workSince24 = work(last24 ?? Math.max(0, end - 1344), end);
-  if (bfm && !two && last24 !== undefined && workSince24 > 5040)
-    for (let i = last24; i < end; i++)
-      if (work(last24, i + 1) > 5040)
-        mark(
-          i,
-          "Recorded work exceeds 84 hours since the identified 24-hour stationary rest.",
-        );
+  if (bfm && !two)
+    for (let n = 0; n < at24.length; n++) {
+      const a = at24[n],
+        b = at24[n + 1] ?? end;
+      for (let i = a; i < b; i++)
+        if (work(a, i + 1) > 5040)
+          mark(
+            i,
+            "Recorded work exceeds 84 hours since the 24-hour stationary rest ending " +
+              label(cells[a]) +
+              ".",
+          );
+    }
   if (!last24)
     issues.push(
       "A preceding 24-hour stationary rest has not been established.",
@@ -470,7 +565,7 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
       "More than 84 hours of work is recorded since the last qualifying 24-hour rest.",
     );
   const recentNights = nightEvents.filter(
-      (n) => n.at > end - 1344 && n.at <= end,
+      (n) => Math.min(end, n.at) - Math.max(end - 1344, n.start) >= n.required,
     ),
     recentDays = [
       ...new Set(recentNights.filter((n) => n.day !== null).map((n) => n.day!)),
@@ -517,10 +612,7 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
     const date = dateAdd(endDate, -n);
     days.push({
       date,
-      ...totals(
-        s.days[date]?.slots || Array(96).fill(null),
-        n === 0 ? endSlot : 96,
-      ),
+      ...totals(cells.filter((c) => c.date === date).map((c) => c.kind)),
     });
   }
   const lastWorkRun = runs
@@ -531,9 +623,43 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
       .at(-1),
     lastMajor = major.at(-1);
   // Detailed long-period requirements are displayed for review, never presented as a legal clearance.
-  const activeChecks = checks.filter(
-    (c) => c.end > asOf.replace("T", " ") && c.status === "Open period",
+  const assessedAt = new Date(
+    Date.parse(startDate + "T00:00:00Z") + end * 900000,
+  )
+    .toISOString()
+    .slice(0, 16)
+    .replace("T", " ");
+  const activeChecks = allChecks.filter(
+    (c) => c.start <= assessedAt && c.end > assessedAt,
   );
+  const allowanceChecks = [...activeChecks];
+  if (bfm && !two && last24 !== undefined && activeChecks.length) {
+    for (const [labelText, used, cap, start] of [
+      ["BFM 84-hour work cap", workSince24, 5040, label(cells[last24])],
+      [
+        "BFM long/night budget (conservative)",
+        longNight,
+        2160,
+        label(cells[Math.max(0, end - 672)]),
+      ],
+    ] as const)
+      allowanceChecks.push({
+        label: labelText,
+        start,
+        end: assessedAt,
+        work: used,
+        limit: cap,
+        rest: 0,
+        requiredRest: 0,
+        status: used > cap ? "Exceeded" : "Open period",
+        remaining: Math.max(0, cap - used),
+        date: endDate,
+        reason:
+          "Additional BFM budget used by the conservative work-cap estimate.",
+      });
+  }
+  const controlling =
+    allowanceChecks.sort((a, b) => a.remaining - b.remaining)[0] || null;
   if (bfm && !two) {
     const last14 = Math.max(0, end - 1344),
       rests = stationary.map(
@@ -557,11 +683,11 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
   }
   const nextBreak =
     !issues.length &&
-    !checks.some((c) =>
+    ![...allChecks, ...checks].some((c) =>
       ["Exceeded", "Rest due", "Needs review"].includes(c.status),
     ) &&
     activeChecks.length
-      ? Math.min(...activeChecks.map((c) => c.remaining))
+      ? Math.min(...allowanceChecks.map((c) => c.remaining))
       : null;
   return {
     breachSlots,
@@ -579,41 +705,31 @@ export function analyse(s: Workspace, asOf: string, range = 14): RuleReport {
     longNight,
     workSince24,
     nextBreak,
+    controlling,
     source: RULE_SOURCE,
     version: RULE_VERSION,
   };
 }
 
-/** Civil diary totals; never assume that blank time is rest. */
-export function windowTotals(s: Workspace, window: WorkWindow) {
+/** The assessed part of this counting period; future time earns no rest credit. */
+export function windowTotals(_s: Workspace, window: WorkWindow) {
   const start = Date.parse(window.start.replace(" ", "T") + ":00Z");
   const end = Date.parse(window.end.replace(" ", "T") + ":00Z");
-  let work = 0,
-    rest = 0,
-    unknown = 0,
-    review = !window.established;
-  for (let at = start; at < end; at += 900000) {
-    const value = new Date(at).toISOString(),
-      date = value.slice(0, 10),
-      slot = Number(value.slice(11, 13)) * 4 + Number(value.slice(14, 16)) / 15;
-    const day = s.days[date],
-      kind = day?.slots[slot];
-    if (kind === "work") work += 15;
-    else if (kind === "rest") rest += 15;
-    else unknown += 15;
-    review ||=
-      !!day?.review ||
-      !!day?.clockReview ||
-      (!!day && clockChange(date, day.profile.zone));
-  }
-  return { work, rest, unknown, review };
+  const through = Date.parse(window.assessedThrough.replace(" ", "T") + ":00Z");
+  const work = window.work,
+    rest = window.rest,
+    unknown = Math.max(0, (through - start) / 60000 - work - rest),
+    future = Math.max(0, (end - through) / 60000),
+    review = window.review;
+  return { work, rest, unknown, future, review };
 }
 export function selectWorkWindow(windows: WorkWindow[], date: string) {
   return windows
     .filter((w) => w.start.slice(0, 10) <= date && w.end > date + " 00:00")
     .sort(
       (a, b) =>
-        Number(b.start.startsWith(date)) - Number(a.start.startsWith(date)) ||
+        Number(b.status === "Exceeded") - Number(a.status === "Exceeded") ||
+        a.remaining - b.remaining ||
         Number(b.established) - Number(a.established) ||
         b.start.localeCompare(a.start),
     )[0];

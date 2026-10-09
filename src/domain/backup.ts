@@ -124,6 +124,13 @@ export function validateState(s: Workspace) {
     if (!Array.isArray(s[k])) throw Error("Invalid " + k);
   profile(s.profile);
   s.profileHistory.forEach(profile);
+  if (
+    s.settings.diaryRestDefault !== undefined &&
+    !["stationary", "sleeper-moving", "unknown"].includes(
+      s.settings.diaryRestDefault,
+    )
+  )
+    throw Error("Invalid default rest setting.");
   for (const [key, d] of Object.entries(s.days)) {
     if (
       !validDate(key) ||
@@ -132,6 +139,8 @@ export function validateState(s: Workspace) {
       d.slots.length !== 96 ||
       d.slots.some((v) => !["work", "rest", null].includes(v)) ||
       !d.changes ||
+      (d.restDefault !== undefined &&
+        !["stationary", "sleeper-moving", "unknown"].includes(d.restDefault)) ||
       !asset(d.pagePhoto)
     )
       throw Error("Invalid diary on " + key);
@@ -366,6 +375,7 @@ function importDiary(raw: Obj) {
     d.profile.coScheme = detail.twoUpScheme || "BFM";
     d.profile.coBase = detail.twoUpBaseState || "";
     d.legacyAssumedRest = a === undefined;
+    d.restDefault = raw.restAsStationary !== false ? "stationary" : "unknown";
     d.vehicle = detail.numberPlate || bookSettings.defaultNumberPlate || "";
     d.comments = detail.comments || "";
     d.dailyCheckTime = detail.dailyCheckTime || "";
@@ -381,7 +391,7 @@ function importDiary(raw: Obj) {
         odometer: String(c.odometer || ""),
         note: c.note || "",
         vehicle: c.numberPlate || d.vehicle,
-        restType: /stationary/i.test(c.restType)
+        restType: /stationary|night|24\s*h/i.test(c.restType)
           ? "stationary"
           : /sleeper|moving/i.test(c.restType)
             ? "sleeper-moving"

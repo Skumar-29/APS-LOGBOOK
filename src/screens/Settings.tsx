@@ -242,9 +242,28 @@ export function Settings({ onDone }: { onDone?: () => void }) {
           </Fold>
           <Fold title="Display & diary">
             <Field
+              label="Rest setting for new diary pages"
+              value={s.settings.diaryRestDefault || "unknown"}
+              options={[
+                ["unknown", "Confirm each break"],
+                ["stationary", "Stationary unless specified"],
+                ["sleeper-moving", "Moving sleeper unless specified"],
+              ]}
+              onChange={(v) =>
+                mutate((w) => {
+                  w.settings.diaryRestDefault =
+                    v as import("../domain/model").RestType;
+                })
+              }
+            />
+            <Field
               label="Theme"
               value={s.settings.theme}
-              options={[["system", "Auto · follow device"], ["light", "Day · light"], ["dark", "Night · dark"]]}
+              options={[
+                ["system", "Auto · follow device"],
+                ["light", "Day · light"],
+                ["dark", "Night · dark"],
+              ]}
               onChange={(v) => {
                 void mutate((w) => {
                   w.settings.theme = v as typeof w.settings.theme;
