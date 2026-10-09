@@ -31,6 +31,10 @@ import {
   multiplyMoney,
 } from "../src/domain/invoices";
 import {
+  getFormDefaults,
+  saveFormDefaults,
+  reviseForm,
+  deleteForm,
   newForm,
   allClear,
   signForm,
@@ -410,6 +414,39 @@ describe("invoice totals and trip snapshots", () => {
   });
 });
 describe("safe driving forms", () => {
+  it("persists separate defaults without changing existing forms or diary profile", async () => {
+    const s = driver(), original = newForm(s);
+    original.company = "Old company"; s.forms.push(original);
+    const profile = clone(s.profile);
+    saveFormDefaults(s, { ...getFormDefaults(s), driver: "Form Driver", licence: "FORM123", contact: "0400000000", company: "New company", logo: "", showLogo: false, signature: "" });
+    const next = newForm(s, original);
+    expect(next.values.driver).toBe("Form Driver");
+    expect(next.company).toBe("New company");
+    expect(next.showLogo).toBe(false);
+    expect(original.company).toBe("Old company");
+    expect(s.profile).toEqual(profile);
+    const plan = await inspectBackup(await exportBackup(s));
+    expect(plan.state.formDefaults).toEqual(s.formDefaults);
+    const restored = applyImport(driver(), plan);
+    expect(restored.formDefaults).toEqual(s.formDefaults);
+    s.profile.id = "different-driver";
+    expect(getFormDefaults(s).driver).toBe(profile.name);
+  });
+  it("keeps the signed original and trip answers when creating an unsigned revision", () => {
+    const s = driver(), f = newForm(s);
+    Object.assign(f.values, {pm: "TEST01", date: "2026-09-01", depart: "06:00", arrive: "2026-09-02T06:00", from: "MEL", to: "BNE"});
+    allClear(f, "checks"); allClear(f, "declarations"); signForm(f, s); s.forms.push(f);
+    const original = clone(f), id = reviseForm(s, f.id), revision = s.forms.find(f => f.id === id)!;
+    expect(s.forms[0]).toEqual(original);
+    expect(revision.values).toEqual(original.values);
+    expect(revision.checks).toEqual(original.checks);
+    expect(revision.signature).toBe(""); expect(revision.status).toBe("Draft");
+    expect(revision.revises).toBe(original.id);
+    deleteForm(s, id);
+    expect(s.forms).toEqual([original]);
+    expect(s.audit.at(-1)?.action).toBe("Delete driving form");
+  });
+
   it("all-clear preserves a fault and N/A; negative questions receive No", () => {
     const s = driver(),
       f = newForm(s);

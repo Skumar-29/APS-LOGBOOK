@@ -1,3 +1,4 @@
+import { FormDefaults } from "../components/FormDefaults";
 import { useState } from "react";
 import { useStore } from "../context";
 import {
@@ -22,6 +23,7 @@ export function Settings({ onDone }: { onDone?: () => void }) {
   const { s, mutate } = useStore(),
     [p, setP] = useState<Profile>(clone(s.profile)),
     [newDriver, setNewDriver] = useState(false),
+    [formDefaultsOpen, setFormDefaultsOpen] = useState(false),
     [registry, setRegistry] = useState(""),
     [registryId, setRegistryId] = useState(""),
     [name, setName] = useState(""),
@@ -186,6 +188,10 @@ export function Settings({ onDone }: { onDone?: () => void }) {
       </section>
       {s.onboarded && (
         <>
+          <section className="card">
+            <h2>Safe driving form defaults</h2>
+            <Action onClick={() => setFormDefaultsOpen(true)}>Company, logo & my form details</Action>
+          </section>
           <Fold title="My reusable signature">
             <p className="small">
               Signature belongs to {s.profile.name}. Each form requires a fresh
@@ -384,6 +390,9 @@ export function Settings({ onDone }: { onDone?: () => void }) {
           </Fold>
         </>
       )}
+      {formDefaultsOpen && <Modal title="Form defaults" onClose={() => setFormDefaultsOpen(false)}>
+        <FormDefaults key={s.profile.id} onSaved={() => setFormDefaultsOpen(false)} />
+      </Modal>}
       {newDriver && (
         <Modal title="Choose a driver" onClose={() => setNewDriver(false)}>
           {s.registry

@@ -1281,3 +1281,14 @@ html { scroll-padding-top: 160px; }
  .diary-screen main { padding-left:6px; padding-right:6px; }
 }
 @media print { .workspace-header { display:none; } }
+
+/* Compact form actions stay above the phone navigation. */
+.form-record { padding: 12px 16px; }
+.form-record-open { width: 100%; border: 0; padding: 4px 0 12px; background: transparent; text-align: left; }
+.form-record-open > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.form-record-actions { display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 10px; }
+.form-record-actions button { flex: 1; min-height: 44px; padding: 8px; }
+.form-save-bar { position: sticky; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 9; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.form-save-bar > span { font-size: 12px; color: var(--muted); }
+.form-save-bar button { min-height: 44px; }
+@media (max-width: 380px) { .form-save-bar > .row { width: 100%; } .form-save-bar button { flex: 1; } }

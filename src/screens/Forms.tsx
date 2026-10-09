@@ -1,12 +1,16 @@
+import { FormDefaults } from "../components/FormDefaults";
 import { Signature } from "../components/Signature";
 import { displayDate } from "../domain/time";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../context";
 import { audit, clone, type FormRecord } from "../domain/model";
 import {
   allClear,
   declarations,
   editForm,
+  deleteForm,
+  reviseForm,
+  getFormDefaults,
   inspection,
   newForm,
   signForm,
@@ -19,18 +23,22 @@ import {
   Field,
   Fold,
   ImageInput,
+  Modal,
 } from "../components/UI";
 import { Location } from "../components/Location";
 import { Document } from "../components/Document";
 import { formPages } from "../documents/form-pages";
 export function Forms() {
-  const { s, mutate, latest } = useStore(),
+  const { s, mutate, latest, busy, error } = useStore(),
     [id, setId] = useState(""),
+    [defaultsOpen, setDefaultsOpen] = useState(false),
+    [confirm, setConfirm] = useState<{ action: "edit" | "delete"; id: string } | null>(null),
     [vehicle, setVehicle] = useState("pm"),
     [reviewed, setReviewed] = useState(false),
     [saveSignature, setSaveSignature] = useState(false),
     [undo, setUndo] = useState<FormRecord | null>(null),
     [doc, setDoc] = useState<FormRecord | null>(null);
+  const documentPages = useMemo(() => doc ? formPages(doc) : [], [doc]);
   const f = s.forms.find((f) => f.id === id),
     locked = f?.status === "Signed";
   useEffect(() => {
@@ -61,35 +69,71 @@ export function Forms() {
     await edit((f) => allClear(f, part));
     setUndo(old);
   }
+  async function save() {
+    await latest();
+    await mutate(w => {
+      const record = w.forms.find(x => x.id === id);
+      if (!record) throw Error("Form not found.");
+      record.updatedAt = new Date().toISOString();
+    });
+    setId(""); setUndo(null);
+  }
+  async function preview(recordId: string) {
+    const w = await latest();
+    const record = w.forms.find(x => x.id === recordId);
+    if (!record) throw Error("Form not found.");
+    setDoc(clone(record));
+  }
+  function openEdit(record: FormRecord) {
+    if (record.status === "Signed") setConfirm({ action: "edit", id: record.id });
+    else { setId(record.id); setUndo(null); setReviewed(false); }
+  }
+  const dialogs = <>
+    {defaultsOpen && <Modal title="Form defaults" onClose={() => setDefaultsOpen(false)}>
+      <FormDefaults key={s.profile.id} onSaved={() => setDefaultsOpen(false)} />
+    </Modal>}
+    {confirm && <Modal title={confirm.action === "delete" ? "Delete form?" : "Edit signed form?"} onClose={() => setConfirm(null)}>
+      <p>{confirm.action === "delete" ? "This removes this saved form from the device. Download its PDF first if you need a copy." : "An editable revision will keep these trip details and answers. Review and sign it again; the original signed copy stays saved."}</p>
+      <div className="row wrap">
+        <Action onClick={() => setConfirm(null)}>Cancel</Action>
+        <Action primary={confirm.action === "edit"} danger={confirm.action === "delete"} onClick={async () => {
+          let next = "";
+          await mutate(w => {
+            if (confirm.action === "delete") deleteForm(w, confirm.id);
+            else next = reviseForm(w, confirm.id);
+          });
+          setId(next); setUndo(null); setReviewed(false); setConfirm(null);
+        }}>{confirm.action === "delete" ? "Delete form" : "Create editable revision"}</Action>
+      </div>
+    </Modal>}
+    {doc && <Document name={"Safe-driving-" + doc.values.date + "-" + (doc.values.pm || "draft")}
+      pages={documentPages} close={() => setDoc(null)} />}
+  </>;
   if (!f)
     return (
       <>
-        <div className="row">
+        <div className="row wrap">
           <h1>Safe driving & daily check</h1>
-          <Action primary onClick={() => add()}>
-            + New form
-          </Action>
+          <div className="row wrap">
+            <Action onClick={() => setDefaultsOpen(true)}>Form defaults</Action>
+            <Action primary onClick={() => add()}>+ New form</Action>
+          </div>
         </div>
-        {[...s.forms].reverse().map((f) => (
-          <button
-            className="card list-button"
-            key={f.id}
-            onClick={() => {
-              setId(f.id);
-              setReviewed(false);
-            }}
-          >
-            <span>
-              <b>
-                {displayDate(f.values.date)} · {f.values.pm || "Truck not set"}
-              </b>
-              <small>
-                {f.values.from || "Origin"} → {f.values.to || "Destination"}
-              </small>
-            </span>
-            <span>{f.status}</span>
-          </button>
+        {[...s.forms].reverse().map(record => (
+          <section className="card form-record" key={record.id} aria-label={`Form ${displayDate(record.values.date)} ${record.values.pm || "Draft"}`}>
+            <button className="list-button form-record-open" onClick={() => { setId(record.id); setReviewed(false); setUndo(null); }}>
+              <span><b>{displayDate(record.values.date)} · {record.values.pm || "Truck not set"}</b>
+                <small>{record.values.from || "Origin"} → {record.values.to || "Destination"}</small></span>
+              <span>{record.status}{record.revises ? " · Revision" : ""}</span>
+            </button>
+            <div className="form-record-actions">
+              <Action onClick={() => openEdit(record)}>Edit</Action>
+              <Action onClick={() => preview(record.id)}>Share / PDF</Action>
+              <Action danger onClick={() => setConfirm({ action: "delete", id: record.id })}>Delete</Action>
+            </div>
+          </section>
         ))}
+        {dialogs}
         {!s.forms.length && (
           <Empty>
             Your driver details and vehicles will be remembered for the next
@@ -315,7 +359,7 @@ export function Forms() {
           }}
         />
       </section>
-      <Fold title="Company name & logo (optional)">
+      <Fold title="Company name & logo (this form)">
         <Field
           label="Company name"
           value={f.company}
@@ -368,6 +412,7 @@ export function Forms() {
         {locked ? (
           <>
             <p>Signed by {f.signedName}. This saved form is read only.</p>
+            <Action onClick={() => openEdit(f)}>Edit form</Action>
             <Action onClick={() => add(f)}>New trip from this form</Action>
           </>
         ) : (
@@ -378,7 +423,7 @@ export function Forms() {
               onChange={setReviewed}
             />
             <Action
-              disabled={!reviewed || !s.profile.signature}
+              disabled={!reviewed || !getFormDefaults(s).signature}
               onClick={() =>
                 mutate((w) => {
                   const record = w.forms.find((x) => x.id === id)!;
@@ -407,7 +452,10 @@ export function Forms() {
                           "This form changed. Review it again before signing.",
                         );
                       signForm(record, w, signature);
-                      if (saveSignature) w.profile.signature = signature;
+                      if (saveSignature) {
+                        if (w.formDefaults?.[w.profile.id]) w.formDefaults[w.profile.id].signature = signature;
+                        else w.profile.signature = signature;
+                      }
                       audit(w, "Sign driving form", id, undefined, record);
                     });
                   }}
@@ -438,15 +486,14 @@ export function Forms() {
           </Action>
         </div>
       </section>
-      {doc && (
-        <Document
-          name={
-            "Safe-driving-" + doc.values.date + "-" + (doc.values.pm || "draft")
-          }
-          pages={formPages(doc)}
-          close={() => setDoc(null)}
-        />
-      )}
+      <div className="form-save-bar">
+        <span role="status">{busy ? "Saving…" : error ? "Check save error" : "Saved on this device"}</span>
+        <div className="row wrap">
+          <Action onClick={() => preview(f.id)}>Share / PDF</Action>
+          <Action primary disabled={busy || !!error} onClick={save}>Save form</Action>
+        </div>
+      </div>
+      {dialogs}
     </>
   );
 }

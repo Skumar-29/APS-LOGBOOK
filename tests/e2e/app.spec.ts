@@ -343,7 +343,22 @@ test("reusable signature, all-clear answers, exact two-page PDF and fresh next-t
     path: info.outputPath("form-preview.png"),
     fullPage: true,
   });
+  await expect(page.locator('dialog [data-original-form-page="1"] text').filter({ hasText: /^Test Driver$/ })).toHaveCount(2);
+  await expect(page.locator('dialog [data-original-form-page="1"] image[href^="data:image/png"]')).toHaveCount(2);
   await page.getByRole("button", { name: "Close dialog", exact: true }).click();
+  await page.getByRole("button", { name: "Save form", exact: true }).click();
+  await expect(page.locator(".form-record")).toHaveCount(1);
+  await page.locator(".form-record").getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Create editable revision", exact: true }).click();
+  await expect(page.getByLabel("Location", { exact: true })).toHaveValue("MEL");
+  await expect(page.getByLabel("Location", { exact: true })).toBeEnabled();
+  await expect(page.locator(".question button[aria-pressed=true]")).toHaveCount(36);
+  await page.getByRole("button", { name: "Save form", exact: true }).click();
+  await expect(page.locator(".form-record")).toHaveCount(2);
+  await page.locator(".form-record").first().getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete form", exact: true }).click();
+  await expect(page.locator(".form-record")).toHaveCount(1);
+  await page.locator(".form-record-open").click();
   await page
     .getByRole("button", { name: "New trip from this form", exact: true })
     .click();
@@ -932,4 +947,60 @@ test("BFM overlapping windows, automatic rest labels and erase-to-rest persist",
   await expect(page.getByText("Today’s work").locator("..")).toContainText(
     "14h 00m",
   );
+});
+
+
+test("form defaults, explicit save, list sharing, edit and confirmed deletion persist", async ({ page }, info) => {
+  await start(page); await more(page, "Forms");
+  await page.getByRole("button", { name: "Form defaults", exact: true }).click();
+  await fill(page, "Default company name", "Test Transport");
+  await fill(page, "Default contact number", "0400000000");
+  await page.getByLabel("Show company name by default", { exact: true }).check();
+  await page.locator('input[type=file]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64') });
+  await expect(page.getByAltText("Default company logo")).toBeVisible();
+  await page.getByRole("button", { name: "Save defaults", exact: true }).click();
+  await page.getByRole("button", { name: "+ New form", exact: true }).click();
+  await fill(page, "Destination", "Brisbane"); await fill(page, "Truck registration", "TRUCK7");
+  await page.getByText("Driver, trailers & load", { exact: true }).click();
+  await expect(page.getByLabel("Contact", { exact: true })).toHaveValue("0400000000");
+  await page.getByText("Company name & logo (this form)", { exact: true }).click();
+  await expect(page.getByLabel("Company name", { exact: true })).toHaveValue("Test Transport");
+  await expect(page.getByAltText("Company logo", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Save form", exact: true }).click();
+  await expect(page.locator(".form-record")).toHaveCount(1);
+  await page.reload(); await more(page, "Forms");
+  await expect(page.locator(".form-record")).toContainText("TRUCK7");
+  await page.getByRole("button", { name: "Form defaults", exact: true }).click();
+  await expect(page.getByLabel("Default company name", { exact: true })).toHaveValue("Test Transport");
+  await fill(page, "Default company name", "Next Company");
+  await page.getByRole("button", { name: "Save defaults", exact: true }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByText("Company name & logo (this form)", { exact: true }).click();
+  await expect(page.getByLabel("Company name", { exact: true })).toHaveValue("Test Transport");
+  await fill(page, "Destination", "Sydney");
+  await page.getByRole("button", { name: "Save form", exact: true }).click();
+  await expect(page.locator(".form-record")).toContainText("Sydney");
+  await page.getByRole("button", { name: "Share / PDF", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Share PDF", exact: true })).toBeEnabled();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true });
+    Object.defineProperty(navigator, "share", { configurable: true, value: async ({files}: {files: File[]}) => {
+      (window as any).sharedPdf = { name: files[0].name, type: files[0].type, size: files[0].size, active: navigator.userActivation.isActive };
+    }});
+  });
+  await page.getByRole("button", { name: "Share PDF", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).sharedPdf)).toMatchObject({ type: "application/pdf", active: true });
+  await page.getByRole("button", { name: "Close dialog", exact: true }).click();
+  await noOverflow(page);
+  await page.screenshot({path: info.outputPath("form-actions.png"), fullPage: true});
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.locator(".form-record")).toHaveCount(1);
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete form", exact: true }).click();
+  await page.reload(); await more(page, "Forms");
+  await expect(page.locator(".form-record")).toHaveCount(0);
+  await page.getByRole("button", { name: "+ New form", exact: true }).click();
+  await page.getByText("Company name & logo (this form)", { exact: true }).click();
+  await expect(page.getByLabel("Company name", { exact: true })).toHaveValue("Next Company");
 });

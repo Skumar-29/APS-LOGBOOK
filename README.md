@@ -1,6 +1,6 @@
 # APS Logbook
 
-A local-first PWA combining Truck Work Diary and the truck Invoice Generator. Version **2.0.0-beta.6**. The APS Carpenter invoice app is not included.
+A local-first PWA combining Truck Work Diary and the truck Invoice Generator. Version **2.0.0-beta.7**. The APS Carpenter invoice app is not included.
 
 ## Run and build
 
@@ -93,3 +93,9 @@ The legacy application remains available in Git history at `1b040348eded789ab9fd
 ## Separate repository
 
 Copied from `Skumar-29/Work-Diary`, branch `build/truck-workspace-v2`, commit `9ebef09827f5365d94f5644a13e40151a6123c62` on 2026-10-09. This is a standalone private development repository. The original repository and live applications have not been changed. The former custom-domain CNAME files are intentionally omitted to keep deployment separate. Existing app branding is retained pending a dedicated branding update. Repository creation does not migrate local driver records or reconnect hosting.
+
+### Safe driving form controls (beta.7)
+
+Open More → Forms → Form defaults to save company name, logo, driver details and a reusable form signature. These defaults apply to new forms; saved forms retain their details. The same defaults are accessible from Settings.
+
+Forms save as you type and have a Save form button that returns to the list. Each saved form has Edit, Share / PDF and Delete actions. Editing a signed form creates an unsigned revision while keeping the signed original. Review and sign the revision again before export. Delete requires confirmation.

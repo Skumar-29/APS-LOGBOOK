@@ -1,3 +1,13 @@
+## Safe driving form controls — beta.7
+
+- Added an explicit Save form action, visible Edit / Share PDF / Delete actions on each saved form, and separate per-driver Form defaults for company, logo, personal details and reusable signature.
+- Signed-form edits create a draft revision with the trip answers preserved, the applied signature cleared, and the original signed form retained. Delete requires confirmation. New trips still clear checks and require a fresh review.
+- Existing forms keep their captured details when defaults change. Defaults survive reload and backup import and do not change diary driver settings.
+- PDF preparation completes before the Share PDF click, preserving native share activation. Cancelling the share sheet is handled normally.
+- 63 unit/storage tests pass. Phone and desktop form journeys cover defaults, logo upload, saved reload, draft edit, signed revision, confirmed/cancelled deletion, PDF share activation and offline export.
+- Page 2 of a generated signed PDF was rendered and visually checked: the driver name appears at the top and bottom, and both signature positions are filled. Original PDF content streams remain unchanged.
+- The hosting connector returned 403 for the existing beta team; the browser requires Vercel sign-in. Do not treat this source update as a confirmed live deployment.
+
 # Verification — 2.0.0-beta.6
 
 ## Beta 6 calculation update — 9 October 2026

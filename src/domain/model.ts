@@ -142,7 +142,12 @@ export interface InvoiceSettings {
   miscItemRates: Record<string, string>;
   [key: string]: unknown;
 }
+export interface FormDefaults {
+  driver: string; contact: string; licence: string; expiry: string;
+  company: string; logo: string; showCompany: boolean; showLogo: boolean; signature: string;
+}
 export interface FormRecord {
+  revises?: string;
   id: string;
   driverId: string;
   values: Record<string, string>;
@@ -209,6 +214,7 @@ export interface Workspace {
   invoices: Invoice[];
   invoiceSettings: InvoiceSettings;
   forms: FormRecord[];
+  formDefaults?: Record<string, FormDefaults>;
   notes: Note[];
   documents: SavedDocument[];
   places: string[];

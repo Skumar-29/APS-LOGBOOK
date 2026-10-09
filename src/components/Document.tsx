@@ -13,18 +13,25 @@ export function Document({
   const [busy, setBusy] = useState(false),
     [zoom, setZoom] = useState(false),
     [prepared, setPrepared] = useState<string[]>([]),
+    [pdf, setPdf] = useState<Blob | null>(null),
     [preparationError, setPreparationError] = useState("");
-  useEffect(() => { let live = true; setPrepared([]);setPreparationError("");
-    import("../documents/pdf").then(m => m.preparePdfPages(pages)).then(result => {if(live)setPrepared(result);}).catch(error => {if(live)setPreparationError(error.message);});
+  useEffect(() => { let live = true; setPrepared([]);setPdf(null);setPreparationError("");
+    import("../documents/pdf").then(async m => {
+      const result = await m.preparePdfPages(pages);
+      if (live) setPrepared(result);
+      const blob = await m.createPdf(result, name);
+      if (live) setPdf(blob);
+    }).catch(error => {if(live)setPreparationError(error.message);});
     return () => {live=false;};
-  }, [pages]);
+  }, [pages, name]);
   async function output(share = false) {
+    if (!pdf) return;
     setBusy(true);
     try {
-      const { createPdf } = await import("../documents/pdf");
-      const blob = await createPdf(prepared, name);
-      if (share) await shareFile(blob, name + ".pdf");
-      else download(blob, name + ".pdf");
+      if (share) await shareFile(pdf, name + ".pdf");
+      else download(pdf, name + ".pdf");
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) throw error;
     } finally {
       setBusy(false);
     }
@@ -35,10 +42,10 @@ export function Document({
         <Action onClick={() => setZoom(!zoom)}>
           {zoom ? "Fit page" : "Enlarge"}
         </Action>
-        <Action disabled={busy || !prepared.length} onClick={() => output()} primary>
-          {busy ? "Creating PDF…" : "Download PDF"}
+        <Action disabled={busy || !pdf} onClick={() => output()} primary>
+          Download PDF
         </Action>
-        <Action disabled={busy || !prepared.length} onClick={() => output(true)}>
+        <Action disabled={busy || !pdf} onClick={() => output(true)}>
           Share PDF
         </Action>
       </div>

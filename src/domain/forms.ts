@@ -1,4 +1,4 @@
-import { clone, uid, type FormRecord, type Workspace } from "./model";
+import { audit, clone, uid, type FormDefaults, type FormRecord, type Workspace } from "./model";
 import { today, validDate } from "./time";
 export const inspection = [
   "Engine oil, coolant, windscreen fluid and fluid / air leaks.",
@@ -58,17 +58,55 @@ export const declarations = [
 export const vehicleKeys = ["pm", "t1", "t2", "t3"];
 export const vehiclesInForm = (f: FormRecord) =>
   vehicleKeys.filter((k) => f.values[k]?.trim());
-export function newForm(s: Workspace, previous?: FormRecord): FormRecord {
+export function getFormDefaults(s: Workspace): FormDefaults {
   const p = s.profile;
+  const previous = [...s.forms].reverse().find(f => f.driverId === p.id);
+  return clone(s.formDefaults?.[p.id] ?? {
+    driver: p.name, contact: p.contact, licence: p.licence, expiry: p.licenceExpiry,
+    company: previous?.company ?? p.operator, logo: previous?.logo ?? p.logo,
+    showCompany: previous?.showCompany ?? !!p.operator,
+    showLogo: previous?.showLogo ?? !!p.logo, signature: p.signature,
+  });
+}
+export function saveFormDefaults(s: Workspace, defaults: FormDefaults) {
+  if (!defaults.driver.trim() || !defaults.licence.trim())
+    throw Error("Enter your driver name and licence number.");
+  const before = getFormDefaults(s), next = clone(defaults);
+  if ((before.driver !== next.driver || before.licence !== next.licence) && next.signature === before.signature) next.signature = "";
+  s.formDefaults ||= {};
+  s.formDefaults[s.profile.id] = next;
+  audit(s, "Save form defaults", s.profile.id, before, next);
+}
+export function reviseForm(s: Workspace, id: string) {
+  const original = s.forms.find(f => f.id === id);
+  if (!original) throw Error("Form not found.");
+  if (original.status !== "Signed") return original.id;
+  const revision = clone(original);
+  revision.id = uid();
+  revision.revises = original.id;
+  revision.createdAt = new Date().toISOString();
+  invalidateForm(revision);
+  s.forms.push(revision);
+  audit(s, "Create driving form revision", revision.id, undefined, { revises: id });
+  return revision.id;
+}
+export function deleteForm(s: Workspace, id: string) {
+  const record = s.forms.find(f => f.id === id);
+  if (!record) throw Error("Form not found.");
+  audit(s, "Delete driving form", id, record);
+  s.forms = s.forms.filter(f => f.id !== id);
+}
+export function newForm(s: Workspace, previous?: FormRecord): FormRecord {
+  const p = s.profile, defaults = getFormDefaults(s);
   return {
     id: uid(),
     driverId: p.id,
     values: {
       ...previous?.values,
-      driver: p.name,
-      contact: p.contact,
-      licence: p.licence,
-      expiry: p.licenceExpiry,
+      driver: defaults.driver,
+      contact: defaults.contact,
+      licence: defaults.licence,
+      expiry: defaults.expiry,
       scheme: p.scheme,
       accreditation: p.certificate,
       date: today(p.zone),
@@ -83,10 +121,10 @@ export function newForm(s: Workspace, previous?: FormRecord): FormRecord {
     },
     checks: { pm: {}, t1: {}, t2: {}, t3: {} },
     declarations: {},
-    company: previous?.company || p.operator,
-    logo: previous?.logo || p.logo,
-    showCompany: previous?.showCompany ?? !!p.operator,
-    showLogo: previous?.showLogo ?? !!p.logo,
+    company: defaults.company,
+    logo: defaults.logo,
+    showCompany: defaults.showCompany,
+    showLogo: defaults.showLogo,
     signature: "",
     signedName: "",
     reviewed: false,
@@ -163,20 +201,20 @@ export function validateForm(f: FormRecord) {
 export function signForm(
   f: FormRecord,
   s: Workspace,
-  signature = s.profile.signature,
+  signature = getFormDefaults(s).signature,
 ) {
   if (f.status === "Signed") throw Error("This form is already signed.");
   validateForm(f);
   if (
     f.driverId !== s.profile.id ||
-    f.values.driver !== s.profile.name ||
-    f.values.licence !== s.profile.licence
+    f.values.driver !== getFormDefaults(s).driver ||
+    f.values.licence !== getFormDefaults(s).licence
   )
-    throw Error("Save this driver in Settings before signing.");
+    throw Error("Save this driver in Form defaults before signing.");
   if (!signature || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(signature))
     throw Error("Draw a signature or save one in Settings first.");
   f.signature = signature;
-  f.signedName = s.profile.name;
+  f.signedName = f.values.driver;
   f.reviewed = true;
   f.status = "Signed";
   f.updatedAt = new Date().toISOString();

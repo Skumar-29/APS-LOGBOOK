@@ -122,6 +122,15 @@ export function validateState(s: Workspace) {
     "imports",
   ] as const)
     if (!Array.isArray(s[k])) throw Error("Invalid " + k);
+  if (s.formDefaults !== undefined) {
+    if (!s.formDefaults || typeof s.formDefaults !== "object" || Array.isArray(s.formDefaults))
+      throw Error("Invalid form defaults.");
+    for (const defaults of Object.values(s.formDefaults))
+      if (!defaults || ![defaults.driver, defaults.contact, defaults.licence, defaults.expiry, defaults.company].every(text)
+        || !asset(defaults.logo) || !asset(defaults.signature)
+        || typeof defaults.showCompany !== "boolean" || typeof defaults.showLogo !== "boolean")
+        throw Error("Invalid form defaults.");
+  }
   profile(s.profile);
   s.profileHistory.forEach(profile);
   if (
@@ -590,6 +599,7 @@ export function applyImport(
     }
   } else {
     const hadInvoices = s.invoices.length > 0;
+    s.formDefaults = { ...plan.state.formDefaults, ...s.formDefaults };
     for (const [k, d] of Object.entries(plan.state.days))
       if (!s.days[k]) s.days[k] = clone(d);
     const bookMap = new Map<string, string>();
