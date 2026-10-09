@@ -6,6 +6,7 @@
 - 61 unit/storage tests pass, including the supplied 16h/8h schedule, overlapping 24-hour periods, exact BFM limits, interrupted and cross-midnight rest, split-rest review, long/night de-duplication, historical 84-hour excess, constrained allowances, and preservation of the raw migration checkpoint.
 - Production TypeScript/Vite build passes. All 28 phone/desktop Chromium journeys have passed across the full run and affected-case rerun. The initial run found a stale test label (Rest was renamed Rest setting); one phone navigation encountered a rebuilt test artifact. The corrected selector and all affected cases passed against the completed build.
 - The new screenshot regression verifies eight red blocks, the older limiting window, automatic seven-hour rest classification, erase-to-rest, persisted reload and elapsed-time totals. The 320px phone result was visually reviewed. Existing PDF-template-byte checks, offline restore and native layout tests pass.
+- GitHub Chromium 145 exposed a pre-existing stacking issue: the date input could intercept the appearance menu. The menu now has an explicit stacking level above the date navigation; the existing appearance/touch checks cover the interaction.
 - Browser verification used Chromium 153 in phone/desktop emulation. Physical iPhone/PWA acceptance and regulatory certification are not established by these tests.
 - This code is for the separate APS-LOGBOOK repository. Vercel deployment access for the existing beta project was denied by the connector; this verification does not claim a live beta update.
 
