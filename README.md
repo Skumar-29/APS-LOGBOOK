@@ -1,6 +1,6 @@
 # APS Logbook
 
-A local-first PWA combining Truck Work Diary and the truck Invoice Generator. Version **2.0.0-beta.7**. The APS Carpenter invoice app is not included.
+A local-first PWA combining Truck Work Diary and the truck Invoice Generator. Version **2.0.0-beta.8**. The APS Carpenter invoice app is not included.
 
 ## Run and build
 
@@ -37,6 +37,16 @@ npm run test:e2e
 `src/screens` contains the compact React screens. `src/documents` renders the original layouts, PDF pages and XLSX files. Hours calculations run in a worker. Screens and PDF generation load on demand; all production chunks are included in the offline cache.
 
 Driver identity is captured on diary days and timer events. Paper pages have separate IDs and book/number mappings, so cancellation retains a snapshot while a replacement can refer to the same date. Issued invoices and signed forms retain their contents; new revisions/trips have separate IDs.
+
+## Beta 8 assessed hours
+
+Diary, Graph, Driving, Stats, CSV and active-page PDFs now share the same exact-time timeline and elapsed-time cutoff. The active timer is included without finishing it or changing records. Today never receives credit for future work or rest. Future work remains visibly planned.
+
+A timer's actual continuous duration is rounded once: work up to a 15-minute multiple, rest down. Raw timestamps are separate from the old grid footprint; an off-quarter 17-minute timer counts 30 work minutes even when it touches three cells. Manual block corrections take precedence over completed timer links; Undo restores the previous exact interpretation.
+
+More → NHVR guide explains break types, overlapping periods, overnight work, rounding, operating scope and official sources in plain language. Both physical rest settings and duration matter. The guide's ordinary tables use the engine catalogue.
+
+[Manual GitHub upload and local checks](docs/MANUAL_UPLOAD.md) gives the steps for the separate APS-LOGBOOK repository. This version has not been uploaded or deployed by this session. See [verification](VERIFICATION.md) for the checks that ran and the browser check that remains blocked.
 
 ## Beta 6 calculation changes
 

@@ -1,3 +1,19 @@
+# Beta 8 verification — 11 October 2026
+
+The beta 8 source is prepared locally. No GitHub upload or production deployment was made in this session; the user chose manual upload.
+
+- Unit/storage/domain and real-worker contract tests: **103 tests** in five files. The final recorded run below is the evidence for this version.
+- Production TypeScript/Vite build and offline service-worker generation are checked locally.
+- New numerical regressions cover the 20:15–03:00 overnight example under Standard/BFM, active/completed timer agreement, confirmed short breaches with missing earlier history, unresolved overdue work, exact off-quarter rounding, midnight allocation, manual correction/undo, migration, backup links, partial/future rest, 24h/night alternatives, rest shortage below the work cap, the NHVR overlapping-period example, a checkpoint older than 28 days and explicit HVNL operation with a WA base.
+- Worker contract checks call the real worker handler: request identity, active-timer totals, the caller's actual cutoff, unchanged source data and a short retry failure.
+- React review: shared report hooks are unconditional, outdated request keys are rejected, effect timers are cleaned up, the guide loads on demand, browser storage is never mutated by a calculation, and export buttons wait for current totals. Existing form controls are preserved.
+- Browser execution was attempted with the new phone overnight journey. It failed **before application execution**: Playwright could not find Chromium's headless-shell executable. The earlier download attempt did not supply a usable browser. No beta 8 browser pass or visual phone acceptance is claimed.
+- Updated phone/desktop journeys cover future-time exclusion, the overnight worker → Diary → Driving → Stats → CSV flow and the in-app guide. These still need to run on the user's computer or in GitHub Actions. Physical iPhone/PWA acceptance remains open.
+
+See [manual upload and checks](docs/MANUAL_UPLOAD.md). Earlier-version results below are historical; they do not establish beta 8 browser verification.
+
+---
+
 ## Safe driving form controls — beta.7
 
 - Added an explicit Save form action, visible Edit / Share PDF / Delete actions on each saved form, and separate per-driver Form defaults for company, logo, personal details and reusable signature.
