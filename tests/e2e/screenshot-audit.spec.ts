@@ -21,5 +21,6 @@ test('screenshot audit: night-work quantity agrees across Stats and Driving at t
  const nightRow=page.locator('.record-line').filter({hasText:'Long / night work · rule window'});const quantity=await nightRow.locator('b').innerText();expect(quantity).not.toBe('0h 00m');
  await expect(page.getByText(/Calendar pages/)).toBeVisible();await page.getByRole('button',{name:'Driving',exact:true}).click();
  await expect(page.locator('.record-line').filter({hasText:'7 days long/night'})).toContainText(quantity);await expect(page.locator('.status.review').first()).toBeVisible();await expect(page.locator('.status.open').first()).toBeVisible();
+ await expect(page.locator('.rule-summary-entry').filter({has:page.locator('strong',{hasText:/^7 days$/})})).toHaveCount(1);await expect(page.locator('.rule-dates').first()).toContainText('time');
  await page.screenshot({path:info.outputPath('review-colours-and-periods.png'),fullPage:true});
 });

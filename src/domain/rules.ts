@@ -2,7 +2,7 @@ import { type DaySummary, type TimelineRun, atBase, buildTimeline, boundary, cou
 import { type RestClassification } from "./rest";
 import { restLabel, nightEvents, hasPair, restEpisodes } from "./qualifications";
 import { type Profile, type Workspace, profileOn, ruleProfileAt } from "./model";
-import { civil, dateAdd, MINUTE, QUARTER, minutesLabel } from "./time";
+import { civil, dateAdd, MINUTE, QUARTER, minutesLabel,instantFor } from "./time";
 import { tableFor, operatingRules, type PeriodRule, BFM_84_LIMIT, LONG_NIGHT_LIMIT, RULE_SOURCE, RULE_VERSION } from "./catalogue";
 export { RULE_SOURCE, RULE_VERSION } from "./catalogue";
 
@@ -29,6 +29,17 @@ export interface RuleReport {
   longNightStart?:string;longNightEnd?:string;longNightZone?:string;
 }
 interface Evaluation {rule:PeriodRule;p:Profile;a:number;b:number;deadline:number;established:boolean;review:boolean;row:Check;}
+export function selectCheckSummaries(checks:Check[],cutoff:string,zone:string) {
+  const stamp=(s:string,z:string)=>instantFor(s.slice(0,10),s.slice(11,16),z).at(-1)??0;
+  const through=stamp(cutoff,zone),groups=new Map<string,Check[]>();
+  for(const c of checks){const g=groups.get(c.label)||[];g.push(c);groups.set(c.label,g);}
+  const priority={'Exceeded':4,'Rest due':3,'Needs review':2,'Open period':1,'Within work cap':0};
+  return [...groups.values()].map(g=>{
+    const active=g.filter(c=>stamp(c.end,c.zone||zone)>through);
+    if(!active.length)return g.sort((a,b)=>stamp(b.end,b.zone||zone)-stamp(a.end,a.zone||zone))[0];
+    return active.sort((a,b)=>priority[b.status]-priority[a.status]||a.remaining-b.remaining||b.start.localeCompare(a.start))[0];
+  });
+}
 const shortMinutes=(n:number)=>n%60===0 ? `${n/60}h` : n<60 ? `${n}m` : `${Math.floor(n/60)}h ${n%60}m`;
 const overlap=(r:TimelineRun,a:number,b:number)=>Math.max(0,Math.min(b,r.end)-Math.max(a,r.start))/MINUTE;
 
@@ -410,7 +421,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
   const majors=runs.filter(r=>r.kind==="rest"&&!r.review&&!r.clock&&(r.rest==="stationary" || profile.twoUp&&profile.scheme==="Standard"&&r.rest==="sleeper-moving")
     &&r.end-r.start>=(profile.twoUp ? profile.scheme==="BFM"?600:300 : 420)*MINUTE);
   const major=majors.at(-1);
-  const longCheck=checks.filter(c=>c.label==="7 days long/night").sort((a,b)=>b.start.localeCompare(a.start))[0];
+  const longCheck=selectCheckSummaries(checks,atBase(through,profile.zone),profile.zone).find(c=>c.label==='7 days long/night');
   if(longCheck) longNight=longCheck.work;
   return {breachSlots,restSlots,workWindows,checks,findings,issues:[...new Set(issues)],days,restClassifications,
     lastWork:lastWork?`${atBase(lastWork.start,lastWork.profile.zone)} — ${atBase(lastWork.end,lastWork.profile.zone)} · ${minutesLabel(countWork((lastWork.end-lastWork.start)/MINUTE))}`:"No completed work established",

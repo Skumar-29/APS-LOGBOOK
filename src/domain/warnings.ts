@@ -1,10 +1,14 @@
 import type {Check,RuleReport} from './rules';
+import {selectCheckSummaries} from './rules';
 import {displayCivil} from './time';
 export function zoneLabel(zone?:string) {
   return zone==='Australia/Brisbane'?'QLD':zone==='Australia/Sydney'?'NSW':zone==='Australia/Melbourne'?'VIC':zone==='Australia/Adelaide'?'SA':zone==='Australia/Perth'?'WA':zone==='Australia/Darwin'?'NT':zone==='Australia/Hobart'?'TAS':zone||'base';
 }
 export function statusClass(status:Check['status']) {
   return status==='Exceeded'||status==='Rest due'?'bad':status==='Needs review'?'review':status==='Open period'?'open':'';
+}
+export function summaryChecks(report:RuleReport) {
+  return selectCheckSummaries(report.checks,report.assessedThrough,report.zone||'Australia/Brisbane');
 }
 /** Keep the most recent instance of each warning and identify its actual date. */
 export function warningLines(report:RuleReport,date?:string) {

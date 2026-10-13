@@ -471,6 +471,9 @@ input[type="checkbox"] {
 }
 .status.review {color:#aa741f;background:#c9942522;}
 .warning-review {color:#aa741f;}
+.rule-summary-entry {border-bottom:1px solid var(--line);padding-bottom:6px;}
+.rule-summary-entry .record-line {border:0;}
+.rule-dates {margin:0;color:var(--muted);font-size:10px;}
 .status.open {color:var(--muted);background:var(--line);}
 .status.bad {color:var(--danger);background:#c6323222;}
 .banner,

@@ -2,7 +2,7 @@ import {screenshotFixture} from './fixtures/screenshot-history';
 import {describe,it,expect} from 'vitest';
 import {clone} from '../src/domain/model';
 import {diaryCsv} from '../src/domain/diary';
-import {analyse} from '../src/domain/rules';
+import {analyse,selectCheckSummaries} from '../src/domain/rules';
 import {instantFor} from '../src/domain/time';
 import {planDiary} from '../src/domain/planning';
 import {statusClass,warningLines} from '../src/domain/warnings';
@@ -38,7 +38,7 @@ describe('supplied screenshot history, mixed bases and binary blocks',()=>{
  });
  it('gives Stats the same long/night rule-window quantity as the rule table',()=>{
   const s=screenshotFixture(),r=analyse(s,'2026-10-13T24:00',14,{now:at('2026-10-14','04:00')});
-  const check=r.checks.filter(c=>c.label==='7 days long/night').sort((a,b)=>b.start.localeCompare(a.start))[0];
+  const check=selectCheckSummaries(r.checks,r.assessedThrough,r.zone!).find(c=>c.label==='7 days long/night')!;
   expect(r.longNight).toBeGreaterThan(0);expect(r.longNight).toBe(check.work);expect(r.longNightStart).toBe(check.start);
  });
  it('marks review and open periods differently from approval and dates warnings',()=>{

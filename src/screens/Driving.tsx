@@ -1,5 +1,5 @@
 import { displayCivil, displayDate } from "../domain/time";
-import {statusClass,warningLines,zoneLabel} from '../domain/warnings';
+import {statusClass,warningLines,zoneLabel,summaryChecks} from '../domain/warnings';
 import { useEffect, useState } from "react";
 import { useStore } from "../context";
 import { correctTimerStart, switchTimer } from "../domain/diary";
@@ -165,10 +165,11 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
               </Fold>
             )}
             <div className="check-list">
-              {report.checks
+              {summaryChecks(report)
                 .filter((c) => c.end >= clock.date)
                 .map((c, i) => (
-                  <div className="record-line" key={i}>
+                  <div className="rule-summary-entry" key={i}>
+                  <div className="record-line">
                     <strong>{c.label}</strong>
                     <span>
                       {minutesLabel(c.work)}
@@ -181,6 +182,8 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
                     >
                       {c.status}
                     </span>
+                  </div>
+                  <p className="small rule-dates">{displayCivil(c.start)} → {displayCivil(c.end)} · {zoneLabel(c.zone||report.zone)} time</p>
                   </div>
                 ))}
             </div>
