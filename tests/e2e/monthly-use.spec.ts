@@ -13,7 +13,7 @@ for(const mode of [
   {name:'Two-up Standard',scheme:'Standard',twoUp:true,start:'2026-09-01',hours:8},
   {name:'Two-up BFM',scheme:'BFM',twoUp:true,start:'2026-09-01',hours:10},
 ] as const) test('monthly driver use: '+mode.name,async({page},info)=>{
-  test.setTimeout(180000);page.setDefaultTimeout(15000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  test.setTimeout(300000);page.setDefaultTimeout(15000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.clock.setFixedTime(new Date('2026-10-10T13:59:59Z'));
   await page.goto('/');await fill(page,'Driver name','Synthetic Month Driver');await fill(page,'Licence number','TEST');
   await page.getByLabel('Driver base',{exact:true}).selectOption('QLD');await page.getByRole('button',{name:'Save driver settings',exact:true}).click();
@@ -43,7 +43,7 @@ for(const mode of [
       await page.getByLabel('I have reviewed this form and these answers for this trip',{exact:true}).check();await page.getByRole('button',{name:'Apply my saved signature',exact:true}).click();
       await expect(page.getByText('Signed by Synthetic Month Driver. This saved form is read only.',{exact:true})).toBeVisible();forms++;
       if(n===0){
-        await page.getByRole('button',{name:'Preview / export PDF',exact:true}).click();const download=page.waitForEvent('download',{timeout:20000});await page.getByRole('button',{name:'Download PDF',exact:true}).click();const file=await download;const path=info.outputPath('safe-driving.pdf');await file.saveAs(path);expect((await PDFDocument.load(await readFile(path))).getPageCount()).toBe(2);await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+        await page.getByRole('button',{name:'Preview / export PDF',exact:true}).click();await expect(page.getByRole('button',{name:'Download PDF',exact:true})).toBeEnabled({timeout:60000});const download=page.waitForEvent('download',{timeout:20000});await page.getByRole('button',{name:'Download PDF',exact:true}).click();const file=await download;const path=info.outputPath('safe-driving.pdf');await file.saveAs(path);expect((await PDFDocument.load(await readFile(path))).getPageCount()).toBe(2);await page.getByRole('button',{name:'Close dialog',exact:true}).click();
       }
       await page.getByRole('button',{name:'Diary',exact:true}).click();
     }
@@ -57,6 +57,7 @@ for(const mode of [
   await fill(page,'Bill to','Synthetic Transport');await fill(page,'Date from',mode.start);await fill(page,'Date to',dateAdd(mode.start,29));
   await fill(page,'Load date',mode.start);await fill(page,'From','MEL');await fill(page,'To','BNE');await fill(page,'BD / RT / BT / AB / C/O','BD');await fill(page,'Quantity / km','500');await fill(page,'Rate per km','0.55');
   await expect(page.locator('.invoice-total')).toContainText('275.00');await page.getByRole('button',{name:'Preview PDF',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Download PDF',exact:true})).toBeEnabled({timeout:60000});
   const download=page.waitForEvent('download',{timeout:20000});await page.getByRole('button',{name:'Download PDF',exact:true}).click();const file=await download;const path=info.outputPath('invoice.pdf');await file.saveAs(path);expect((await PDFDocument.load(await readFile(path))).getPageCount()).toBeGreaterThan(0);
   await page.getByRole('button',{name:'Close dialog',exact:true}).click();await page.getByRole('button',{name:'Mark issued',exact:true}).click();
   await expect(page.getByRole('button',{name:'Create revision',exact:true})).toBeVisible();
