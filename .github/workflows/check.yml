@@ -16,6 +16,8 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
+      - run: node scripts/three-month-browser.mjs
+      - run: TEST_BROWSER=webkit TEST_WIDTHS=440 node scripts/three-month-browser.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: truck-workspace-build
@@ -24,5 +26,7 @@ jobs:
         if: always()
         with:
           name: truck-workspace-browser-results
-          path: test-results
+          path: |
+            test-results
+            simulation-output
           retention-days: 3

@@ -830,6 +830,11 @@ test("compact sticky header, immediate colour modes, settings return and safe to
   expect((await page.locator(".workspace-header").boundingBox())!.y).toBe(0);
   // Horizontal touch movement still records a range, and Undo restores it.
   await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  // Let the compositor finish the preceding native touch scroll before starting
+  // another gesture; DOM geometry can update before the hit-test surface does.
+  await page.evaluate(() => new Promise<void>(resolve =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   const a = (await first.boundingBox())!,
     b = (await page.locator('[data-slot="3"][data-row="work"]').boundingBox())!;
   await cdp.send("Input.dispatchTouchEvent", {
@@ -1138,3 +1143,4 @@ test("two-up rest suggestions remain correctable and preserve separate factual i
   expect(state.activities.at(-1)).toMatchObject({kind:"rest",restType:"unknown"});
   expect(state.timer).toMatchObject({kind:"rest",restType:"sleeper-moving"});
 });
+
