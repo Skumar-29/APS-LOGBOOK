@@ -70,6 +70,8 @@ const oldDiary = {
 test("first use, work/rest blocks, persisted location and offline reload", async ({
   page,
   context,
+  browserName,
+  request,
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -121,8 +123,15 @@ test("first use, work/rest blocks, persisted location and offline reload", async
   ).toHaveValue("Laverton North");
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
-  await context.setOffline(true);
-  await page.reload();
+  // See Playwright #42775: WebKit's offline flag aborts even literal SW responses.
+  // Keep this test meaningful: stop the real origin and prove it is unreachable.
+  if(browserName==="webkit") {
+    expect((await request.post("http://127.0.0.1:4174/offline")).ok()).toBe(true);
+  } else await context.setOffline(true);
+  try {
+  if(browserName==="webkit") await expect(request.get("http://127.0.0.1:4173/",{timeout:2000})).rejects.toThrow();
+  const offlineResponse=await page.reload();
+  expect(offlineResponse?.fromServiceWorker()).toBe(true);
   await expect(
     page.getByRole("heading", { name: "Work diary", exact: true }),
   ).toBeVisible();
@@ -135,6 +144,10 @@ test("first use, work/rest blocks, persisted location and offline reload", async
   ).toBeVisible();
   await noOverflow(page);
   expect(errors).toEqual([]);
+  } finally {
+    if(browserName==="webkit") expect((await request.post("http://127.0.0.1:4174/online")).ok()).toBe(true);
+    else await context.setOffline(false);
+  }
 });
 test("restores legacy diary, jumps to exact page, imports a trip and downloads PDF", async ({
   page,
