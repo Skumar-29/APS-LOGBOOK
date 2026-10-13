@@ -172,10 +172,14 @@ export function validateForm(f: FormRecord) {
     !f.values.pm?.trim()
   )
     throw Error("Enter the driver, licence and truck registration.");
-  if (!validDate(f.values.date) || !/^\d\d:\d\d$/.test(f.values.depart || ""))
+  const validTime = (value: string) => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value || "");
+  if (!validDate(f.values.date) || !validTime(f.values.depart))
     throw Error("Enter the departure date and time.");
   if (!f.values.from?.trim() || !f.values.to?.trim() || !f.values.arrive)
     throw Error("Enter the route and estimated arrival.");
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(f.values.arrive) ||
+      !validDate(f.values.arrive.slice(0,10)) || !validTime(f.values.arrive.slice(11)))
+    throw Error("Enter a valid estimated arrival date and time.");
   if (f.values.arrive < f.values.date + "T" + f.values.depart)
     throw Error("Arrival is before departure.");
   if (
@@ -233,3 +237,4 @@ export function editForm(
   fn(f);
   s.forms[i] = f;
 }
+
