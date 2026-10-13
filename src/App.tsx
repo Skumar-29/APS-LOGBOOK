@@ -6,9 +6,10 @@ import {
   validDate,
   displayInstant,
   displayDate,
+  instantFor,
 } from "./domain/time";
 import { findPage } from "./domain/diary";
-import { profileOn } from "./domain/model";
+import { profileOn, ruleProfileAt } from "./domain/model";
 import { Action, Field, Modal } from "./components/UI";
 import { Diary } from "./screens/Diary";
 const Driving = lazy(() =>
@@ -35,6 +36,7 @@ const Settings = lazy(() =>
 const Records = lazy(() =>
   import("./screens/Records").then((m) => ({ default: m.Records })),
 );
+const Guide = lazy(()=>import("./screens/Guide").then(m=>({default:m.Guide})));
 type Screen =
   | "Driving"
   | "Diary"
@@ -46,6 +48,7 @@ type Screen =
   | "Documents"
   | "Notes"
   | "Records"
+  | "NHVR guide"
   | "Settings";
 export default function App() {
   const { s, busy, error, notice, clear, latest, refresh, run } = useStore(),
@@ -64,8 +67,10 @@ export default function App() {
     s.pages.find((p) => p.id === pageId) ||
     s.pages.find((p) => p.date === date && p.status === "Active");
   const diaryScreen = ["Diary", "Graph", "Stats"].includes(screen);
-  const pageProfile = (page?.status !== "Active" ? page?.snapshot?.profile : undefined)
+  const originalProfile = (page?.status !== "Active" ? page?.snapshot?.profile : undefined)
     || s.days[date]?.profile || profileOn(s, date);
+  const pageProfile = page?.status && page.status!=="Active" ? originalProfile : ruleProfileAt(s,
+    date===today(originalProfile.zone)?Date.now():instantFor(dateAdd(date,1),"00:00",originalProfile.zone)[0]-1,originalProfile);
   useEffect(() => {
     document.documentElement.dataset.theme = s.settings.theme;
   }, [s.settings.theme]);
@@ -245,6 +250,7 @@ export default function App() {
               date={date}
               pageId={pageId}
               onPage={setPageId}
+              onGuide={()=>run(()=>navigate("NHVR guide"))}
             />
           )}{" "}
           {screen === "Graph" && (
@@ -253,6 +259,7 @@ export default function App() {
               date={date}
               pageId={pageId}
               onPage={setPageId}
+              onGuide={()=>run(()=>navigate("NHVR guide"))}
               graph
             />
           )}
@@ -266,6 +273,7 @@ export default function App() {
             />
           )}
           {screen === "Invoices" && <Invoices />}
+          {screen === "NHVR guide" && <Guide />}
           {screen === "Forms" && <Forms />}
           {screen === "Notes" && <Notes />}
           {screen === "Documents" && <Documents />}
@@ -293,6 +301,7 @@ export default function App() {
                     ["Notes", "Codes, tables & reminders", "≡"],
                     ["Documents", "Certificates, licences & files", "▣"],
                     ["Records", "Books, backup & history", "▤"],
+                    ["NHVR guide", "Hours, breaks & examples", "?"],
                     ["Settings", "Driver, vehicles & signature", "⚙"],
                   ] as [Screen, string, string][]
                 ).map(([title, description, icon]) => (

@@ -1,10 +1,13 @@
 import { restTypeAt } from "./rest";
+import { buildTimeline, summarizeDay, atBase } from "./timeline";
+import type { RuleReport } from "./rules";
 import {
   audit,
   clone,
   ensureDay,
   uid,
   recordProfile,
+  profileOn,
   type Workspace,
   type Activity,
   type Day,
@@ -66,6 +69,7 @@ export function editRange(
   const d = ensureDay(s, date),
     before = clone(d);
   for (let i = from; i < (nextDay ? 96 : to); i++) {
+    if (d.timerMap) delete d.timerMap[i];
     if (d.slots[i] === "work" && kind === "rest" && d.changes[i])
       d.changes[i].restType = d.restDefault || "unknown";
     d.slots[i] = kind;
@@ -77,6 +81,7 @@ export function editRange(
     const next = ensureDay(s, dateAdd(date, 1)),
       old = clone(next);
     for (let i = 0; i < to; i++) {
+      if (next.timerMap) delete next.timerMap[i];
       if (next.slots[i] === "work" && kind === "rest" && next.changes[i])
         next.changes[i].restType = next.restDefault || "unknown";
       next.slots[i] = kind;
@@ -168,6 +173,11 @@ export function finishTimer(s: Workspace, now = Date.now()) {
     throw Error(
       "Timer is over 31 days. Correct its start or finish before saving.",
     );
+  if(now===t.start) {
+    s.timer=null;
+    audit(s,"Finish "+t.kind,t.id,clone(t),{end:now});
+    return;
+  }
   const before = clone(t),
     recordedDates = new Set<string>();
   const a =
@@ -207,6 +217,14 @@ export function finishTimer(s: Workspace, now = Date.now()) {
       restType: t.restType,
     };
   }
+  // Link the full footprint to exact timestamps. Grid padding earns no extra work/rest.
+  for (let at=Math.floor(t.start/QUARTER)*QUARTER; at<Math.ceil(now/QUARTER)*QUARTER && now>t.start; at+=QUARTER) {
+    const c=civil(at,t.zone), d=ensureDay(s,c.date), i=Math.floor(c.slot);
+    d.timerMap ||= {};
+    d.timerMap[i] ||= [];
+    d.timerMap[i].push(t.id);
+    recordedDates.add(c.date);
+  }
   s.activities.push({ ...t, end: now });
   s.timer = null;
   if (s.settings.autoPages)
@@ -227,7 +245,7 @@ export function switchTimer(
   restType: RestType = "unknown",
   now = Date.now(),
 ) {
-  if (s.timer?.kind === kind) return;
+  if (s.timer?.kind === kind && (kind !== "rest" || s.timer.restType === restType)) return;
   finishTimer(s, now);
   if (kind) {
     s.timer = {
@@ -257,53 +275,21 @@ export function correctTimerStart(s: Workspace, local: string, occurrence = 0) {
   s.timer.start = chosen;
   audit(s, "Correct timer start", s.timer.id, before, s.timer);
 }
-export function diaryCsv(s: Workspace, from: string, to: string) {
-  const rows = [
-    [
-      "Date",
-      "Book",
-      "Page",
-      "Time",
-      "Activity",
-      "Location",
-      "Odometer",
-      "Rest type",
-      "Vehicle",
-      "Driver",
-      "Comments",
-    ],
-  ];
-  for (const d of Object.values(s.days)
-    .filter((x) => x.date >= from && x.date <= to)
-    .sort((a, b) => a.date.localeCompare(b.date))) {
-    const p = s.pages.find((p) => p.date === d.date && p.status === "Active");
-    for (const c of changes(d))
-      rows.push([
-        d.date,
-        s.books.find((b) => b.id === p?.bookId)?.number || "",
-        p?.number || "",
-        hhmm(c.slot),
-        d.slots[c.slot] || "unrecorded",
-        c.location,
-        c.odometer,
-        d.slots[c.slot] === "rest" ? restTypeAt(s, d.date, c.slot) : c.restType,
-        c.vehicle,
-        d.profile.name,
-        c.note,
-      ]);
+/** Exact assessed intervals and counted totals, shared with Diary and Stats. */
+export function diaryCsv(s: Workspace, from: string, to: string, report?: RuleReport) {
+  if (!validDate(from) || !validDate(to) || from>to) throw Error("Check export dates.");
+  const timeline=report ? null : buildTimeline(s,to+"T24:00");
+  const rows: Array<Array<string|number>> = [["Date","Book","Page","From","To","Activity","Location","Odometer","Rest type","Vehicle","Driver","Comments","Interval work minutes","Interval rest minutes","Day work minutes","Day rest minutes","Missing minutes","Future minutes","Counted through","Hours option","Company","Accreditation"]];
+  for (let date=from;date<=to;date=dateAdd(date,1)) {
+    const d=s.days[date], profile=d?.profile || profileOn(s,date);
+    const summary=report?.days.find(x=>x.date===date) || (timeline&&summarizeDay(timeline,date,profile));
+    if(!summary) throw Error("Refresh hours before exporting.");
+    const page=s.pages.find(p=>p.date===date&&p.status==="Active"),book=s.books.find(b=>b.id===page?.bookId);
+    rows.push([date,book?.number || "",page?.number || "","","Daily total","","","",d?.vehicle || "",profile.name,"",0,0,summary.work,summary.rest,summary.unknown,summary.future,summary.through,"","",""]);
+    for (const f of summary.fragments) {
+      const c=d&&changes(d).filter(c=>c.slot<=f.startSlot).at(-1);
+      rows.push([date,book?.number || "",page?.number || "",atBase(f.start,profile.zone),atBase(f.end,profile.zone),f.kind || "unrecorded",c?.location || "",c?.odometer || "",f.kind==="rest"?f.rest:"",c?.vehicle || d?.vehicle || "",profile.name,c?.note || "",f.work,f.restMinutes,"","","","",summary.through,f.profile.scheme,f.profile.operator,f.profile.scheme==="Standard"?"":f.profile.certificate]);
+    }
   }
-  return rows
-    .map((r) =>
-      r
-        .map(
-          (v) =>
-            '"' +
-            String(v)
-              .replace(/^[=+@-]/, "'$&")
-              .replace(/"/g, '""') +
-            '"',
-        )
-        .join(","),
-    )
-    .join("\r\n");
+  return rows.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"').join(",")).join("\r\n");
 }

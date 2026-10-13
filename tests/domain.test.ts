@@ -611,8 +611,8 @@ describe("long-period rest qualifications", () => {
       };
     }
     s.days["2026-09-01"].slots.fill("rest");
-    const r = analyse(s, "2026-09-08T12:00");
-    expect(r.issues.join(" ")).toContain("plus 24 hours");
+    const r = analyse(s, "2026-09-09T00:00");
+    expect(r.findings.some(f=>f.code==="rest-10080"&&f.message==="24h rest plus 24h in 7h blocks needed")).toBe(true);
     expect(r.nextBreak).toBeNull();
   });
   it("retains the old 24-hour counting window when another major rest ends", () => {

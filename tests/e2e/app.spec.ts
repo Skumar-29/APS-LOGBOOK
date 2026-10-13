@@ -9,6 +9,7 @@ async function more(p: Page, item: string) {
   await p.getByRole("button", { name: "More", exact: true }).click();
   await p.getByRole("button", { name: new RegExp("^" + item + " ") }).click();
 }
+test.beforeEach(async ({page})=>{await page.clock.setFixedTime(new Date("2026-10-11T03:00:00Z"));});
 async function start(p: Page) {
   await p.goto("/");
   await fill(p, "Driver name", "Test Driver");
@@ -69,6 +70,8 @@ const oldDiary = {
 test("first use, work/rest blocks, persisted location and offline reload", async ({
   page,
   context,
+  browserName,
+  request,
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -104,7 +107,7 @@ test("first use, work/rest blocks, persisted location and offline reload", async
   await fill(page, "From", "12:00");
   await fill(page, "To (24:00 for midnight)", "13:00");
   await page.getByRole("button", { name: "Save rest", exact: true }).click();
-  await expect(page.locator(".totals")).toContainText("Rest 18h 00m");
+  await expect(page.locator(".totals")).toContainText("Rest 7h 00m");
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("diary.png"), fullPage: true });
   await page.reload();
@@ -119,8 +122,16 @@ test("first use, work/rest blocks, persisted location and offline reload", async
       .getByLabel("Location", { exact: true }),
   ).toHaveValue("Laverton North");
   await page.evaluate(() => navigator.serviceWorker.ready);
-  await context.setOffline(true);
-  await page.reload();
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  // See Playwright #42775: WebKit's offline flag aborts even literal SW responses.
+  // Keep this test meaningful: stop the real origin and prove it is unreachable.
+  if(browserName==="webkit") {
+    expect((await request.post("http://127.0.0.1:4174/offline")).ok()).toBe(true);
+  } else await context.setOffline(true);
+  try {
+  if(browserName==="webkit") await expect(request.get("http://127.0.0.1:4173/",{timeout:2000})).rejects.toThrow();
+  const offlineResponse=await page.reload();
+  expect(offlineResponse?.fromServiceWorker()).toBe(true);
   await expect(
     page.getByRole("heading", { name: "Work diary", exact: true }),
   ).toBeVisible();
@@ -133,6 +144,10 @@ test("first use, work/rest blocks, persisted location and offline reload", async
   ).toBeVisible();
   await noOverflow(page);
   expect(errors).toEqual([]);
+  } finally {
+    if(browserName==="webkit") expect((await request.post("http://127.0.0.1:4174/online")).ok()).toBe(true);
+    else await context.setOffline(false);
+  }
 });
 test("restores legacy diary, jumps to exact page, imports a trip and downloads PDF", async ({
   page,
@@ -447,7 +462,7 @@ test("drag selection, Undo, full-rest action and narrow screen layout", async ({
   await page
     .getByRole("button", { name: "Full day · stationary rest", exact: true })
     .click();
-  await expect(page.locator(".totals")).toContainText("Rest 24h 00m");
+  await expect(page.locator(".totals")).toContainText("Rest 13h 00m");
   await expect(page.getByLabel("Rest setting", { exact: true })).toHaveValue(
     "stationary",
   );
@@ -740,10 +755,13 @@ test("state clock and red diary blocks stay clear on a narrow screen", async ({
   await fill(page, "From", "00:00");
   await fill(page, "To (24:00 for midnight)", "05:30");
   await page.getByRole("button", { name: "Save work", exact: true }).click();
+  await expect(page.locator(".block.breach")).toHaveCount(0);
+  await expect(page.locator(".totals")).toContainText("Work 0h 30m");
+  await page.clock.setFixedTime(new Date("2026-10-07T19:30:00Z"));
   await expect(page.locator(".block.breach")).toHaveCount(1);
   await expect(page.locator(".window-summary")).toContainText("Work 5h 30m");
   await page.locator(".block.breach").click();
-  await expect(page.getByRole("dialog")).toContainText("5h 15m");
+  await expect(page.getByRole("dialog")).toContainText("15m break overdue");
   await page.getByRole("button", { name: "Close dialog", exact: true }).click();
   await page.setViewportSize({ width: 320, height: 800 });
   await noOverflow(page);
@@ -756,7 +774,7 @@ test("state clock and red diary blocks stay clear on a narrow screen", async ({
   await page
     .getByRole("button", { name: "Save driver settings", exact: true })
     .click();
-  await expect(page.locator(".base-clock")).toContainText("07/10/2026 · 22:30");
+  await expect(page.locator(".base-clock")).toContainText("08/10/2026 · 03:30");
   await expect(page.locator(".window-summary")).toContainText("QLD time");
 });
 
@@ -868,7 +886,7 @@ test("compact sticky header, immediate colour modes, settings return and safe to
 test("BFM overlapping windows, automatic rest labels and erase-to-rest persist", async ({
   page,
 }, info) => {
-  await page.clock.setFixedTime(new Date("2026-10-09T12:15:00Z"));
+  await page.clock.setFixedTime(new Date("2026-10-09T13:59:59Z"));
   await start(page);
   const { emptyState, ensureDay } = await import("../../src/domain/model");
   const { editRange } = await import("../../src/domain/diary");
@@ -945,7 +963,7 @@ test("BFM overlapping windows, automatic rest labels and erase-to-rest persist",
   await expect(page.locator(".block.breach")).toHaveCount(7);
   await page.getByRole("button", { name: "Driving", exact: true }).click();
   await expect(page.getByText("Today’s work").locator("..")).toContainText(
-    "14h 00m",
+    "15h 45m",
   );
 });
 
@@ -1003,4 +1021,120 @@ test("form defaults, explicit save, list sharing, edit and confirmed deletion pe
   await page.getByRole("button", { name: "+ New form", exact: true }).click();
   await page.getByText("Company name & logo (this form)", { exact: true }).click();
   await expect(page.getByLabel("Company name", { exact: true })).toHaveValue("Next Company");
+});
+
+
+test("overnight active timer shares totals across Diary, Driving, Stats and CSV", async ({page},info)=>{
+  await page.clock.setFixedTime(new Date("2026-10-10T17:00:00Z"));
+  await start(page);
+  const {emptyState,ensureDay}=await import("../../src/domain/model");
+  const {dateAdd,instantFor}=await import("../../src/domain/time");
+  const {switchTimer}=await import("../../src/domain/diary");
+  const s=emptyState();s.onboarded=true;
+  Object.assign(s.profile,{name:"Synthetic Driver",licence:"TEST",base:"QLD",zone:"Australia/Brisbane"});
+  s.settings.diaryRestDefault="stationary";
+  for(let n=0;n<41;n++) ensureDay(s,dateAdd("2026-09-01",n));
+  switchTimer(s,"work","TEST","unknown",instantFor("2026-10-10","20:15",s.profile.zone)[0]);
+  await page.evaluate(async state=>{
+    await new Promise<void>((resolve,reject)=>{
+      const request=indexedDB.open("aps-truck-workspace-v2",2);
+      request.onsuccess=()=>{
+        const db=request.result,tx=db.transaction("workspace","readwrite"),store=tx.objectStore("workspace"),old=store.get("current");
+        old.onsuccess=()=>{state.revision=old.result.revision+1;store.put(state,"current");};
+        tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);
+      };request.onerror=()=>reject(request.error);
+    });
+  },s);
+  await page.reload();
+  await expect(page.locator(".totals")).toContainText("Work 3h 00m");
+  await expect(page.locator(".totals")).toContainText("Rest 0h 00m");
+  await expect(page.locator(".block.work.breach")).toHaveCount(6);
+  await expect(page.locator('[data-slot="6"][data-row="work"]')).toHaveClass(/breach/);
+  await page.getByRole("button",{name:"Driving",exact:true}).click();
+  await expect(page.getByText("Today’s work").locator("..")).toContainText("3h 00m");
+  await page.getByRole("button",{name:"Stats",exact:true}).click();
+  await expect(page.locator(".metrics")).toContainText("6h 45m");
+  await expect(page.locator(".stat-day").filter({hasText:"11/10"})).toContainText("W 3h 00m · R 0h 00m");
+  const exported=page.waitForEvent("download");
+  await page.getByRole("button",{name:"Export period CSV",exact:true}).click();
+  const file=await exported;await file.saveAs(info.outputPath("overnight.csv"));
+  const csv=await readFile(info.outputPath("overnight.csv"),"utf8");
+  expect(csv).toContain('"2026-10-10 20:15","2026-10-11 00:00","work"');
+  expect(csv).toContain('"2026-10-11 00:00","2026-10-11 03:00","work"');
+  await page.getByRole("button",{name:"Diary",exact:true}).click();
+  await page.getByRole("button",{name:"How hours are counted",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"NHVR guide",exact:true})).toBeVisible();
+  await expect(page.getByText(/20:15 on 10 October/)).toBeVisible();
+  await page.setViewportSize({width:320,height:800});await noOverflow(page);
+});
+
+test("today's future work and rest stay outside assessed totals", async ({page})=>{
+  await start(page);
+  await page.getByRole("button",{name:"Time range",exact:true}).click();
+  await fill(page,"From","00:00");await fill(page,"To (24:00 for midnight)","12:00");
+  await page.getByRole("button",{name:"Save work",exact:true}).click();
+  await page.getByRole("button",{name:"Time range",exact:true}).click();
+  await fill(page,"From","20:00");await fill(page,"To (24:00 for midnight)","22:00");
+  await page.getByRole("button",{name:"Save work",exact:true}).click();
+  await expect(page.locator(".totals")).toContainText("Work 12h 00m");
+  await expect(page.locator(".totals")).toContainText("Rest 1h 00m");
+  await expect(page.locator(".block.work.planned")).toHaveCount(8);
+  await expect(page.locator('[data-slot="80"][data-row="work"]')).not.toHaveClass(/breach/);
+  await page.getByRole("button",{name:"Stats",exact:true}).click();
+  await expect(page.locator(".stat-day").filter({hasText:"11/10"})).toContainText("W 12h 00m · R 1h 00m");
+});
+
+async function seedWorkspace(page:Page,state:any) {
+  await page.evaluate(async state=>{
+    await new Promise<void>((resolve,reject)=>{
+      const request=indexedDB.open("aps-truck-workspace-v2",2);
+      request.onsuccess=()=>{const db=request.result,tx=db.transaction("workspace","readwrite"),store=tx.objectStore("workspace"),old=store.get("current");
+        old.onsuccess=()=>{state.revision=old.result.revision+1;store.put(state,"current");};
+        tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};
+      request.onerror=()=>reject(request.error);
+    });
+  },state);
+  await page.reload();
+}
+test("dated Standard change recalculates an active BFM timer and survives reload",async({page},info)=>{
+  await page.clock.setFixedTime(new Date("2026-10-10T17:00:00Z"));await start(page);
+  const {emptyState,ensureDay}=await import("../../src/domain/model");
+  const {dateAdd,instantFor}=await import("../../src/domain/time");
+  const {switchTimer}=await import("../../src/domain/diary");
+  const s=emptyState();s.onboarded=true;Object.assign(s.profile,{name:"Synthetic BFM",licence:"TEST",base:"QLD",zone:"Australia/Brisbane",scheme:"BFM",certificate:"TEST",certificateExpiry:"2027-01-01"});
+  s.settings.diaryRestDefault="stationary";for(let n=0;n<41;n++)ensureDay(s,dateAdd("2026-09-01",n));
+  switchTimer(s,"work","TEST","unknown",instantFor("2026-10-10","20:15",s.profile.zone)[0]);
+  await seedWorkspace(page,s);await expect(page.locator(".block.work.breach")).toHaveCount(3);
+  await more(page,"Settings");
+  await page.getByLabel("Hours option",{exact:true}).selectOption("Standard");
+  await fill(page,"First day","2026-10-11");await fill(page,"Last day","2026-10-11");
+  await page.getByRole("button",{name:"Save hours option",exact:true}).click();
+  await expect(page.getByText("Now: Standard · Solo",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Diary",exact:true}).click();
+  await expect(page.locator('[data-slot="6"][data-row="work"]')).toHaveClass(/breach/);
+  await expect(page.locator(".totals")).toContainText("Work 3h 00m");
+  await page.reload();await expect(page.locator(".block.work.breach")).toHaveCount(6);
+  await page.getByRole("button",{name:"Driving",exact:true}).click();
+  await expect(page.locator(".actions")).toContainText("Standard · Solo");
+  await page.getByRole("button",{name:"Stats",exact:true}).click();
+  const exported=page.waitForEvent("download");await page.getByRole("button",{name:"Export period CSV",exact:true}).click();
+  const file=await exported;await file.saveAs(info.outputPath("dated-switch.csv"));const csv=await readFile(info.outputPath("dated-switch.csv"),"utf8");
+  expect(csv).toContain('"BFM"');expect(csv).toContain('"Standard"');
+  await page.setViewportSize({width:320,height:800});await noOverflow(page);
+});
+test("two-up rest suggestions remain correctable and preserve separate factual intervals",async({page},info)=>{
+  await start(page);const {emptyState}=await import("../../src/domain/model");
+  const s=emptyState();s.onboarded=true;Object.assign(s.profile,{name:"Synthetic Two-up",licence:"TEST",base:"QLD",zone:"Australia/Brisbane",twoUp:true,coDriver:"Test co-driver"});
+  await seedWorkspace(page,s);await page.getByRole("button",{name:"Driving",exact:true}).click();
+  await expect(page.getByLabel("Rest type",{exact:true})).toHaveValue("unknown");
+  await page.getByRole("button",{name:"Start rest",exact:true}).click();
+  await page.clock.setFixedTime(new Date("2026-10-11T03:20:00Z"));
+  await page.getByLabel("Rest type",{exact:true}).selectOption("sleeper-moving");
+  await page.getByRole("button",{name:"Change rest",exact:true}).click();
+  await more(page,"Records");
+  const exported=page.waitForEvent("download");await page.getByRole("button",{name:"Download full backup",exact:true}).click();
+  const file=await exported;await file.saveAs(info.outputPath("rest-facts.json"));
+  const state=JSON.parse(JSON.parse(await readFile(info.outputPath("rest-facts.json"),"utf8")).payload);
+  expect(state.activities.at(-1)).toMatchObject({kind:"rest",restType:"unknown"});
+  expect(state.timer).toMatchObject({kind:"rest",restType:"sleeper-moving"});
 });

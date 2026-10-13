@@ -1,5 +1,7 @@
 import { type RestType, type Workspace } from "./model";
 import { dateAdd } from "./time";
+import { buildTimeline, boundary } from "./timeline";
+import { restLabel } from "./qualifications";
 
 /** Only saved pages have implicit rest. An absent day is unknown history. */
 export function activityAt(s: Workspace, date: string, slot: number) {
@@ -43,56 +45,10 @@ export function classifyRest(
   slot: number,
   asOf?: string,
 ): RestClassification {
-  const origin = Date.parse(date + "T00:00:00Z") + slot * 900000;
-  const cutoff = asOf ? Date.parse(asOf.replace(" ", "T") + ":00Z") : Infinity;
-  const read = (at: number) => {
-    const iso = new Date(at).toISOString(),
-      day = iso.slice(0, 10);
-    const i = Number(iso.slice(11, 13)) * 4 + Number(iso.slice(14, 16)) / 15;
-    return { kind: activityAt(s, day, i), type: restTypeAt(s, day, i) };
-  };
   const type = restTypeAt(s, date, slot);
-  if (activityAt(s, date, slot) !== "rest" || origin >= cutoff)
-    return { minutes: 0, type, label: "Rest", night: false };
-  let start = origin,
-    end = origin + 900000;
-  for (let n = 0; n < 29 * 96; n++) {
-    const c = read(start - 900000);
-    if (c.kind !== "rest" || c.type !== type) break;
-    start -= 900000;
-  }
-  for (let n = 0; n < 29 * 96 && end + 900000 <= cutoff; n++) {
-    const c = read(end);
-    if (c.kind !== "rest" || c.type !== type) break;
-    end += 900000;
-  }
-  let night = false;
-  for (
-    let at = Math.floor(start / 86400000) * 86400000 - 86400000;
-    at < end;
-    at += 86400000
-  )
-    if (
-      Math.min(end, at + 32 * 3600000) - Math.max(start, at + 22 * 3600000) >=
-      7 * 3600000
-    )
-      night = type === "stationary";
-  const minutes = (end - start) / 60000;
-  return {
-    minutes,
-    type,
-    night,
-    label:
-      type === "unknown"
-        ? "Rest · confirm type"
-        : type === "sleeper-moving"
-          ? "Moving sleeper rest"
-          : minutes >= 1440
-            ? "24-hour rest"
-            : night
-              ? "Night rest"
-              : minutes >= 420
-                ? "Major stationary rest"
-                : "Rest break",
-  };
+  const lastDate=Object.keys(s.days).filter(d=>d>=date).sort().at(-1) || date;
+  const t=buildTimeline(s,asOf || lastDate+"T24:00");
+  const p=s.days[date]?.profile || s.profile, origin=boundary(date,slot,p.zone);
+  const r=t.runs.find(r=>r.kind==="rest" && r.start<=origin && r.end>origin);
+  return r ? restLabel(r.start,r.end,r.rest,p.zone,r.profile) : {minutes:0,type,label:"Rest",night:false};
 }

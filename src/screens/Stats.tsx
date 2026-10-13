@@ -15,7 +15,7 @@ export function Stats({
   const { s } = useStore(),
     [range, setRange] = useState(14),
     [asOf, setAsOf] = useState("24:00"),
-    { report, error } = useReport(
+    { report, error, retry } = useReport(
       date +
         "T" +
         (/^([01]\d|2[0-3]):[0-5]\d$/.test(asOf) || asOf === "24:00"
@@ -23,7 +23,7 @@ export function Stats({
           : "24:00"),
       range,
     );
-  if (!report) return <Empty>{error || "Calculating statistics…"}</Empty>;
+  if (!report) return <Empty>{error || "Calculating statistics…"}{error&&<Action onClick={retry}>Retry</Action>}</Empty>;
   const sums = report.days.reduce(
     (a, d) => ({
       work: a.work + d.work,
@@ -62,6 +62,7 @@ export function Stats({
             <strong>{minutesLabel(sums.unknown)}</strong>
           </div>
         </div>
+        <p className="small">Counted through {displayCivil(report.assessedThrough)}</p>
         <div className="stats-bars">
           {report.days.map((d) => (
             <button
@@ -71,10 +72,10 @@ export function Stats({
             >
               <span>{displayDate(d.date).slice(0, 5)}</span>
               <span className="stack">
-                <i className="work" style={{ width: d.work / 14.4 + "%" }} />
-                <i className="rest" style={{ width: d.rest / 14.4 + "%" }} />
+                <i className="work" style={{ width: d.work / Math.max(1440,d.work+d.rest+d.unknown+d.future) * 100 + "%" }} />
+                <i className="rest" style={{ width: d.rest / Math.max(1440,d.work+d.rest+d.unknown+d.future) * 100 + "%" }} />
               </span>
-              <span>{minutesLabel(d.work)}</span>
+              <span className="daily-hours">W {minutesLabel(d.work)} · R {minutesLabel(d.rest)}</span>
             </button>
           ))}
         </div>
@@ -87,7 +88,7 @@ export function Stats({
             <i className="dot rest" />
             Rest
           </span>
-          <span>Grey = unrecorded</span>
+          <span>Grey = missing or future</span>
         </div>
       </section>
       <section className="card">
@@ -97,7 +98,7 @@ export function Stats({
           <b>{report.nightRests}</b>
         </div>
         <div className="record-line">
-          <span>Long / night work · displayed 7 days</span>
+          <span>Long / night work · last 7 days</span>
           <b>{minutesLabel(report.longNight)}</b>
         </div>
         <div className="record-line">
@@ -134,19 +135,15 @@ export function Stats({
             <p>
               Work {minutesLabel(c.work)}
               {c.limit !== null ? " / " + minutesLabel(c.limit) : ""} ·
-              qualifying rest {minutesLabel(c.rest)}
+              rest {c.restSummary || minutesLabel(c.rest)}
             </p>
           </div>
         ))}
-        <p className="small">
-          The helper identifies recorded limits and gaps. It does not certify
-          compliance.
-        </p>
       </Fold>
       <Action
         onClick={() =>
           download(
-            new Blob(["\ufeff" + diaryCsv(s, dateAdd(date, 1 - range), date)], {
+            new Blob(["\ufeff" + diaryCsv(s, dateAdd(date, 1 - range), date, report)], {
               type: "text/csv;charset=utf-8",
             }),
             "Diary-" + date + ".csv",

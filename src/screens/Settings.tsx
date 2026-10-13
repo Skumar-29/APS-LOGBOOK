@@ -1,4 +1,5 @@
 import { FormDefaults } from "../components/FormDefaults";
+import { RuleChanges } from "../components/RuleChanges";
 import { useState } from "react";
 import { useStore } from "../context";
 import {
@@ -10,6 +11,7 @@ import {
   type Profile,
 } from "../domain/model";
 import { today, validDate } from "../domain/time";
+import { operatingRules } from "../domain/catalogue";
 import {
   Action,
   Check,
@@ -41,10 +43,10 @@ export function Settings({ onDone }: { onDone?: () => void }) {
         w.timer &&
         (w.profile.id !== p.id ||
           w.profile.zone !== p.zone ||
-          w.profile.scheme !== p.scheme)
+          w.profile.scheme !== p.scheme || w.profile.twoUp!==p.twoUp || operatingRules(w.profile)!==operatingRules(p))
       )
         throw Error(
-          "Finish the active timer before changing driver, time zone or scheme.",
+          "Finish the timer before changing driver or rules.",
         );
       const old = clone(w.profile);
       if (old.name) {
@@ -75,6 +77,7 @@ export function Settings({ onDone }: { onDone?: () => void }) {
   return (
     <>
       <h1>{s.onboarded ? "Settings" : "Welcome to Truck Workspace"}</h1>
+      {s.onboarded && <RuleChanges />}
       <section className="card">
         <div className="row">
           <h2>Driver profile</h2>
@@ -109,7 +112,13 @@ export function Settings({ onDone }: { onDone?: () => void }) {
             onChange={(v) => setP((a) => ({ ...a, base: v, zone: zones[v] }))}
           />
           <Field
-            label="Scheme"
+            label="Operating rules"
+            value={operatingRules(p)}
+            options={[["HVNL","NHVR / HVNL"],["WA","WA rules"],["NT","NT rules"],["unknown","Not confirmed"]]}
+            onChange={(v)=>put("operation",v)}
+          />
+          <Field
+            label="Usual hours option"
             value={p.scheme}
             options={["Standard", "BFM", "AFM", "ACH"]}
             onChange={(v) => put("scheme", v)}
@@ -259,6 +268,7 @@ export function Settings({ onDone }: { onDone?: () => void }) {
                 mutate((w) => {
                   w.settings.diaryRestDefault =
                     v as import("../domain/model").RestType;
+                  w.settings.restSelectionMode=v==="unknown"?"confirm":"suggested";
                 })
               }
             />

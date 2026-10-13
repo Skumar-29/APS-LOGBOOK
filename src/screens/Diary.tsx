@@ -1,4 +1,6 @@
-import { classifyRest, restTypeAt } from "../domain/rest";
+import { restTypeAt } from "../domain/rest";
+import { assessedDay } from "../domain/timeline";
+import { operatingRules } from "../domain/catalogue";
 import { useReport } from "../components/useReport";
 import { selectWorkWindow, windowTotals } from "../domain/rules";
 import { displayCivil } from "../domain/time";
@@ -32,11 +34,13 @@ export function Diary({
   date,
   pageId,
   onPage,
+  onGuide,
   graph = false,
 }: {
   date: string;
   pageId: string;
   onPage: (id: string) => void;
+  onGuide: () => void;
   graph?: boolean;
 }) {
   const { s, mutate } = useStore(),
@@ -75,11 +79,13 @@ export function Diary({
     } | null>(null),
     suppressClick = useRef(false);
   const full = s.settings.fullDay,
-    t = totals(d.slots),
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
   const restWorkspace = readOnly ? { ...s, days: { ...s.days, [date]: d } } : s;
-  const { report } = useReport(date + "T24:00", 2);
+  const { report, error, retry } = useReport(date + "T24:00", 2);
+  const daySummary=readOnly ? undefined : report?.days.find(x=>x.date===date);
+  const t=readOnly ? totals(d.slots) : daySummary;
+  const viewDay=readOnly ? d : assessedDay(d,daySummary);
   const countedWindow =
     !readOnly && report && selectWorkWindow(report.workWindows, date);
   const windowSummary = countedWindow ? windowTotals(s, countedWindow) : null;
@@ -87,6 +93,7 @@ export function Diary({
   const dayBreaches = Object.entries(redSlots).filter(([key]) =>
     key.startsWith(date + ":"),
   );
+  const warnings=readOnly ? [] : [...new Set(report?.findings.filter(f=>f.date===date).map(f=>f.message) || [])];
   async function updateDay(fn: (d: Day) => void, label = "Edit diary") {
     setUndo(null);
     if (readOnly)
@@ -173,21 +180,24 @@ export function Diary({
         <strong>Page</strong>
         <span>
           <i className="dot work" />
-          Work <b>{minutesLabel(t.work)}</b>
+          Work <b>{t?minutesLabel(t.work):"…"}</b>
         </span>
         <span>
           <i className="dot rest" />
-          Rest <b>{minutesLabel(t.rest)}</b>
+          Rest <b>{t?minutesLabel(t.rest):"…"}</b>
         </span>
-        {t.unknown > 0 && (
-          <span className="muted">Unrecorded {minutesLabel(t.unknown)}</span>
+        {!!t?.unknown && (
+          <span className="muted">Missing {minutesLabel(t.unknown)}</span>
         )}
       </div>
+      {error ? <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div> :
+        daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)}{daySummary.future>0?" · Future time excluded":""}</p>}
+      {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x}>{x}</p>)}</div>}
       <details className="window-summary" aria-label="Work window totals">
         <summary>
           <strong>
             24h window
-            {windowSummary?.review || dayBreaches.length ? " · Review" : ""}
+            {windowSummary?.review || dayBreaches.length || warnings.length ? " · Review" : ""}
           </strong>
           <span>
             {windowSummary
@@ -224,11 +234,7 @@ export function Diary({
                   </span>
                 )}
               </div>
-              <p className="small">
-                Page assessment through{" "}
-                {displayCivil(countedWindow.assessedThrough)}. Future entries
-                are a plan; see Driving for the live allowance.
-              </p>
+              <p className="small">{countedWindow.status}{countedWindow.review?" · Check records":""}</p>
               {countedWindow.limit !== null && (
                 <p
                   className={
@@ -287,6 +293,7 @@ export function Diary({
           )}
         </div>
       </details>
+      <Action onClick={onGuide}>How hours are counted</Action>
     </div>
   );
   return (
@@ -294,16 +301,12 @@ export function Diary({
       {graph && summary}
       {breach && (
         <Modal
-          title="Recorded work limit exceeded"
+          title="Hours warning"
           onClose={() => setBreach(null)}
         >
           {breach.map((reason, i) => (
             <p key={i}>{displayCivil(reason)}</p>
           ))}
-          <p className="small">
-            Check the recorded blocks and applicable rules. These highlights are
-            a helper, not a compliance clearance.
-          </p>
         </Modal>
       )}
       {readOnly && (
@@ -338,7 +341,7 @@ export function Diary({
                 className="paper graph"
                 dangerouslySetInnerHTML={{
                   __html: diaryPage(
-                    d,
+                    viewDay,
                     page,
                     s.books.find((b) => b.id === page?.bookId),
                   ),
@@ -346,7 +349,7 @@ export function Diary({
               />
             </div>
           </div>
-          <Action onClick={() => setDoc(true)}>Preview / export PDF</Action>
+          <Action disabled={!readOnly&&!daySummary} onClick={() => setDoc(true)}>Preview / export PDF</Action>
           {d.pagePhoto && (
             <Fold title="Compare paper-page photo">
               <img
@@ -437,12 +440,14 @@ export function Diary({
                       aria-label={`${row === "work" ? "Work" : "Rest"} blocks ${p * 6} to ${(p + 1) * 6}`}
                     >
                       {d.slots.slice(p * 24, p * 24 + 24).map((activity, i) => {
-                        const slot = p * 24 + i,
-                          reasons =
-                            row === "work" && activity === "work"
-                              ? redSlots[date + ":" + slot]
-                              : undefined;
-                        const selected = activity === row;
+                        const slot = p * 24 + i, fraction=daySummary?.fractions[slot]?.[row] || 0;
+                        const future=!readOnly&&!!daySummary&&daySummary.fragments.every(f=>f.endSlot<=slot);
+                        const planned=future&&row==="work"&&activity==="work";
+                        const selected=readOnly ? activity===row : daySummary ? fraction>0 || planned : false;
+                        const reasons=row==="work" ? redSlots[date+":"+slot] : report?.restSlots[date+":"+slot];
+                        const color=reasons?.length?"#bc2934":row==="work"?"#28715e":"#5c88b7";
+                        const spans=daySummary?.fragments.filter(f=>f.kind===row&&f.startSlot<slot+1&&f.endSlot>slot) || [];
+                        const stops=spans.flatMap(f=>{const a=Math.max(0,f.startSlot-slot)*100,b=Math.min(1,f.endSlot-slot)*100;return [`transparent ${a}%`,`${color} ${a}%`,`${color} ${b}%`,`transparent ${b}%`];});
                         return (
                           <button
                             key={slot}
@@ -451,6 +456,7 @@ export function Diary({
                             className={
                               "block " +
                               (selected ? row : "blank") +
+                              (planned ? " planned" : "") +
                               (reasons?.length ? " breach" : "") +
                               ((i + 1) % 4 === 0 ? " hour-end" : "") +
                               (dragRange &&
@@ -460,10 +466,11 @@ export function Diary({
                                 ? " picking"
                                 : "")
                             }
+                            style={!readOnly&&!planned&&stops.length?{backgroundColor:"var(--bg)",backgroundImage:`linear-gradient(to right, ${stops.join(",")})`}:undefined}
                             disabled={readOnly}
                             aria-pressed={selected}
-                            title={`${hhmm(slot)}–${hhmm(slot + 1)} ${row}${reasons?.length ? " · recorded work limit exceeded" : ""}`}
-                            aria-label={`${hhmm(slot)} ${row}${reasons?.length ? " · work limit exceeded" : ""}`}
+                            title={`${hhmm(slot)}–${hhmm(slot + 1)} ${row}${planned?" · planned":""}${reasons?.length ? " · "+reasons.join(" · ") : ""}`}
+                            aria-label={`${hhmm(slot)} ${row}${planned?" · planned":""}${reasons?.length ? " · "+reasons.join(" · ") : ""}`}
                             onPointerDown={(e) => {
                               if (readOnly) return;
                               suppressClick.current = false;
@@ -610,25 +617,9 @@ export function Diary({
                         <td>
                           {d.slots[c.slot] === "rest" ? (
                             <>
-                              <span className="small">
-                                {
-                                  classifyRest(
-                                    restWorkspace,
-                                    date,
-                                    c.slot,
-                                    date + "T24:00",
-                                  ).label
-                                }{" "}
-                                ·{" "}
-                                {minutesLabel(
-                                  classifyRest(
-                                    restWorkspace,
-                                    date,
-                                    c.slot,
-                                    date + "T24:00",
-                                  ).minutes,
-                                )}
-                              </span>
+                              <span className="small">{report?.restClassifications[date+":"+c.slot]
+                                ? `${report.restClassifications[date+":"+c.slot].label} · ${minutesLabel(report.restClassifications[date+":"+c.slot].minutes)}`
+                                : readOnly ? "Historical rest entry" : "Rest · not yet counted"}</span>
                               <Field
                                 label="Rest setting"
                                 value={restTypeAt(restWorkspace, date, c.slot)}
@@ -747,7 +738,7 @@ export function Diary({
               >
                 Allocate page
               </Action>
-              <Action onClick={() => setDoc(true)}>PDF</Action>
+              <Action disabled={!readOnly&&!daySummary} onClick={() => setDoc(true)}>PDF</Action>
               {page?.status === "Active" && (
                 <Action danger onClick={() => setCancelling(true)}>
                   Cancel paper page
@@ -932,6 +923,12 @@ export function Diary({
               />
             ))}
             <Field
+              label="Operating rules"
+              value={operatingRules(d.profile)}
+              options={[["HVNL","NHVR / HVNL"],["WA","WA rules"],["NT","NT rules"],["unknown","Not confirmed"]]}
+              onChange={(v)=>{void updateDay(day=>{day.profile.operation=v as typeof day.profile.operation;}).catch(()=>{});}}
+            />
+            <Field
               label="Scheme"
               value={d.profile.scheme}
               options={["Standard", "BFM", "AFM", "ACH"]}
@@ -958,7 +955,7 @@ export function Diary({
         <Document
           name={"Diary-" + date + (page ? "-p" + page.number : "")}
           pages={diaryPages(
-            d,
+            viewDay,
             page,
             s.books.find((b) => b.id === page?.bookId),
           )}

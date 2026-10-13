@@ -85,6 +85,7 @@ describe("saved diary rest semantics", () => {
   it("does not leak stationary metadata past work or a missing day", () => {
     const s = fixture("BFM", 0);
     s.settings.diaryRestDefault = "unknown";
+    s.settings.restSelectionMode = "confirm";
     explicit(s, "2026-10-08", 0, "stationary");
     editRange(s, "2026-10-08", 24, 48, "work");
     expect(restTypeAt(s, "2026-10-08", 49)).toBe("unknown");
@@ -273,11 +274,8 @@ describe("remaining table requirements", () => {
     expect(r.checks.find((c) => c.label === "12h 00m")?.status).toBe(
       "Exceeded",
     );
-    expect(
-      r.breachSlots["2026-10-09:46"].some((reason) =>
-        reason.includes("11h 00m"),
-      ),
-    ).toBe(true);
+    expect(r.breachSlots["2026-10-09:46"]).toContain("15m break overdue");
+    expect(r.findings.find(f=>f.code==="work-720")?.at).toBe("2026-10-09 11:30");
   });
   it("requires review of a possible BFM split rest instead of declaring its eligibility", () => {
     const s = fixture();

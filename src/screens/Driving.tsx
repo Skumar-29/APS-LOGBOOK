@@ -5,7 +5,8 @@ import { correctTimerStart, switchTimer } from "../domain/diary";
 import { civil, minutesLabel, today } from "../domain/time";
 import { useReport } from "../components/useReport";
 export { useReport } from "../components/useReport";
-import { type RestType } from "../domain/model";
+import { type RestType, ruleProfileAt, profileOn } from "../domain/model";
+import { suggestedRestType } from "../domain/ruleChanges";
 import { Action, Empty, Field, Fold, Modal } from "../components/UI";
 export function Driving({ onDiary }: { onDiary: () => void }) {
   const { s, mutate } = useStore(),
@@ -15,7 +16,7 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
         s.registry.find((r) => r.type === "vehicle")?.name ||
         "",
     ),
-    [restType, setRestType] = useState<RestType>("stationary"),
+    [restType, setRestType] = useState<RestType>(s.timer?.kind==="rest" ? s.timer.restType : suggestedRestType(s,s.profile.twoUp)),
     [correct, setCorrect] = useState(false),
     [local, setLocal] = useState(""),
     [occurrence, setOccurrence] = useState("-1");
@@ -24,7 +25,8 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
     return () => clearInterval(t);
   }, []);
   const clock = civil(now, s.profile.zone),
-    { report, error } = useReport(clock.date + "T" + clock.time, 14, true),
+    effective = ruleProfileAt(s,now,s.days[clock.date]?.profile||profileOn(s,clock.date)),
+    { report, error, retry } = useReport(clock.date + "T24:00", 14),
     timer = s.timer,
     elapsed = timer ? Math.max(0, Math.floor((now - timer.start) / 1000)) : 0;
   return (
@@ -66,7 +68,7 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
               mutate((w) => switchTimer(w, "rest", vehicle, restType))
             }
           >
-            {timer?.kind === "rest" ? "Resting" : "Start rest"}
+            {timer?.kind === "rest" ? timer.restType===restType ? "Resting" : "Change rest" : "Start rest"}
           </Action>
           {timer && (
             <Action
@@ -88,8 +90,9 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
             label="Rest type"
             value={restType}
             options={[
+              ["unknown", "Confirm rest type"],
               ["stationary", "Stationary"],
-              ["sleeper-moving", "Approved moving sleeper"],
+              ...(effective.twoUp ? [["sleeper-moving", "Approved moving sleeper"] as [string,string]] : []),
             ]}
             onChange={(v) => setRestType(v as RestType)}
           />
@@ -115,13 +118,13 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
       <div className="row actions">
         <Action onClick={onDiary}>Open today’s diary</Action>
         <span className="small">
-          {s.profile.scheme} · {s.profile.twoUp ? "Two-up" : "Solo"}
+          {effective.scheme} · {effective.twoUp ? "Two-up" : "Solo"}
         </span>
       </div>
       <section className="card">
         <h2>Hours review</h2>
         {error ? (
-          <p className="banner">{error}</p>
+          <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div>
         ) : !report ? (
           <Empty>Calculating…</Empty>
         ) : (
@@ -138,25 +141,21 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
             </div>
             {report.nextBreak !== null && (
               <p>
-                Conservative work-cap estimate:{" "}
-                <strong>{minutesLabel(report.nextBreak)}</strong>
+                {report.nextBreak===0 ? "Rest due now: " : "Rest due in: "}
+                <strong>{report.nextBreak===0 ? report.findings.find(f=>f.severity==="due")?.message || "Take a break" : minutesLabel(report.nextBreak)}</strong>
               </p>
             )}
             {report.controlling && (
               <p className="small">
-                Limiting period: {report.controlling.label} from{" "}
+                {report.controlling.label} · from{" "}
                 {displayCivil(report.controlling.start)}.{" "}
-                {report.nextBreak === null
-                  ? "Allowance needs history / rule review."
-                  : ""}
               </p>
             )}
             <p className="small">
-              Decision aid only. Keep your required written diary or approved
-              EWD.
+              Counted through {displayCivil(report.assessedThrough)}
             </p>
             {report.issues.length > 0 && (
-              <Fold title={`${report.issues.length} items need review`} open>
+              <Fold title="Warnings" open>
                 {report.issues.map((x, i) => (
                   <p key={i} className="small">
                     {x}
