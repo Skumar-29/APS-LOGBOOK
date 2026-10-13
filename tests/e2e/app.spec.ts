@@ -829,6 +829,17 @@ test("compact sticky header, immediate colour modes, settings return and safe to
   expect(await page.locator(".totals").textContent()).toBe(before);
   expect((await page.locator(".workspace-header").boundingBox())!.y).toBe(0);
   // Horizontal touch movement still records a range, and Undo restores it.
+  await page.evaluate(() => new Promise<void>(resolve => {
+    let previous = window.scrollY, stableFrames = 0;
+    const settle = () => {
+      const current = window.scrollY;
+      stableFrames = current === previous ? stableFrames + 1 : 0;
+      previous = current;
+      if (stableFrames >= 10) resolve();
+      else requestAnimationFrame(settle);
+    };
+    requestAnimationFrame(settle);
+  }));
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   // Let the compositor finish the preceding native touch scroll before starting
