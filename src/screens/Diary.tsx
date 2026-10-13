@@ -1,5 +1,6 @@
 import { restTypeAt } from "../domain/rest";
-import { assessedDay } from "../domain/timeline";
+import { hasFutureWork } from "../domain/planning";
+import { assessedDay, boundary } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
 import { useReport } from "../components/useReport";
 import { selectWorkWindow, windowTotals } from "../domain/rules";
@@ -82,15 +83,20 @@ export function Diary({
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
   const restWorkspace = readOnly ? { ...s, days: { ...s.days, [date]: d } } : s;
-  const { report, error, retry } = useReport(date + "T24:00", 2);
+  const { report, plan, planError, now, error, retry } = useReport(date + "T24:00", 2, !readOnly && !graph);
+  const planning=!readOnly&&!graph&&hasFutureWork(s,date,now);
+  const planDay=plan?.report.days.find(x=>x.date===date);
   const daySummary=readOnly ? undefined : report?.days.find(x=>x.date===date);
   const t=readOnly ? totals(d.slots) : daySummary;
   const viewDay=readOnly ? d : assessedDay(d,daySummary);
-  const countedWindow =
-    !readOnly && report && selectWorkWindow(report.workWindows, date);
+  const actualWindow = !readOnly && report && selectWorkWindow(report.workWindows,date);
+  const countedWindow = plan?.window || actualWindow;
   const windowSummary = countedWindow ? windowTotals(s, countedWindow) : null;
   const redSlots = readOnly ? {} : report?.breachSlots || {};
-  const dayBreaches = Object.entries(redSlots).filter(([key]) =>
+  const visibleRedSlots={...redSlots,...Object.fromEntries(Object.entries(plan?.report.breachSlots || {}).filter(([key])=>{
+    const [day,slot]=key.split(":");return day===date&&boundary(day,Number(slot),d.profile.zone)>=now;
+  }))};
+  const dayBreaches = Object.entries(visibleRedSlots).filter(([key]) =>
     key.startsWith(date + ":"),
   );
   const warnings=readOnly ? [] : [...new Set(report?.findings.filter(f=>f.date===date).map(f=>f.message) || [])];
@@ -192,11 +198,20 @@ export function Diary({
       </div>
       {error ? <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div> :
         daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)}{daySummary.future>0?" · Future time excluded":""}</p>}
+      {planning && <div className="planning-summary" aria-label="Shift plan">
+        {planDay && <div className="row wrap small" aria-label="Planned page totals"><strong>Planned page</strong><span>Work <b>{minutesLabel(planDay.work)}</b></span><span>Rest <b>{minutesLabel(planDay.rest)}</b></span></div>}
+        {planError ? <p className="bad">{planError} <Action onClick={retry}>Retry</Action></p> : !plan ? <p className="small">Checking plan…</p> : <>
+          {plan.breakDue && <p className="small bad">Plan: break due at {displayCivil(plan.breakDue)}</p>}
+          {!plan.breakDue && plan.warning && <p className="small bad">Plan: {plan.warning}</p>}
+          {!plan.breakDue && !plan.warning && plan.continuousUntil && <p className="small">Continuous work limit: {displayCivil(plan.continuousUntil)}</p>}
+          {plan.review && <p className="small">Plan needs earlier records / confirmation</p>}
+        </>}
+      </div>}
       {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x}>{x}</p>)}</div>}
       <details className="window-summary" aria-label="Work window totals">
         <summary>
           <strong>
-            24h window
+            {plan ? "Planned 24h window" : "24h window"}
             {windowSummary?.review || dayBreaches.length || warnings.length ? " · Review" : ""}
           </strong>
           <span>
@@ -207,7 +222,7 @@ export function Diary({
         </summary>
         <div className="window-details">
           <div className="row wrap">
-            <strong>Limiting 24-hour window on this page</strong>
+            <strong>{plan ? "Limiting planned 24-hour window" : "Limiting 24-hour window on this page"}</strong>
             <span className="small">{d.profile.base} time</span>
           </div>
           {countedWindow && windowSummary ? (
@@ -254,7 +269,7 @@ export function Diary({
               )}
               <details>
                 <summary>Other overlapping 24-hour windows</summary>
-                {report?.workWindows
+                {(plan?.report || report)?.workWindows
                   .filter(
                     (w) =>
                       w !== countedWindow &&
@@ -441,10 +456,10 @@ export function Diary({
                     >
                       {d.slots.slice(p * 24, p * 24 + 24).map((activity, i) => {
                         const slot = p * 24 + i, fraction=daySummary?.fractions[slot]?.[row] || 0;
-                        const future=!readOnly&&!!daySummary&&daySummary.fragments.every(f=>f.endSlot<=slot);
-                        const planned=future&&row==="work"&&activity==="work";
-                        const selected=readOnly ? activity===row : daySummary ? fraction>0 || planned : false;
-                        const reasons=row==="work" ? redSlots[date+":"+slot] : report?.restSlots[date+":"+slot];
+                        const future=!readOnly&&boundary(date,slot,d.profile.zone)>=now;
+                        const planned=future&&(row==="work" ? activity==="work" : planning&&activity!=="work");
+                        const selected=readOnly ? activity===row : daySummary ? fraction>0 || planned : activity===row;
+                        const reasons=planned ? row==="work" ? plan?.report.breachSlots[date+":"+slot] : plan?.report.restSlots[date+":"+slot] : row==="work" ? redSlots[date+":"+slot] : report?.restSlots[date+":"+slot];
                         const color=reasons?.length?"#bc2934":row==="work"?"#28715e":"#5c88b7";
                         const spans=daySummary?.fragments.filter(f=>f.kind===row&&f.startSlot<slot+1&&f.endSlot>slot) || [];
                         const stops=spans.flatMap(f=>{const a=Math.max(0,f.startSlot-slot)*100,b=Math.min(1,f.endSlot-slot)*100;return [`transparent ${a}%`,`${color} ${a}%`,`${color} ${b}%`,`transparent ${b}%`];});

@@ -76,7 +76,8 @@ test('future page screenshot: selected blocks remain planned until the clock rea
   await fill(page,'Diary date','2026-10-15');await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-15');
   await range(page,'00:00','09:45');await expect(page.locator('.block.work.planned')).toHaveCount(39);
   await expect(page.locator('.totals')).toContainText('Work 0h 00m');await expect(page.locator('.totals')).toContainText('Rest 0h 00m');
-  await expect(page.locator('.assessment')).toContainText('Future time excluded');await expect(page.locator('.block.work.breach')).toHaveCount(0);
+  await expect(page.locator('.assessment')).toContainText('Future time excluded');await expect(page.locator('.block.work.planned.breach')).toHaveCount(18);
+  await expect(page.locator('[aria-label="Planned page totals"]')).toContainText('Work 9h 45m');
   await page.screenshot({path:info.outputPath('future-page.png'),fullPage:true});
   await page.clock.setFixedTime(new Date('2026-10-14T22:45:00Z'));
   await page.getByRole('button',{name:'Refresh saved records',exact:true}).click();

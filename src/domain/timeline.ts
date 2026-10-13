@@ -49,7 +49,7 @@ export function sameRules(a: Profile, b: Profile) {
 }
 
 /** Read-only overlay. No saving, finishing timers, page allocation or audit writes. */
-export function buildTimeline(s: Workspace, asOf: string, now = Date.now()): Timeline {
+export function buildTimeline(s: Workspace, asOf: string, now = Date.now(), liveThrough = now): Timeline {
   const requestedDate = asOf.slice(0,10);
   if (!validDate(requestedDate) || !/^(?:[01]\d|2[0-3]|24):[0-5]\d$/.test(asOf.slice(11,16)) || (asOf.slice(11,13) === "24" && asOf.slice(14,16) !== "00"))
     throw Error("Choose a valid assessment time.");
@@ -63,7 +63,8 @@ export function buildTimeline(s: Workspace, asOf: string, now = Date.now()): Tim
     ...s.activities.filter(t=>t.start < through).map(t=>civil(t.start,t.zone).date),
     ...(s.timer && s.timer.start < through ? [civil(s.timer.start,s.timer.zone).date] : [])].sort()[0];
   const raw = new Map(s.activities.map(t=>[t.id,t]));
-  const live = s.timer && s.timer.start < through ? {...s.timer,end:through} : null;
+  const liveEnd = Math.min(through,liveThrough);
+  const live = s.timer && s.timer.start < liveEnd ? {...s.timer,end:liveEnd} : null;
   if (live && through-live.start > 31*86400000) throw Error("Correct the timer start.");
   const parts: TimelineRun[] = [];
   let carry: RestType = "unknown", previousKind: Activity = null, previousEnd = 0;
