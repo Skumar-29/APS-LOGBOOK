@@ -166,7 +166,10 @@ export default function App() {
                     aria-label="Diary date"
                     type="date"
                     value={date}
-                    onChange={(e) => run(() => goDate(e.target.value))}
+                    onChange={(e) => {
+                      const nextDate = e.currentTarget.value;
+                      run(() => goDate(nextDate));
+                    }}
                   />
                   <span aria-hidden="true">{new Date(date + "T12:00:00Z").toLocaleDateString("en-AU", {weekday:"short",timeZone:"UTC"})} {displayDate(date)}</span>
                 </span>

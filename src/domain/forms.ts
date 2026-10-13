@@ -1,4 +1,4 @@
-import { audit, clone, uid, type FormDefaults, type FormRecord, type Workspace } from "./model";
+import { audit, clone, uid, profileOn, ruleProfileAt, type FormDefaults, type FormRecord, type Workspace } from "./model";
 import { today, validDate } from "./time";
 export const inspection = [
   "Engine oil, coolant, windscreen fluid and fluid / air leaks.",
@@ -97,7 +97,8 @@ export function deleteForm(s: Workspace, id: string) {
   s.forms = s.forms.filter(f => f.id !== id);
 }
 export function newForm(s: Workspace, previous?: FormRecord): FormRecord {
-  const p = s.profile, defaults = getFormDefaults(s);
+  const date = today(s.profile.zone);
+  const p = ruleProfileAt(s, Date.now(), s.days[date]?.profile || profileOn(s, date)), defaults = getFormDefaults(s);
   return {
     id: uid(),
     driverId: p.id,
@@ -108,8 +109,8 @@ export function newForm(s: Workspace, previous?: FormRecord): FormRecord {
       licence: defaults.licence,
       expiry: defaults.expiry,
       scheme: p.scheme,
-      accreditation: p.certificate,
-      date: today(p.zone),
+      accreditation: p.scheme === "Standard" ? "" : p.certificate,
+      date,
       base: p.base,
       zone: p.zone,
       depart: "",
