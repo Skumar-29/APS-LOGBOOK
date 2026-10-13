@@ -14,10 +14,15 @@ export function Guide() {
     <p className="small">Simple explanations · reviewed {REVIEW_DATE}</p>
     <section className="card">
       <h2>How this app counts</h2>
-      <p>Select work blocks. Unselected blocks on a saved day mean rest. A missing day needs records. Future time earns no hours.</p>
+      <p>Select work blocks. Unselected blocks on a saved day mean rest. A missing day needs records. Future time earns no completed hours.</p>
       <p>All screens use the same timeline, including the running timer. Midnight starts a new diary page; the counting periods keep going.</p>
       <p>Warnings name the problem: “15m break overdue”, “24h work limit exceeded” or “Confirm rest type”.</p>
     </section>
+    <Fold title="Planning your next break">
+      <p>Select future work blocks to check your plan. Stripes mean planned time. Red stripes flag projected problems. Planned page and window totals stay separate from completed hours.</p>
+      <p>The forecast assumes the planned work and rest happen as entered. A running timer is counted only to the current time. Missing history or unconfirmed rest still needs review.</p>
+      <p>A qualifying major rest can start another counting period. Earlier periods still apply until they finish; seven hours rest does not erase an existing 24h work cap.</p>
+    </Fold>
     <Fold title="Work, rest and automatic break labels">
       <p>Work includes driving, loading, unloading, fuelling, vehicle checks and transport paperwork. Rest means time free from work.</p>
       <p>Record the rest setting: stationary, approved moving sleeper, or not confirmed. Stationary means out of the vehicle or in an approved sleeper berth while it is stationary.</p>

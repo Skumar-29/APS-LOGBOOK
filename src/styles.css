@@ -1319,3 +1319,7 @@ html { scroll-padding-top: 160px; }
 .guide-links { display:flex; flex-direction:column; gap:12px; }
 .stat-day { grid-template-columns:45px minmax(40px,1fr) minmax(105px,auto); }
 .daily-hours { font-size:11px; text-align:right; }
+
+.diary-grid-row .block.planned.breach { opacity:1; }
+.planning-summary { margin:8px 0; }
+.planning-summary p { margin:4px 0; }

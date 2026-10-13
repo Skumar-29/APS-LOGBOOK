@@ -82,7 +82,7 @@ function restWarning(rule:PeriodRule,p:Profile,value:number) {
   if(rule.type==="nights") return p.scheme==="BFM"&&!p.twoUp ? "Check two 24h rests and four night rests" : "Four night rests needed";
   if(rule.type==="weekly") return "24h rest plus 24h in 7h blocks needed";
   if(rule.type==="breaks") return `${shortMinutes(Math.max(15,rule.rest-value))} break overdue`;
-  return `${shortMinutes(Math.max(15,rule.rest-value))} more ${rule.type==="stationary-or-sleeper"?"qualifying":"stationary"} rest needed`;
+  return `${shortMinutes(rule.rest)} continuous ${rule.type==="stationary-or-sleeper"?"qualifying":"stationary"} rest needed`;
 }
 function extend(runs:TimelineRun[],kind:"work"|"rest",start:number,end:number,p:Profile) {
   const copy=runs.map(r=>({...r}));
@@ -132,8 +132,8 @@ function longNightPackets(packets:WorkPacket[],anchors:number[]) {
 }
 
 /** One elapsed-time report for every screen and export. No calendar-midnight reset. */
-export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number}={}):RuleReport {
-  const t=buildTimeline(s,asOf,options.now), {runs,through,profile}=t;
+export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;liveThrough?:number}={}):RuleReport {
+  const t=buildTimeline(s,asOf,options.now,options.liveThrough), {runs,through,profile}=t;
   range=Math.min(28,Math.max(1,Math.floor(range)));
   const displayFrom=through-range*1440*MINUTE, reportDate=t.requestedDate;
   const breachSlots:Record<string,string[]>={},restSlots:Record<string,string[]>={},issues:string[]=[],findings:Finding[]=[],evaluations:Evaluation[]=[],workWindows:WorkWindow[]=[];
@@ -222,6 +222,19 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number}={
         reason=rule.minutes<1440 ? restWarning(rule,p,value) : `${rule.minutes===1440?"24h":rule.label} work limit exceeded`;
         mark(Math.max(at,phase.start),b,reason,p);
         addFinding(`work-${rule.minutes}`,reason,"breach",a,deadline,at,p);
+      } else if(rule.minutes===1440 && rule.limit!==null && provenWork(a,b)>rule.limit && !mixed && !missing) {
+        const workRuns=provenRuns.filter(r=>r.kind==="work"&&r.end>a&&r.start<b);
+        const first=workRuns[0],last=workRuns.at(-1);
+        const couldHaveMajor=first&&last&&rule.rest>0&&longest(runs,Math.max(a,first.start),Math.min(b,last.end),rule.type==="stationary-or-sleeper",true)>=rule.rest;
+        if(first&&last&&!couldHaveMajor) {
+          // Proven excessive work without an intervening possible major rest must not
+          // look clear merely because the legal period's earlier anchor is missing.
+          status="Exceeded";reason="Excess work · check earlier records";
+          const packets=workPackets(provenRuns,p.zone).filter(x=>x.start>=a&&x.start<b);
+          let used=0;for(const packet of packets){used+=packet.minutes;if(used>rule.limit){at=packet.start;break;}}
+          mark(Math.max(at,phase.start),b,reason,p);
+          addFinding("work-history",reason,"review",a,deadline,at,p);
+        } else {status="Needs review";reason="Check earlier records";}
       } else if(uncertain) {
         status="Needs review";reason=split?"Check BFM split rest":mixed?"Check rule change":!established||missing?"Check earlier records":"Confirm rest type";
         if(complete && split) addFinding("split-rest",reason,"review",a,deadline,b,p);
@@ -361,7 +374,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number}={
         const capReached=controlling.limit!==null&&controlling.work>=controlling.limit;
         if(controlling.label==="BFM 84-hour work cap") reason="24h stationary rest due";
         else if(capReached&&(controlling.requiredRest===0||controlling.rest>=controlling.requiredRest)) reason=`${controlling.label} work limit reached`;
-        else if(controlling.requiredRest) reason=`${shortMinutes(Math.max(15,controlling.requiredRest-controlling.rest))} rest due now`;
+        else if(controlling.requiredRest) reason=controlling.requiredRest>=300 ? `${shortMinutes(controlling.requiredRest)} continuous rest due` : `${shortMinutes(Math.max(15,controlling.requiredRest-controlling.rest))} rest due now`;
       }
       addFinding("rest-now",reason,"due",through,through+MINUTE,through,profile);
     }

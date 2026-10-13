@@ -1,7 +1,7 @@
 import type { Profile } from "./model";
 
-export const RULE_VERSION = "NHVR-2026-10-13-v4";
-export const REVIEW_DATE = "13 October 2026";
+export const RULE_VERSION = "NHVR-2026-10-14-v5";
+export const REVIEW_DATE = "14 October 2026";
 export const RULE_SOURCE = "https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/counting-time";
 export const HOURS_SOURCE = "https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/work-and-rest-hours";
 export const DIARY_SOURCE = "https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/work-diary";

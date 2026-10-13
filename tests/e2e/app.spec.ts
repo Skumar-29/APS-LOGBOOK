@@ -1079,7 +1079,7 @@ test("today's future work and rest stay outside assessed totals", async ({page})
   await expect(page.locator(".totals")).toContainText("Work 12h 00m");
   await expect(page.locator(".totals")).toContainText("Rest 1h 00m");
   await expect(page.locator(".block.work.planned")).toHaveCount(8);
-  await expect(page.locator('[data-slot="80"][data-row="work"]')).not.toHaveClass(/breach/);
+  await expect(page.locator('[data-slot="80"][data-row="work"]')).toHaveClass(/planned.*breach/);
   await page.getByRole("button",{name:"Stats",exact:true}).click();
   await expect(page.locator(".stat-day").filter({hasText:"11/10"})).toContainText("W 12h 00m · R 1h 00m");
 });

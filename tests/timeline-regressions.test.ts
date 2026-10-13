@@ -133,7 +133,7 @@ describe("elapsed rest and physical qualifications",()=>{
   it("reports a missing seven-hour rest even when total work stays below twelve hours",()=>{
     const s=fixture();for(const [a,b] of [[0,16],[24,40],[56,72]]) editRange(s,"2026-10-10",a,b,"work");
     const r=report(s,"2026-10-11T00:00");
-    expect(r.findings.find(f=>f.code==="rest-1440"&&f.start==="2026-10-10 00:00")?.message).toBe("1h more stationary rest needed");
+    expect(r.findings.find(f=>f.code==="rest-1440"&&f.start==="2026-10-10 00:00")?.message).toBe("7h continuous stationary rest needed");
     expect(r.days[0].work).toBe(720);
   });
   it("keeps the NHVR example's old twelve-hour cap after a new seven-hour rest",()=>{
