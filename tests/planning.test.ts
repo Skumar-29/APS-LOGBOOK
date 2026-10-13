@@ -5,8 +5,8 @@ import {analyse} from "../src/domain/rules";
 import {planDiary} from "../src/domain/planning";
 import {instantFor,dateAdd} from "../src/domain/time";
 const zone="Australia/Brisbane",at=(v:string)=>instantFor(v.slice(0,10),v.slice(11,16),zone)[0];
-function fixture(scheme:"Standard"|"BFM"="BFM",history=true){
-  const s=emptyState();Object.assign(s.profile,{base:"QLD",zone,scheme,certificate:"TEST",certificateExpiry:"2027-01-01"});s.settings.autoPages=false;s.settings.diaryRestDefault="stationary";
+function fixture(scheme:"Standard"|"BFM"="BFM",history=true,twoUp=false){
+  const s=emptyState();Object.assign(s.profile,{base:"QLD",zone,scheme,twoUp,coDriver:twoUp?"Synthetic co-driver":"",coLicence:twoUp?"TESTCO":"",certificate:"TEST",certificateExpiry:"2027-01-01"});s.settings.autoPages=false;s.settings.diaryRestDefault="stationary";
   if(history)for(let n=0;n<43;n++)ensureDay(s,dateAdd("2026-09-01",n));return s;
 }
 describe("future planning stays separate from completed hours",()=>{
@@ -51,6 +51,18 @@ describe("future planning stays separate from completed hours",()=>{
     const p=planDiary(s,"2026-10-11",now,actual)!;
     expect(actual.days[0].work).toBe(240);expect(p.report.days.at(-1)!.work).toBe(480);expect(s).toEqual(before);
     expect(p.report.days.at(-1)!.fragments.some(f=>f.kind==="rest"&&f.start===now&&f.end===at("2026-10-11T11:00"))).toBe(true);
+  });
+  it("uses the new window when the earlier window has expired before the next planned work",()=>{
+    const s=fixture();editRange(s,"2026-10-10",80,96,"work");for(const [a,b] of [[0,8],[10,30],[32,44],[88,96]])editRange(s,"2026-10-11",a,b,"work");
+    const now=at("2026-10-11T21:00"),actual=analyse(s,"2026-10-11T24:00",2,{now}),p=planDiary(s,"2026-10-11",now,actual)!;
+    expect(p.report.workWindows.some(w=>w.start==="2026-10-10 20:00"&&w.work===840)).toBe(true);
+    expect(p.window).toMatchObject({start:"2026-10-11 22:00",end:"2026-10-12 22:00",work:120,limit:840});
+    expect(p.continuousUntil).toBe("2026-10-12 04:00");
+  });
+  it.each([["Standard",21],["BFM",56]] as const)("two-up %s uses its own projected work limits",(scheme,slot)=>{
+    const s=fixture(scheme,true,true);editRange(s,"2026-10-11",0,60,"work");const now=at("2026-10-10T12:00"),actual=analyse(s,"2026-10-11T24:00",1,{now}),p=planDiary(s,"2026-10-11",now,actual)!;
+    expect(p.report.breachSlots[`2026-10-11:${slot}`]).toContain(scheme==="Standard"?"15m break overdue":"24h work limit exceeded");
+    expect(actual.days[0].work).toBe(0);
   });
   it("flags the 22-hour screenshot despite an unknown earlier anchor, without inventing a legal start",()=>{
     const s=fixture("Standard",false);editRange(s,"2026-10-11",0,96,"work");for(const slot of [21,31,42,43,65,74,86,87])editRange(s,"2026-10-11",slot,slot+1,"rest");

@@ -46,3 +46,10 @@ test('future planning: 22 recorded hours are flagged even when earlier history i
   await expect(page.locator('.short-warnings')).toContainText('Excess work · check earlier records');await expect(page.locator('.short-warnings')).toContainText('7h continuous stationary rest needed');
   await expect(page.locator('.short-warnings')).not.toContainText('6h 30m more');await page.screenshot({path:info.outputPath('missing-history-excess.png'),fullPage:true});
 });
+test('future planning: completed major rest selects the new window after the earlier window expires',async({page})=>{
+  await page.clock.setFixedTime(new Date('2026-10-11T11:00:00Z'));const s=await setup(page);
+  editRange(s,'2026-10-10',80,96,'work');for(const [a,b] of [[0,8],[10,30],[32,44],[88,96]])editRange(s,'2026-10-11',a,b,'work');await seed(page,s);
+  await expect(page.locator('.window-summary > summary')).toContainText('Work 2h 00m');
+  await page.locator('.window-summary > summary').click();await expect(page.locator('.window-details')).toContainText('11/10/2026 22:00');await expect(page.locator('.window-details')).toContainText('12/10/2026 22:00');
+  await expect(page.locator('[aria-label="Shift plan"]')).toContainText('Continuous work limit: 12/10/2026 04:00');await expect(page.locator('.block.work.planned.breach')).toHaveCount(0);
+});

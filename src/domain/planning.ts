@@ -33,6 +33,8 @@ export function planDiary(s:Workspace,date:string,now:number,actual:RuleReport,r
   const future=report.findings.filter(f=>f.at>=atBase(now,d.profile.zone)&&
     (f.severity==="breach"||f.code==="work-history")).sort((a,b)=>a.at.localeCompare(b.at));
   const firstExcess=future.find(f=>f.severity==="breach"&&/^work-|^rest-\d+$|^long-night$/.test(f.code));
-  return {report,window:selectWorkWindow(report.workWindows,date) || null,breakDue:firstExcess?.at || null,
+  const relevantStart=first?atBase(Math.max(now,first.start),first.profile.zone):atBase(now,d.profile.zone);
+  const relevantWindows=report.workWindows.filter(w=>w.end>relevantStart);
+  return {report,window:selectWorkWindow(relevantWindows,date) || null,breakDue:firstExcess?.at || null,
     continuousUntil,warning:future[0]?.message || null,review:report.issues.some(x=>/history|earlier|Confirm|clock|certificate|rule change|AFM|ACH/i.test(x))};
 }
