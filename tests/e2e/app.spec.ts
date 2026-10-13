@@ -1121,6 +1121,10 @@ test("dated Standard change recalculates an active BFM timer and survives reload
   const file=await exported;await file.saveAs(info.outputPath("dated-switch.csv"));const csv=await readFile(info.outputPath("dated-switch.csv"),"utf8");
   expect(csv).toContain('"BFM"');expect(csv).toContain('"Standard"');
   await page.setViewportSize({width:320,height:800});await noOverflow(page);
+  await more(page,"Forms");await page.getByRole("button",{name:"+ New form",exact:true}).click();
+  await page.getByText("Driver, trailers & load",{exact:true}).click();
+  await expect(page.getByLabel("Work / rest scheme",{exact:true})).toHaveValue("Standard");
+  await expect(page.getByLabel("Accreditation number",{exact:true})).toHaveValue("");
 });
 test("two-up rest suggestions remain correctable and preserve separate factual intervals",async({page},info)=>{
   await start(page);const {emptyState}=await import("../../src/domain/model");
