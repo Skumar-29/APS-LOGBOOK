@@ -1,5 +1,6 @@
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile, rename } from "node:fs/promises";
 import { createHash } from "node:crypto";
+await rename("dist/app-source.html", "dist/index.html");
 async function files(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   return (
