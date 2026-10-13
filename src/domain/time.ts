@@ -52,21 +52,27 @@ export function civil(instant: number, zone: string) {
   };
 }
 export const today = (zone: string) => civil(Date.now(), zone).date;
+const instantCache=new Map<string,number[]>();
 export function instantFor(date: string, time: string, zone: string): number[] {
   if (!validDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return [];
+  const key=date+"|"+time+"|"+zone, cached=instantCache.get(key);
+  if(cached) return [...cached];
   const target = Date.parse(date + "T" + time + ":00Z"),
     offsets = new Set<number>();
   for (const h of [-36, -12, 0, 12, 36]) {
     const t = target + h * 3600000;
     offsets.add(civil(t, zone).serial - t);
   }
-  return [...offsets]
+  const result=[...offsets]
     .map((o) => target - o)
     .filter((t) => {
       const c = civil(t, zone);
       return c.date === date && c.time === time;
     })
     .sort((a, b) => a - b);
+  if(instantCache.size>20000) instantCache.clear();
+  instantCache.set(key,result);
+  return [...result];
 }
 export function clockChange(date: string, zone: string) {
   const a = instantFor(date, "00:00", zone),
@@ -77,7 +83,8 @@ export function hhmm(slot: number) {
   return `${String(Math.floor(slot / 4)).padStart(2, "0")}:${String((slot % 4) * 15).padStart(2, "0")}`;
 }
 export function minutesLabel(n: number) {
-  return `${Math.floor(n / 60)}h ${String(Math.round(n % 60)).padStart(2, "0")}m`;
+  const m=Math.max(0,Math.round(n));
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
 }
 export function parseSlot(value: string) {
   if (!/^([01]\d|2[0-3]):(00|15|30|45)$/.test(value))

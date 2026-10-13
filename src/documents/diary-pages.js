@@ -16,7 +16,7 @@ export function diaryPage(d, page, book) {
       status: page?.status,
       base: d.profile.base,
       licence: d.profile.licence,
-      scheme: d.profile.scheme,
+      scheme: d.calculatedRulePeriods?.length>1 ? "Multiple options" : d.profile.scheme,
       twoUp: d.profile.twoUp,
       codriver: d.profile.coDriver,
       checkTime: d.dailyCheckTime,
@@ -135,7 +135,7 @@ export function diaryPage(d, page, book) {
     ]),
   ].sort((a, b) => a - b);
   const changeRows = keys.map((i) => ({ time: time(i), ...d.changes[i] }));
-  const totals = {
+  const totals = d.calculatedTotals || {
     work: day().slots.filter((v) => v === "work").length * 15,
     rest: day().slots.filter((v) => v === "rest").length * 15,
   };
@@ -218,11 +218,22 @@ export function diaryPage(d, page, book) {
   }
 
   let lineD = "";
-  for (let i = 0; i < 96; i++) {
+  const fragments=d.calculatedFragments;
+  if(fragments) {
+    let previous=null;
+    for(const f of fragments) {
+      if(!f.kind) {previous=null;continue;}
+      const y=f.kind==="work"?workY:restY,x=gridX+f.startSlot*slotW,end=gridX+f.endSlot*slotW;
+      // A repeated clock-change interval cannot be drawn as negative elapsed time.
+      if(end<x) {previous=null;continue;}
+      lineD+=previous&&previous.end===f.start ? ` L ${x} ${y}` : ` M ${x} ${y}`;
+      lineD+=` L ${end} ${y}`;
+      previous=f;
+    }
+  } else for (let i = 0; i < 96; i++) {
     const kind = day().slots[i];
     if (!kind) continue;
-    const y = kind === "work" ? workY : restY,
-      x = gridX + i * slotW;
+    const y = kind === "work" ? workY : restY,x = gridX + i * slotW;
     const previous = i > 0 ? day().slots[i - 1] : null;
     if (!previous) lineD += ` M ${x} ${y}`;
     else if (previous !== kind) lineD += ` L ${x} ${y}`;
@@ -314,6 +325,7 @@ export function diaryPage(d, page, book) {
   const svg = `
   <svg class="tw-paper" viewBox="0 0 ${W} ${H}" role="img" aria-label="Paper diary sheet preview for ${escapeHtml(dateStr)}" xmlns="http://www.w3.org/2000/svg">
     <rect x="0" y="0" width="${W}" height="${H}" fill="white"/>
+    ${d.calculatedThrough ? svgText(560, 730, "Counted through " + d.calculatedThrough + " (base time) · future time excluded", 9, "#555", "400", 'text-anchor="middle"') : ""}
     ${svgText(560, 46, "PERSONAL RECORD COPY - NOT AN APPROVED ELECTRONIC WORK DIARY", 9, "#555", "400", 'text-anchor="middle"')}
 
     ${svgText(560, 28, "NATIONAL WORK DIARY DAILY SHEET", 17, "#111", "700", 'text-anchor="middle"')}
@@ -443,18 +455,30 @@ export function diaryPage(d, page, book) {
 }
 
 export function diaryPages(d, page, book) {
+  if(d.calculatedRulePeriods?.length>1) return d.calculatedRulePeriods.flatMap((period,index)=>{
+    const fragments=period.fragments;
+    const slots=Array(96).fill(null);
+    for(const f of fragments) if(f.kind) for(let slot=Math.floor(f.startSlot);slot<Math.min(96,Math.ceil(f.endSlot));slot++) slots[slot]=f.kind;
+    return diaryPages({...d,profile:period.profile,slots,calculatedRulePeriods:undefined,calculatedFragments:fragments,
+      calculatedTotals:{work:fragments.reduce((n,f)=>n+f.work,0),rest:fragments.reduce((n,f)=>n+f.restMinutes,0)}},index===0?page:null,book);
+  });
   const pages = [diaryPage(d, page, book)],
     lines = [
       `Driver: ${d.profile.name} | Licence: ${d.profile.licence} | Base: ${d.profile.base}`,
       `Scheme: ${d.profile.scheme} | ${d.profile.twoUp ? "Two-up with " + d.profile.coDriver : "Solo"} | Vehicle: ${d.vehicle}`,
       `Book: ${book?.number || ""} | Page: ${page?.number || ""} | Status: ${page?.status || "Unallocated"}`,
+      ...(d.calculatedThrough ? ["Counted through: " + d.calculatedThrough + " (base time)", "Counted work: " + d.calculatedTotals.work + " minutes | Rest: " + d.calculatedTotals.rest + " minutes"] : []),
       ...wrapLines("Comments: " + d.comments, 95),
       "",
+      ...(d.calculatedFragments ? ["Assessed intervals (exact times | counted work/rest minutes):", ...d.calculatedFragments.map(f=>{
+        const fmt=new Intl.DateTimeFormat("en-GB",{timeZone:d.profile.zone,hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"});
+        return `${fmt.format(f.start)} - ${f.endSlot===96?"24:00:00":fmt.format(f.end)} | ${f.kind || "unrecorded"} | Work ${f.work}m | Rest ${f.restMinutes}m | ${f.kind==="rest"?f.rest:""} | ${f.profile?.scheme || d.profile.scheme}`;
+      }), "", "Recorded location / odometer notes (may include future plans):"] : []),
       ...Object.values(d.changes)
         .sort((a, b) => a.slot - b.slot)
         .flatMap((c) =>
           wrapLines(
-            `${String(Math.floor(c.slot / 4)).padStart(2, "0")}:${String((c.slot % 4) * 15).padStart(2, "0")} | ${d.slots[c.slot] || "Finish"} | ${c.location} | Odo ${c.odometer} | ${c.vehicle} | ${c.restType} | ${c.note}`,
+            `${String(Math.floor(c.slot / 4)).padStart(2, "0")}:${String((c.slot % 4) * 15).padStart(2, "0")} | ${d.slots[c.slot] || (c.slot===96?"Finish":"Not assessed")} | ${c.location} | Odo ${c.odometer} | ${c.vehicle} | ${c.restType} | ${c.note}`,
             95,
           ),
         ),

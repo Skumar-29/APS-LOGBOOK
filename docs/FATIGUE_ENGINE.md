@@ -1,6 +1,6 @@
-# Fatigue engine beta 6
+# Fatigue engine beta 8
 
-Reviewed 9 October 2026. Rule identifier: NHVR-2026-10-09-review-2.
+Reviewed 11 October 2026. Rule identifier: NHVR-2026-10-11-v3.
 
 ## Source mapping
 
@@ -8,7 +8,8 @@ The ordinary Standard and transitional BFM truck-driver tables are implemented f
 
 - [NHVR counting time](https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/counting-time): short periods begin at the end of rest; longer periods use the applicable major rest; overlapping periods remain in force. Where the required break is absent, the fallback is an ordinary rest ending. Missing history cannot establish that absence.
 - [NHVR work and rest hours](https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/work-and-rest-hours): Standard/BFM maximum work and minimum rest tables, night-rest definitions, and long/night work.
-- [National Driver Work Diary, December 2025](https://www.nhvr.gov.au/files/media/document/251/202512-0704-national-driver-work-diary.pdf): quarter-hour recording and relevant major rest examples. Post-August-2026 counting guidance above takes precedence for current periods.
+- [Fatigue Management National Regulation](https://www.legislation.qld.gov.au/view/whole/html/inforce/2026-08-01/sl-2013-0078): duration rounding in section 19 and applicable counting rules.
+- [National Driver Work Diary, December 2025](https://www.nhvr.gov.au/files/media/document/251/202512-0704-national-driver-work-diary.pdf): available indexed counting examples; the full PDF was not accessible in this environment. The supplied official June 2026 information sheet was read completely. Post-August-2026 counting guidance above takes precedence for current periods.
 
 | Option | Short periods: period / maximum work / minimum rest |
 | --- | --- |
@@ -26,15 +27,17 @@ The ordinary Standard and transitional BFM truck-driver tables are implemented f
 ## Data and counting behavior
 
 - A saved page has 96 fifteen-minute entries. Unselected work means rest. An absent page is unknown, never silently rest. Imported legacy assumptions remain marked for review.
-- Work timers round outwards; rest timers round inwards. A current partial rest quarter earns no completed rest credit. Work wins a timer boundary overlap.
+- Raw timers preserve exact timestamps. Continuous work rounds its duration up once, continuous rest rounds down once, including through midnight. The former outward/inward grid projection is not used as the duration. Timer links can be cleared by a manual cell correction without deleting the source activity. Zero-duration timers create no work cells.
 - Physical rest settings apply only to the continuous break. A rest setting cannot leak through intervening work. A new-page default is explicitly selected by the user and captured on that page.
 - Duration-derived labels distinguish ordinary rest, major stationary rest, night rest and 24-hour rest. A moving-sleeper label never turns into stationary rest from duration alone.
 - The engine checks all applicable overlapping anchors. It retains all rows internally for the conservative work-cap estimate, even when the screen summarizes repetitive rows.
 - Confirmed work-cap highlights require a supported ruleset and an established long-period anchor. Continuous short-period work can establish an excess from recorded work alone. Uncertain long-period starts produce review rather than a false confirmed breach.
 - Rest totals are independent of review flags. Review does not subtract recorded work twice.
 - Long/night work uses a set union, so a quarter qualifying both ways counts once. Historical long/night and 84-hour excesses are not erased by a later rest.
-- The diary is a whole-page assessment and can include planned entries. Its unused cap is specific to the displayed period. Driving is the elapsed-time assessment; future default-rest cells earn no credit there.
-- The live estimate reserves required continuous rest if work resumes before a break qualifies. It is deliberately conservative, including the remaining BFM long/night budget even when some future daytime work might not use that budget. It is not an earliest lawful restart calculation or clearance to drive.
+- Every active screen and export uses the same elapsed-time assessment. Future plans remain stored, but earn neither work nor rest credit. A cancelled paper-page snapshot remains the preserved historical copy, not a newly assessed active record. The displayed unused 24h cap is specific to that period; it is not the continuous-work estimate.
+- The continuous-work estimate tests all active overlapping periods and reserves the required rest before their deadlines. BFM future night/long work is recalculated without counting the same work twice. It makes a conservative assumption of continuous work followed by stationary rest, and is hidden when necessary history or eligibility needs review. No earliest lawful restart is claimed.
+- Required rest failures remain visible even below the work cap. Rest summaries distinguish continuous rest, disjoint two-up weekly rest, night-rest counts and the required consecutive pair.
+- The worker echoes request identity; the hook rejects results from older revisions or cutoffs. Failures show a short Retry message. Calculations never allocate pages or mutate diary records.
 
 ## Screenshot regression
 
@@ -47,5 +50,8 @@ AFM/ACH certificate-specific conditions, WA/NT operation, historical pre-August-
 This remains a personal recording and review tool, not an NHVR-approved EWD or regulatory certification. Complete numerical tests do not establish approval or physical fitness to drive.
 
 ## Verification
+
+The beta 8 unit suite includes 36 new exact-timeline boundary tests and four real-worker contract checks. The local browser check could not launch because Chromium was unavailable. Updated phone/desktop journeys must run on a machine with Playwright Chromium or in GitHub Actions before production release. Earlier-version browser evidence is not verification of beta 8.
+
 
 `tests/rules-engine.test.ts` covers the screenshot, exact caps, midnight rest, missing history, automatic labels, migration and archived snapshots, interruption, partial quarters, reviewed totals, long/night overlap, historical 84-hour excess and a complete-history allowance. Existing domain/storage tests cover backups, timers, exports and transaction safety. The browser suite includes the screenshot schedule, 320px layout, erase-to-rest, persistence and a live total that excludes future planned work.

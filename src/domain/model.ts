@@ -1,3 +1,4 @@
+import { civil, QUARTER } from "./time";
 export type Activity = "work" | "rest" | null;
 export type RestType = "stationary" | "sleeper-moving" | "unknown";
 export type Scheme = "Standard" | "BFM" | "AFM" | "ACH";
@@ -9,6 +10,7 @@ export interface Profile {
   contact: string;
   base: string;
   zone: string;
+  operation?: "HVNL" | "WA" | "NT" | "unknown";
   scheme: Scheme;
   twoUp: boolean;
   coDriver: string;
@@ -47,6 +49,8 @@ export interface Day {
   clockReview: boolean;
   submittedAt: string;
   pagePhoto: string;
+  /** Raw timer records responsible for a grid cell. Manual edits remove this link. */
+  timerMap?: Record<string, string[]>;
   [key: string]: unknown;
 }
 export interface PaperPage {
@@ -205,6 +209,8 @@ export interface Workspace {
   onboarded: boolean;
   profile: Profile;
   profileHistory: Profile[];
+  /** Explicit hours-option intervals; timestamps are in the recorded driver base zone. */
+  ruleChanges?: RuleChange[];
   days: Record<string, Day>;
   pages: PaperPage[];
   books: Book[];
@@ -227,6 +233,8 @@ export interface Workspace {
     diaryLayoutVersion?: number;
     diaryRestDefault?: RestType;
     restDefaultsVersion?: number;
+    restSelectionMode?: "suggested" | "confirm";
+    timelineVersion?: number;
     locationPicker: boolean;
     autoPages: boolean;
     backupDays: number;
@@ -234,6 +242,14 @@ export interface Workspace {
     ruleReviewAcknowledged: boolean;
   };
   legacy?: Record<string, unknown>;
+}
+export interface RuleChange {
+  id: string;
+  driverId: string;
+  from: number;
+  to: number | null;
+  profile: Profile;
+  recordedAt: string;
 }
 export const uid = () => crypto.randomUUID();
 export const clone = <T>(v: T): T => structuredClone(v);
@@ -256,6 +272,7 @@ export function emptyProfile(): Profile {
     contact: "",
     base: "NSW",
     zone: zones.NSW,
+    operation: "HVNL",
     scheme: "Standard",
     twoUp: false,
     coDriver: "",
@@ -326,11 +343,20 @@ export function profileOn(s: Workspace, date: string) {
 export function recordProfile(p: Profile): Profile {
   return { ...clone(p), signature: "", logo: "" };
 }
+export function ruleProfileAt(s: Workspace, at: number, base: Profile): Profile {
+  const change = (s.ruleChanges || []).filter(c => c.driverId === base.id && c.from <= at && (c.to === null || at < c.to))
+    .sort((a,b) => a.from-b.from).at(-1);
+  return change ? { ...base, scheme: change.profile.scheme, operator: change.profile.operator,
+    certificate: change.profile.certificate, certificateExpiry: change.profile.certificateExpiry,
+    recordKeeper: change.profile.recordKeeper, recordAddress: change.profile.recordAddress } : base;
+}
 export function emptyDay(s: Workspace, date: string): Day {
   return {
     date,
     slots: Array(96).fill("rest"),
-    restDefault: s.settings.diaryRestDefault || "unknown",
+    restDefault: s.settings.restSelectionMode==="confirm" ? "unknown" :
+      s.settings.diaryRestDefault && s.settings.diaryRestDefault!=="unknown" ? s.settings.diaryRestDefault :
+      profileOn(s,date).twoUp ? "unknown" : "stationary",
     changes: {},
     profile: recordProfile(profileOn(s, date)),
     vehicle: s.registry.find((r) => r.type === "vehicle")?.name || "",
@@ -405,6 +431,25 @@ export function upgradeWorkspace(s: Workspace): Workspace {
       audit(s, "Apply unselected blocks as rest", d.date, before, d);
     }
     s.settings.restDefaultsVersion = 1;
+  }
+  if (!s.settings.timelineVersion) {
+    for (const t of s.activities) {
+      if (!Number.isFinite(t.start) || !Number.isFinite(t.end) || t.end <= t.start || t.end-t.start > 31*86400000) continue;
+      const finishIndex=s.audit.findIndex(a=>a.recordId===t.id && a.action.startsWith("Finish "));
+      for (let at=Math.floor(t.start/QUARTER)*QUARTER;at<Math.ceil(t.end/QUARTER)*QUARTER;at+=QUARTER) {
+        const c=civil(at,t.zone), d=s.days[c.date], slot=Math.floor(c.slot);
+        if (!d) continue;
+        // Preserve later manual corrections, including Undo. The original raw activity is retained.
+        const corrected=s.audit.slice(Math.max(0,finishIndex+1)).some(a=>a.recordId===c.date
+          && /^(Record |Overnight |Undo block edit)/.test(a.action)
+          && (a.after as {slots?:Record<string,unknown>} | undefined)?.slots?.[slot] !== undefined);
+        if (corrected) continue;
+        d.timerMap ||= {};
+        d.timerMap[slot] ||= [];
+        if (!d.timerMap[slot].includes(t.id)) d.timerMap[slot].push(t.id);
+      }
+    }
+    s.settings.timelineVersion=1;
   }
   return s;
 }

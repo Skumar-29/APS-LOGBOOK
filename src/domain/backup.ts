@@ -98,6 +98,7 @@ export function validateState(s: Workspace) {
       !text(p.name) ||
       !text(p.licence) ||
       !["Standard", "BFM", "AFM", "ACH"].includes(p.scheme) ||
+      (p.operation!==undefined&&!["HVNL","WA","NT","unknown"].includes(p.operation)) ||
       !asset(p.signature) ||
       !asset(p.logo)
     )
@@ -133,6 +134,25 @@ export function validateState(s: Workspace) {
   }
   profile(s.profile);
   s.profileHistory.forEach(profile);
+  if(s.ruleChanges!==undefined) {
+    if(!Array.isArray(s.ruleChanges)) throw Error("Invalid hours-option history.");
+    const ids=new Set<string>();
+    for(const c of s.ruleChanges) {
+      if(!c||!text(c.id)||!c.id||ids.has(c.id)||!text(c.driverId)||!Number.isFinite(c.from)
+        ||c.to!==null&&(!Number.isFinite(c.to)||c.to<=c.from)||!text(c.recordedAt)) throw Error("Invalid hours-option change.");
+      ids.add(c.id);profile(c.profile);
+      if(c.profile.id!==c.driverId||!["Standard","BFM"].includes(c.profile.scheme)) throw Error("Invalid hours-option profile.");
+      if(s.ruleChanges.some(other=>other!==c&&other.driverId===c.driverId&&other.from<(c.to??Infinity)&&(other.to??Infinity)>c.from))
+        throw Error("Overlapping hours-option changes.");
+    }
+  }
+  const activityIds=new Set<string>();
+  for(const t of [...s.activities,...(s.timer?[s.timer]:[])]) {
+    if(!text(t.id)||!t.id||activityIds.has(t.id)||!Number.isFinite(t.start)||!["work","rest"].includes(t.kind)||!["stationary","sleeper-moving","unknown"].includes(t.restType)) throw Error("Invalid timer record.");
+    activityIds.add(t.id);profile(t.profile);
+    try {new Intl.DateTimeFormat("en",{timeZone:t.zone});} catch {throw Error("Invalid timer time zone.");}
+    if("end" in t&&(!Number.isFinite(t.end)||Number(t.end)<t.start||Number(t.end)-t.start>31*86400000)) throw Error("Invalid timer duration.");
+  }
   if (
     s.settings.diaryRestDefault !== undefined &&
     !["stationary", "sleeper-moving", "unknown"].includes(
@@ -140,6 +160,8 @@ export function validateState(s: Workspace) {
     )
   )
     throw Error("Invalid default rest setting.");
+  if(s.settings.restSelectionMode!==undefined&&!["suggested","confirm"].includes(s.settings.restSelectionMode))
+    throw Error("Invalid rest selection setting.");
   for (const [key, d] of Object.entries(s.days)) {
     if (
       !validDate(key) ||
@@ -154,6 +176,9 @@ export function validateState(s: Workspace) {
     )
       throw Error("Invalid diary on " + key);
     profile(d.profile);
+    if (d.timerMap !== undefined && (!d.timerMap || typeof d.timerMap !== "object" || Array.isArray(d.timerMap)
+      || Object.entries(d.timerMap).some(([slot,ids])=>!/^\d+$/.test(slot) || +slot>95 || !Array.isArray(ids) || ids.some(id=>typeof id!=="string"||!s.activities.some(t=>t.id===id)))))
+      throw Error("Invalid timer links.");
     for (const c of Object.values(d.changes))
       if (
         !Number.isInteger(c.slot) ||
