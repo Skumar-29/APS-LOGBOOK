@@ -1,4 +1,5 @@
 import { displayCivil, displayDate } from "../domain/time";
+import {statusClass,warningLines,zoneLabel} from '../domain/warnings';
 import { useEffect, useState } from "react";
 import { useStore } from "../context";
 import { correctTimerStart, switchTimer } from "../domain/diary";
@@ -152,11 +153,11 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
               </p>
             )}
             <p className="small">
-              Counted through {displayCivil(report.assessedThrough)}
+              Counted through {displayCivil(report.assessedThrough)} · {zoneLabel(report.zone)} time
             </p>
             {report.issues.length > 0 && (
               <Fold title="Warnings" open>
-                {report.issues.map((x, i) => (
+                {warningLines(report).map((x, i) => (
                   <p key={i} className="small">
                     {x}
                   </p>
@@ -175,7 +176,7 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
                     </span>
                     <span
                       className={
-                        "status " + (c.status === "Exceeded" ? "bad" : "")
+                        "status " + statusClass(c.status)
                       }
                     >
                       {c.status}
@@ -188,7 +189,7 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
               <p>{displayCivil(report.majorRest)}</p>
               {report.checks.map((c, i) => (
                 <p key={i} className="small">
-                  {c.label}: {displayCivil(c.start)} → {displayCivil(c.end)}.{" "}
+                  {c.label}: {displayCivil(c.start)} → {displayCivil(c.end)} · {zoneLabel(c.zone||report.zone)} time.{" "}
                   {displayCivil(c.reason)}
                 </p>
               ))}

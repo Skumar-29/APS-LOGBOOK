@@ -1,5 +1,6 @@
 import { restTypeAt } from "../domain/rest";
 import { hasFutureWork } from "../domain/planning";
+import {warningLines,zoneLabel} from '../domain/warnings';
 import { assessedDay, boundary } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
 import { useReport } from "../components/useReport";
@@ -89,7 +90,7 @@ export function Diary({
   const daySummary=readOnly ? undefined : report?.days.find(x=>x.date===date);
   const t=readOnly ? totals(d.slots) : daySummary;
   const viewDay=readOnly ? d : assessedDay(d,daySummary);
-  const actualWindow = !readOnly && report && selectWorkWindow(report.workWindows,date);
+  const actualWindow = !readOnly && report ? selectWorkWindow(report.workWindows,date) || null : null;
   const countedWindow = plan?.window || actualWindow;
   const windowSummary = countedWindow ? windowTotals(s, countedWindow) : null;
   const redSlots = readOnly ? {} : report?.breachSlots || {};
@@ -99,7 +100,7 @@ export function Diary({
   const dayBreaches = Object.entries(visibleRedSlots).filter(([key]) =>
     key.startsWith(date + ":"),
   );
-  const warnings=readOnly ? [] : [...new Set(report?.findings.filter(f=>f.date===date).map(f=>f.message) || [])];
+  const warnings=readOnly||!report ? [] : warningLines(report,date);
   async function updateDay(fn: (d: Day) => void, label = "Edit diary") {
     setUndo(null);
     if (readOnly)
@@ -197,17 +198,18 @@ export function Diary({
         )}
       </div>
       {error ? <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div> :
-        daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)}{daySummary.future>0?" · Future time excluded":""}</p>}
+        daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)} · {d.profile.base} time{daySummary.future>0?" · Future time excluded":""}</p>}
       {planning && <div className="planning-summary" aria-label="Shift plan">
         {planDay && <div className="row wrap small" aria-label="Planned page totals"><strong>Planned page</strong><span>Work <b>{minutesLabel(planDay.work)}</b></span><span>Rest <b>{minutesLabel(planDay.rest)}</b></span></div>}
         {planError ? <p className="bad">{planError} <Action onClick={retry}>Retry</Action></p> : !plan ? <p className="small">Checking plan…</p> : <>
           {plan.breakDue && <p className="small bad">Plan: break due at {displayCivil(plan.breakDue)}</p>}
           {!plan.breakDue && plan.warning && <p className="small bad">Plan: {plan.warning}</p>}
           {!plan.breakDue && !plan.warning && plan.continuousUntil && <p className="small">Continuous work limit: {displayCivil(plan.continuousUntil)}</p>}
-          {plan.review && <p className="small">Plan needs earlier records / confirmation</p>}
+          {!plan.breakDue && !plan.continuousUntil && plan.shortBreakUntil && <p className="small">Short-break limit: {displayCivil(plan.shortBreakUntil)} · {d.profile.base} time</p>}
+          {plan.review && <p className="small">Plan needs earlier records / confirmation{plan.reviewReasons?.length?`: ${plan.reviewReasons.slice(0,2).join(' · ')}`:''}</p>}
         </>}
       </div>}
-      {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x}>{x}</p>)}</div>}
+      {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x} className={x.startsWith('Review:')?'warning-review':'bad'}>{x}</p>)}</div>}
       <details className="window-summary" aria-label="Work window totals">
         <summary>
           <strong>
@@ -223,7 +225,7 @@ export function Diary({
         <div className="window-details">
           <div className="row wrap">
             <strong>{plan ? "Limiting planned 24-hour window" : "Limiting 24-hour window on this page"}</strong>
-            <span className="small">{d.profile.base} time</span>
+            <span className="small">{zoneLabel(countedWindow?.zone||d.profile.zone)} time</span>
           </div>
           {countedWindow && windowSummary ? (
             <>

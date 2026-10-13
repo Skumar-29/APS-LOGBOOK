@@ -9,15 +9,15 @@ export { RULE_SOURCE, RULE_VERSION } from "./catalogue";
 export interface Check {
   label:string; start:string; end:string; work:number; limit:number|null; rest:number; requiredRest:number;
   status:"Exceeded"|"Needs review"|"Within work cap"|"Rest due"|"Open period";
-  remaining:number; date:string; reason:string; assessedThrough:string; restSummary?:string;
+  remaining:number; date:string; reason:string; assessedThrough:string; restSummary?:string;zone?:string;
 }
 export interface WorkWindow {
   start:string;end:string;limit:number|null;established:boolean;assessedThrough:string;
-  work:number;rest:number;remaining:number;status:Check["status"];review:boolean;unknown:number;future:number;
+  zone?:string;work:number;rest:number;remaining:number;status:Check["status"];review:boolean;unknown:number;future:number;
 }
 export interface Finding {
   id:string;code:string;message:string;severity:"breach"|"review"|"due";
-  start:string;end:string;at:string;date:string;
+  start:string;end:string;at:string;date:string;zone?:string;instant?:number;
 }
 export interface RuleReport {
   breachSlots:Record<string,string[]>;restSlots:Record<string,string[]>;workWindows:WorkWindow[];
@@ -25,7 +25,8 @@ export interface RuleReport {
   restClassifications:Record<string,RestClassification>;
   lastWork:string;majorRest:string;nightRests:number;longNight:number;workSince24:number;
   nextBreak:number|null;restartAt:string|null;controlling:Check|null;
-  assessedThrough:string;source:string;version:string;revision:number;
+  assessedThrough:string;source:string;version:string;revision:number;zone?:string;
+  longNightStart?:string;longNightEnd?:string;longNightZone?:string;
 }
 interface Evaluation {rule:PeriodRule;p:Profile;a:number;b:number;deadline:number;established:boolean;review:boolean;row:Check;}
 const shortMinutes=(n:number)=>n%60===0 ? `${n/60}h` : n<60 ? `${n}m` : `${Math.floor(n/60)}h ${n%60}m`;
@@ -35,7 +36,7 @@ function longest(runs:TimelineRun[],a:number,b:number,sleeper=false,possible=fal
   let best=0,current=0,previous:TimelineRun|null=null;
   for(const r of runs) {
     if(r.end<=a || r.start>=b) continue;
-    const eligible=r.kind==="rest" && (r.rest==="stationary" || sleeper&&r.rest==="sleeper-moving" || possible&&r.rest==="unknown") && (possible || !r.review&&!r.clock);
+    const eligible=(possible&&r.kind===null || r.kind==="rest" && (r.rest==="stationary" || sleeper&&r.rest==="sleeper-moving" || possible&&r.rest==="unknown")) && (possible || !r.review&&!r.clock);
     if(eligible) {
       current=previous && previous.end===r.start && (previous.rest===r.rest || possible) ? current+overlap(r,a,b) : overlap(r,a,b);
       best=Math.max(best,current);
@@ -47,7 +48,7 @@ function longest(runs:TimelineRun[],a:number,b:number,sleeper=false,possible=fal
 function stationaryChunks(runs:TimelineRun[],a:number,b:number) {
   return restEpisodes(runs).filter(r=>r.rest==="stationary"&&!r.review&&!r.clock).map(r=>countRest(overlap(r,a,b))).filter(Boolean);
 }
-const compatibleOptions=(a:Profile,b:Profile)=>a.id===b.id&&a.zone===b.zone&&a.twoUp===b.twoUp&&operatingRules(a)===operatingRules(b)
+const compatibleOptions=(a:Profile,b:Profile)=>a.id===b.id&&a.twoUp===b.twoUp&&operatingRules(a)===operatingRules(b)
   && [a.scheme,b.scheme].every(s=>s==="Standard"||s==="BFM");
 function restMet(runs:TimelineRun[],a:number,b:number,rule:PeriodRule,p:Profile) {
   if(rule.type==="breaks") return counted(runs,a,b,"rest")>=rule.rest;
@@ -107,14 +108,21 @@ function workPackets(runs:TimelineRun[],zone:string):WorkPacket[] {
       const end=Math.min(g.end,start+QUARTER);
       own.push({start,end,minutes:15,night:false,proven:!g.parts.some(r=>r.end>start&&r.start<end&&(r.review||r.clock))});
     }
-    // Round the actual night portion, not both padding fragments at 00:00 and 06:00.
-    for(let date=civil(g.start,zone).date;date<=civil(g.end,zone).date;date=dateAdd(date,1)) {
-      const a=boundary(date,0,zone),b=boundary(date,24,zone),from=Math.max(g.start,a),to=Math.min(g.end,b);
-      if(to<=from) continue;
-      const quantity=countWork((to-from)/MINUTE)/15;
-      const portion=(p:WorkPacket)=>Math.max(0,Math.min(p.end,to)-Math.max(p.start,from));
-      const eligible=own.filter(p=>portion(p)>0).sort((x,y)=>portion(y)-portion(x)||x.start-y.start);
-      eligible.slice(0,quantity).forEach(p=>p.night=true);
+    // Use the base recorded with each interval, not today's base for all history.
+    // Merge overlapping night intervals so a zone change cannot double count them.
+    const nightParts:Array<{start:number;end:number}>=[];
+    for(const r of g.parts) for(let date=civil(r.start,r.profile.zone).date;date<=civil(r.end,r.profile.zone).date;date=dateAdd(date,1)) {
+      const from=Math.max(r.start,boundary(date,0,r.profile.zone)),to=Math.min(r.end,boundary(date,24,r.profile.zone));
+      if(to>from)nightParts.push({start:from,end:to});
+    }
+    const nights:Array<{start:number;end:number}>=[];
+    for(const n of nightParts.sort((a,b)=>a.start-b.start)) {
+      const last=nights.at(-1);if(last&&n.start<=last.end)last.end=Math.max(last.end,n.end);else nights.push({...n});
+    }
+    for(const n of nights) {
+      const quantity=countWork((n.end-n.start)/MINUTE)/15;
+      const portion=(p:WorkPacket)=>Math.max(0,Math.min(p.end,n.end)-Math.max(p.start,n.start));
+      own.filter(p=>portion(p)>0).sort((x,y)=>portion(y)-portion(x)||x.start-y.start).slice(0,quantity).forEach(p=>p.night=true);
     }
     packets.push(...own);
   }
@@ -155,7 +163,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
     const id=`${code}:${a}:${b}:${p.scheme}:${p.twoUp}`;
     if(findings.some(f=>f.id===id)) return;
     const stamp=atBase(at,p.zone);
-    findings.push({id,code,message,severity,start:atBase(a,p.zone),end:atBase(b,p.zone),at:stamp,date:stamp.slice(0,10)});
+    findings.push({id,code,message,severity,start:atBase(a,p.zone),end:atBase(b,p.zone),at:stamp,date:stamp.slice(0,10),zone:p.zone,instant:at});
   };
   const episodes=restEpisodes(runs);
   const restEnds=episodes.filter(r=>r.end<through&&runs.some(next=>next.start===r.end&&next.kind==="work"));
@@ -193,7 +201,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
     const p=phase.p;
     if(operatingRules(p)!=="HVNL") continue;
     const index=phases.indexOf(phase), previous=phases[index-1];
-    const switched=previous&&compatibleOptions(previous.p,p)&&!sameRules(previous.p,p);
+    const switched=previous&&compatibleOptions(previous.p,p)&&previous.p.scheme!==p.scheme;
     const reset=switched ? episodes.filter(r=>r.rest==="stationary"&&!r.review&&!r.clock&&Math.min(r.end,phase.start)-r.start>=2880*MINUTE)
       .map(r=>Math.min(r.end,phase.start)).at(-1) ?? -Infinity : -Infinity;
     if(sameRules(p,profile)&&phase.end===through) currentReset=reset;
@@ -222,7 +230,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
         reason=rule.minutes<1440 ? restWarning(rule,p,value) : `${rule.minutes===1440?"24h":rule.label} work limit exceeded`;
         mark(Math.max(at,phase.start),b,reason,p);
         addFinding(`work-${rule.minutes}`,reason,"breach",a,deadline,at,p);
-      } else if(rule.minutes===1440 && rule.limit!==null && provenWork(a,b)>rule.limit && !mixed && !missing) {
+      } else if((rule.minutes===1440 || rule.minutes===10080&&p.scheme==='Standard'&&rule.type==='stationary') && rule.limit!==null && provenWork(a,b)>rule.limit && !mixed) {
         const workRuns=provenRuns.filter(r=>r.kind==="work"&&r.end>a&&r.start<b);
         const first=workRuns[0],last=workRuns.at(-1);
         const couldHaveMajor=first&&last&&rule.rest>0&&longest(runs,Math.max(a,first.start),Math.min(b,last.end),rule.type==="stationary-or-sleeper",true)>=rule.rest;
@@ -246,15 +254,15 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
           mark(Math.max(a,deadline-QUARTER),deadline,reason,p,true);
         }
       }
-      if(complete && !restMet(runs,a,b,rule,p)) {
+      if(complete && !restMet(runs,a,b,rule,p) && !missing) {
         const warning=restWarning(rule,p,value);
         addFinding(`rest-${rule.minutes}`,warning,uncertain?"review":"breach",a,deadline,deadline-1,p);
       }
       const row:Check={label:rule.label,start:atBase(a,p.zone),end:atBase(deadline,p.zone),work:w,limit:rule.limit,rest:value,requiredRest:rule.rest,status,
         remaining:Math.max(0,Math.min(rule.limit===null?Infinity:rule.limit-w,Math.max(0,(deadline-through)/MINUTE-(restMet(runs,a,b,rule,p)?0:rule.rest)))),
-        date:civil(a,p.zone).date,reason,assessedThrough:atBase(b,p.zone),restSummary:restSummary(runs,a,b,rule,p)};
+        date:civil(a,p.zone).date,reason,assessedThrough:atBase(b,p.zone),zone:p.zone,restSummary:restSummary(runs,a,b,rule,p)};
       evaluations.push({rule,p,a,b,deadline,established,review:uncertain,row});
-      if(rule.minutes===1440) workWindows.push({start:row.start,end:row.end,limit:row.limit,established,assessedThrough:row.assessedThrough,work:w,rest:rest(a,b),remaining:row.remaining,status,review:uncertain,
+      if(rule.minutes===1440) workWindows.push({start:row.start,end:row.end,limit:row.limit,established,assessedThrough:row.assessedThrough,zone:p.zone,work:w,rest:rest(a,b),remaining:row.remaining,status,review:uncertain,
         unknown:elapsed(runs,a,b,null),future:Math.max(0,deadline-b)/MINUTE});
     }
   }
@@ -271,11 +279,12 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
   const currentBfm=profile.scheme==="BFM"&&!profile.twoUp;
   const bfmProfiles=[...new Map(phases.filter(x=>x.p.scheme==="BFM"&&!x.p.twoUp&&operatingRules(x.p)==="HVNL").map(x=>[x.p.zone,x.p])).values()];
   let longNight=0;
+  const longNightTimes=new Set<number>();
   for(const p of bfmProfiles) {
     const packets=workPackets(runs,p.zone),a24=anchors(tableFor(p).find(r=>r.minutes===1440)!,p);
     const selected=longNightPackets(packets,a24);
     const sum=(a:number,b:number,proven=false)=>[...selected].reduce((n,i)=>n+(packets[i].start>=a&&packets[i].start<b&&(!proven||packets[i].proven)?15:0),0);
-    if(p.zone===profile.zone) longNight=sum(through-10080*MINUTE,through);
+    for(const i of selected) if(packets[i].start>=through-10080*MINUTE&&packets[i].start<through) longNightTimes.add(packets[i].start);
     for(const phase of phases.filter(x=>sameRules(x.p,p))) for(const a of starts.filter(a=>a+10080*MINUTE>displayFrom)) {
       if(phase.end===through&&a<currentReset) continue;
       const b=Math.min(through,a+10080*MINUTE,phase.end),used=sum(a,b),proof=sum(a,b,true),deadline=a+10080*MINUTE;
@@ -287,7 +296,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
         addFinding("long-night",reason,"breach",a,deadline,first,p);
       } else if(incomplete(runs,a,b)) status="Needs review";
       const rule:PeriodRule={minutes:10080,limit:LONG_NIGHT_LIMIT,rest:0,type:"breaks",label:"7 days long/night"};
-      const row:Check={label:rule.label,start:atBase(a,p.zone),end:atBase(deadline,p.zone),work:used,limit:LONG_NIGHT_LIMIT,rest:0,requiredRest:0,status,remaining:Math.max(0,LONG_NIGHT_LIMIT-used),date:civil(a,p.zone).date,reason,assessedThrough:atBase(b,p.zone)};
+      const row:Check={label:rule.label,start:atBase(a,p.zone),end:atBase(deadline,p.zone),work:used,limit:LONG_NIGHT_LIMIT,rest:0,requiredRest:0,status,remaining:Math.max(0,LONG_NIGHT_LIMIT-used),date:civil(a,p.zone).date,reason,zone:p.zone,assessedThrough:atBase(b,p.zone)};
       evaluations.push({rule,p,a,b,deadline,established:true,review:status==="Needs review",row});
     }
     for(let i=0;i<checkpoints.length;i++) {
@@ -301,6 +310,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
       if(first) {const matching=workPackets(provenRuns,p.zone).filter(x=>x.start>=a&&x.start<b);let n=0;for(const x of matching){n+=15;if(n>BFM_84_LIMIT) mark(x.start,x.end,"84 hours work exceeded",p);}}
     }
   }
+  longNight=longNightTimes.size*15;
   const recent=nightEvents(runs,through-20160*MINUTE,through,profile.zone);
   const cutoffDay=civil(through,profile.zone).date;
   const relevantFrom=Math.max(through-20160*MINUTE,currentReset);
@@ -400,10 +410,12 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
   const majors=runs.filter(r=>r.kind==="rest"&&!r.review&&!r.clock&&(r.rest==="stationary" || profile.twoUp&&profile.scheme==="Standard"&&r.rest==="sleeper-moving")
     &&r.end-r.start>=(profile.twoUp ? profile.scheme==="BFM"?600:300 : 420)*MINUTE);
   const major=majors.at(-1);
+  const longCheck=checks.filter(c=>c.label==="7 days long/night").sort((a,b)=>b.start.localeCompare(a.start))[0];
+  if(longCheck) longNight=longCheck.work;
   return {breachSlots,restSlots,workWindows,checks,findings,issues:[...new Set(issues)],days,restClassifications,
     lastWork:lastWork?`${atBase(lastWork.start,lastWork.profile.zone)} — ${atBase(lastWork.end,lastWork.profile.zone)} · ${minutesLabel(countWork((lastWork.end-lastWork.start)/MINUTE))}`:"No completed work established",
     majorRest:major?`${atBase(major.start,major.profile.zone)} · ${minutesLabel(countRest((major.end-major.start)/MINUTE))}`:"Not established",
-    nightRests:recent.length,longNight,workSince24,nextBreak,restartAt,controlling,assessedThrough:atBase(through,profile.zone),source:RULE_SOURCE,version:RULE_VERSION,revision:s.revision};
+    nightRests:recent.length,longNight,longNightZone:longCheck?.zone||profile.zone,longNightStart:longCheck?.start||atBase(through-10080*MINUTE,profile.zone),longNightEnd:longCheck?.assessedThrough||atBase(through,profile.zone),workSince24,nextBreak,restartAt,controlling,zone:profile.zone,assessedThrough:atBase(through,profile.zone),source:RULE_SOURCE,version:RULE_VERSION,revision:s.revision};
 }
 
 export function windowTotals(_s:Workspace,window:WorkWindow) {
