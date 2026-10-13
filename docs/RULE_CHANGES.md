@@ -18,4 +18,4 @@ NHVR references reviewed 13 October 2026:
 - https://www.nhvr.gov.au/files/202010-1174-swapping-between-bfm-and-standard-hours.pdf
 - https://www.legislation.qld.gov.au/view/whole/html/inforce/2026-08-01/sl-2013-0078
 
-Verification at branch preparation: 119 unit/regression/worker/storage tests pass; TypeScript and production build pass. Full browser acceptance is a separate GitHub Actions gate and has not yet passed for this candidate. No certification or zero-error claim is made. Do not deploy until the gate and any failures are resolved.
+Verification: the initial candidate passed 119 unit/regression/worker/storage tests, TypeScript, the production build, and all 38 phone/desktop browser tests in GitHub Actions run 38381601459. A follow-up adds the mode-specific two-up major-rest labels and targeted Safari/WebKit coverage; 120 local tests and the build pass. Full final browser acceptance remains a separate GitHub Actions gate. No certification or zero-error claim is made. Do not deploy until that gate and any failures are resolved.

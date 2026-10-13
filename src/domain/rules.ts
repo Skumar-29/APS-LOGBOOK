@@ -1,7 +1,7 @@
 import { type DaySummary, type TimelineRun, atBase, buildTimeline, boundary, counted, countRest, countWork, elapsed, incomplete, sameRules, summarizeDay } from "./timeline";
 import { type RestClassification } from "./rest";
 import { restLabel, nightEvents, hasPair, restEpisodes } from "./qualifications";
-import { type Profile, type Workspace, profileOn } from "./model";
+import { type Profile, type Workspace, profileOn, ruleProfileAt } from "./model";
 import { civil, dateAdd, MINUTE, QUARTER, minutesLabel } from "./time";
 import { tableFor, operatingRules, type PeriodRule, BFM_84_LIMIT, LONG_NIGHT_LIMIT, RULE_SOURCE, RULE_VERSION } from "./catalogue";
 export { RULE_SOURCE, RULE_VERSION } from "./catalogue";
@@ -377,10 +377,11 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number}={
   const days:DaySummary[]=[];
   for(let n=range-1;n>=0;n--) {const date=dateAdd(reportDate,-n);days.push(summarizeDay(t,date,s.days[date]?.profile || profileOn(s,date)));}
   const restClassifications:Record<string,RestClassification>={};
-  const labels=new Map<TimelineRun,RestClassification>();
+  const labels=new Map<string,RestClassification>();
   for(const day of days) for(let slot=0;slot<96;slot++) if(day.slots[slot]==="rest") {
     const at=boundary(day.date,slot,(s.days[day.date]?.profile || profileOn(s,day.date)).zone),r=episodes.find(r=>r.start<=at&&r.end>at);
-    if(r) {if(!labels.has(r)) labels.set(r,restLabel(r.start,r.end,r.rest,r.profile.zone));restClassifications[day.date+":"+slot]=labels.get(r)!;}
+    if(r) {const p=ruleProfileAt(s,at,s.days[day.date]?.profile||profileOn(s,day.date)),key=`${r.start}:${r.end}:${p.scheme}:${p.twoUp}`;
+      if(!labels.has(key)) labels.set(key,restLabel(r.start,r.end,r.rest,p.zone,p));restClassifications[day.date+":"+slot]=labels.get(key)!;}
   }
   const lastWork=runs.filter(r=>r.kind==="work"&&r.end<through).at(-1);
   const majors=runs.filter(r=>r.kind==="rest"&&!r.review&&!r.clock&&(r.rest==="stationary" || profile.twoUp&&profile.scheme==="Standard"&&r.rest==="sleeper-moving")

@@ -4,7 +4,7 @@ import { dayRuleRange, ruleChangeInstant, saveRuleChange, suggestedRestType } fr
 import { analyse } from "../src/domain/rules";
 import { assessedDay, buildTimeline, counted } from "../src/domain/timeline";
 import { diaryPages } from "../src/documents/diary-pages";
-import { restEpisodes, nightEvents } from "../src/domain/qualifications";
+import { restEpisodes, nightEvents, restLabel } from "../src/domain/qualifications";
 import { finishTimer } from "../src/domain/diary";
 import { validateState } from "../src/domain/backup";
 import { dateAdd, MINUTE } from "../src/domain/time";
@@ -117,6 +117,14 @@ describe("dated hours-option facts and shared counting",()=>{
   });
 });
 describe("rest suggestions preserve physical facts",()=>{
+  it("uses the applicable two-up major-rest threshold without treating moving rest as stationary",()=>{
+    const a=at("2026-10-10T10:00"),b=at("2026-10-10T15:00");
+    expect(restLabel(a,b,"stationary",zone,{scheme:"Standard",twoUp:true}).label).toBe("Major stationary rest");
+    expect(restLabel(a,b,"stationary",zone,{scheme:"BFM",twoUp:true}).label).toBe("Rest break");
+    expect(restLabel(a,b,"sleeper-moving",zone,{scheme:"Standard",twoUp:true})).toMatchObject({label:"Major sleeper rest",night:false});
+    expect(restLabel(a,b,"sleeper-moving",zone,{scheme:"BFM",twoUp:true})).toMatchObject({label:"Moving sleeper rest",night:false});
+    expect(restLabel(a,b+120*MINUTE,"stationary",zone,{scheme:"ACH",twoUp:false})).toMatchObject({label:"Stationary rest · review",night:false});
+  });
   it("suggests stationary for solo without rewriting existing unknown rest",()=>{
     const s=fixture();s.days["2026-10-10"].restDefault="unknown";
     expect(suggestedRestType(s,false)).toBe("stationary");expect(s.days["2026-10-10"].restDefault).toBe("unknown");

@@ -50,5 +50,5 @@ export function classifyRest(
   const t=buildTimeline(s,asOf || lastDate+"T24:00");
   const p=s.days[date]?.profile || s.profile, origin=boundary(date,slot,p.zone);
   const r=t.runs.find(r=>r.kind==="rest" && r.start<=origin && r.end>origin);
-  return r ? restLabel(r.start,r.end,r.rest,p.zone) : {minutes:0,type,label:"Rest",night:false};
+  return r ? restLabel(r.start,r.end,r.rest,p.zone,r.profile) : {minutes:0,type,label:"Rest",night:false};
 }

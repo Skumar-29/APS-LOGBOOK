@@ -1,4 +1,4 @@
-import type { RestType } from "./model";
+import type { Profile, RestType } from "./model";
 import { civil, dateAdd, instantFor, MINUTE } from "./time";
 import { countRest, type TimelineRun } from "./timeline";
 
@@ -39,9 +39,12 @@ export function hasPair(events:NightEvent[]) {
   const days=new Set(events.map(e=>e.day));
   return [...days].some(d=>days.has(dateAdd(d,1)));
 }
-export function restLabel(start:number,end:number,type:RestType,zone:string) {
+export function restLabel(start:number,end:number,type:RestType,zone:string,p?:Pick<Profile,"scheme"|"twoUp">) {
   const minutes=countRest((end-start)/MINUTE);
+  if(p&&(p.scheme==="AFM"||p.scheme==="ACH")) return {minutes,type,night:false,
+    label:type==="unknown"?"Rest · confirm type":type==="stationary"?"Stationary rest · review":"Moving rest · review"};
+  const major=p?.twoUp ? p.scheme==="BFM"?600:300 : 420;
   const night=type==="stationary" && (minutes>=1440 || minutes>=420&&nightEvents([{start,end,kind:"rest",rest:type,profile:{} as TimelineRun["profile"],review:false,clock:false}],start,end,zone).length>0);
-  return {minutes,type,night,label:type==="unknown" ? "Rest · confirm type" : type==="sleeper-moving" ? "Moving sleeper rest"
-    : minutes>=1440 ? "24-hour rest" : night ? "Night rest" : minutes>=420 ? "Major stationary rest" : "Rest break"};
+  return {minutes,type,night,label:type==="unknown" ? "Rest · confirm type" : type==="sleeper-moving" ? p?.twoUp&&p.scheme==="Standard"&&minutes>=300?"Major sleeper rest":"Moving sleeper rest"
+    : minutes>=1440 ? "24-hour rest" : night ? "Night rest" : minutes>=major ? "Major stationary rest" : "Rest break"};
 }
