@@ -1,4 +1,5 @@
 import { displayCivil, displayDate } from "../domain/time";
+import {statusClass,warningLines,zoneLabel} from '../domain/warnings';
 import { useState } from "react";
 import { useStore } from "../context";
 import { useReport } from "../components/useReport";
@@ -62,7 +63,8 @@ export function Stats({
             <strong>{minutesLabel(sums.unknown)}</strong>
           </div>
         </div>
-        <p className="small">Counted through {displayCivil(report.assessedThrough)}</p>
+        <p className="small">Calendar pages · {displayDate(report.days[0].date)} → {displayDate(report.days.at(-1)!.date)}</p>
+        <p className="small">Counted through {displayCivil(report.assessedThrough)} · {zoneLabel(report.zone)} time</p>
         <div className="stats-bars">
           {report.days.map((d) => (
             <button
@@ -98,9 +100,10 @@ export function Stats({
           <b>{report.nightRests}</b>
         </div>
         <div className="record-line">
-          <span>Long / night work · last 7 days</span>
+          <span>Long / night work · rule window</span>
           <b>{minutesLabel(report.longNight)}</b>
         </div>
+        <p className="small">{displayCivil(report.longNightStart||'')} → {displayCivil(report.longNightEnd||'')} · {zoneLabel(report.longNightZone||report.zone)} time</p>
         <div className="record-line">
           <span>Work since identified 24h rest</span>
           <b>{minutesLabel(report.workSince24)}</b>
@@ -113,7 +116,7 @@ export function Stats({
           value={asOf}
           onChange={setAsOf}
         />
-        {report.issues.map((x, i) => (
+        {warningLines(report).map((x, i) => (
           <p className="small" key={i}>
             {x}
           </p>
@@ -122,12 +125,12 @@ export function Stats({
           <div className="period-review" key={i}>
             <div className="row">
               <b>{c.label}</b>
-              <span className={c.status === "Exceeded" ? "bad" : ""}>
+              <span className={'status '+statusClass(c.status)}>
                 {c.status}
               </span>
             </div>
             <p>
-              {displayCivil(c.start)} → {displayCivil(c.end)}
+              {displayCivil(c.start)} → {displayCivil(c.end)} · {zoneLabel(c.zone||report.zone)} time
             </p>
             <Action onClick={() => onDate(c.date)}>
               Open diary for this period

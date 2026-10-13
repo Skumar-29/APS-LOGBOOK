@@ -78,7 +78,7 @@ export function buildTimeline(s: Workspace, asOf: string, now = Date.now(), live
     let rest: RestType = previousKind === "rest" ? carry : "unknown";
     for (let at=midnight; at<Math.min(next,through); at+=QUARTER) {
       const slot=clock ? Math.floor(civil(at,p.zone).slot) : Math.round((at-midnight)/QUARTER);
-      const kind=d ? d.slots[slot] || "rest" : null;
+      const kind=d ? d.slots[slot] === "work" ? "work" : "rest" : null;
       if (kind === "rest") {
         if (previousKind !== "rest") rest=d?.restDefault || "unknown";
         else if (slot === 0 && d?.restDefault && d.restDefault !== "unknown") rest=d.restDefault;
@@ -106,8 +106,20 @@ export function buildTimeline(s: Workspace, asOf: string, now = Date.now(), live
   parts.sort((a,b)=>a.start-b.start);
   const runs: TimelineRun[]=[];
   for (const p of parts) {
+    // A missing date must never cover a recorded neighbouring page when its
+    // base-zone midnight differs. Prefer recorded facts; retain real conflicts
+    // for review rather than silently counting work twice.
+    while(runs.length && p.start < runs.at(-1)!.end) {
+      const prev=runs.at(-1)!;
+      if(p.kind!==null && (prev.kind===null || prev.kind===p.kind)) {
+        if(prev.start>=p.start) runs.pop();
+        else {prev.end=p.start;break;}
+      } else {
+        if(prev.kind!==null && p.kind!==null){prev.review=true;p.review=true;}
+        p.start=prev.end;break;
+      }
+    }
     const prev=runs.at(-1);
-    if (prev && p.start < prev.end) { p.start=prev.end;p.review=true; }
     if (p.end <= p.start) continue;
     if (prev && prev.end < p.start) runs.push({...p,start:prev.end,end:p.start,kind:null,rest:"unknown",review:true});
     const last=runs.at(-1);
