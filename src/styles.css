@@ -1292,3 +1292,20 @@ html { scroll-padding-top: 160px; }
 .form-save-bar > span { font-size: 12px; color: var(--muted); }
 .form-save-bar button { min-height: 44px; }
 @media (max-width: 380px) { .form-save-bar > .row { width: 100%; } .form-save-bar button { flex: 1; } }
+
+/* Wider previous/next date controls; keep the existing button height. */
+.workspace-header .date-nav button[aria-label="Previous recorded page or day"],
+.workspace-header .date-nav button[aria-label="Next recorded page or day"] {
+  width: 64px;
+  min-width: 64px;
+  flex: 0 0 64px;
+}
+.workspace-header .date-nav > .row:first-child > .civil-input { flex: 1; }
+@media (max-width: 360px) {
+  .workspace-header .date-nav button[aria-label="Previous recorded page or day"],
+  .workspace-header .date-nav button[aria-label="Next recorded page or day"] {
+    width: 56px;
+    min-width: 56px;
+    flex-basis: 56px;
+  }
+}
