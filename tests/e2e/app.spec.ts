@@ -120,6 +120,7 @@ test("first use, work/rest blocks, persisted location and offline reload", async
       .getByLabel("Location", { exact: true }),
   ).toHaveValue("Laverton North");
   await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   await context.setOffline(true);
   await page.reload();
   await expect(
