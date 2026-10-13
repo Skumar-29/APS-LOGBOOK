@@ -1138,6 +1138,23 @@ test("dated Standard change recalculates an active BFM timer and survives reload
   expect(csv).toContain('"BFM"');expect(csv).toContain('"Standard"');
   await page.setViewportSize({width:320,height:800});await noOverflow(page);
 });
+test("live block preview appears before release, erases immediately, and cancelled gestures never save",async({page})=>{
+ await start(page);
+ const first=page.locator('[data-slot="0"][data-row="work"]'),last=page.locator('[data-slot="3"][data-row="work"]');
+ async function storedDays(){return page.evaluate(()=>new Promise<string>((resolve,reject)=>{const r=indexedDB.open('aps-truck-workspace-v2',2);r.onsuccess=()=>{const db=r.result,q=db.transaction('workspace').objectStore('workspace').get('current');q.onsuccess=()=>{resolve(JSON.stringify(q.result.days));db.close();};q.onerror=()=>reject(q.error);};}));}
+ const before=await storedDays(),a=(await first.boundingBox())!,b=(await last.boundingBox())!;
+ await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();
+ await expect(first).toHaveClass(/work.*picking/);expect(await first.evaluate(e=>getComputedStyle(e).backgroundColor)).toBe('rgb(40, 113, 94)');expect(await storedDays()).toBe(before);
+ await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});
+ for(let n=0;n<4;n++)await expect(page.locator(`[data-slot="${n}"][data-row="work"]`)).toHaveClass(/work.*picking/);
+ expect(await storedDays()).toBe(before);await page.mouse.up();await expect(page.locator('.totals')).toContainText('Work 1h 00m');
+ await page.getByRole('button',{name:'Erase work',exact:true}).click();
+ const savedWork=await storedDays();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await expect(first).toHaveAttribute('aria-pressed','false');await expect(page.locator('[data-slot="0"][data-row="rest"]')).toHaveClass(/rest.*picking/);expect(await storedDays()).toBe(savedWork);
+ await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();await expect(page.locator('.totals')).toContainText('Work 0h 00m');
+ await page.getByRole('button',{name:'Erase work',exact:true}).click();const beforeCancel=await storedDays();
+ await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await expect(first).toHaveClass(/picking/);await first.dispatchEvent('pointercancel');await page.mouse.up();await expect(page.locator('.block.picking')).toHaveCount(0);expect(await storedDays()).toBe(beforeCancel);
+});
+
 test("two-up rest suggestions remain correctable and preserve separate factual intervals",async({page},info)=>{
   await start(page);const {emptyState}=await import("../../src/domain/model");
   const s=emptyState();s.onboarded=true;Object.assign(s.profile,{name:"Synthetic Two-up",licence:"TEST",base:"QLD",zone:"Australia/Brisbane",twoUp:true,coDriver:"Test co-driver"});

@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {writeFileSync,mkdirSync} from 'node:fs';
+import {writeFileSync,readFileSync,mkdirSync} from 'node:fs';
 import {emptyState,ensureDay,clone,type Workspace} from '../src/domain/model';
 import {editRange,diaryCsv} from '../src/domain/diary';
 import {dateAdd,totals} from '../src/domain/time';
@@ -101,6 +101,25 @@ describe('three-month driver simulation plus both two-up schemes',()=>{
  it('invoices reject reversed odometers and dates outside period; manual amounts survive calculation',()=>{
   const s=fixture(configs[0]),i=newInvoice(s);i.billTo='Simulation';i.dateFrom=i.dateTo='2026-07-01';i.loads=[tripLoad(s,'2026-07-01:24','2026-07-01:58')];i.loads[0].rate='0.55';i.loads[0].manualAmount=true;i.loads[0].amount='123.45';expect(validateInvoice(i).total).toBe(123.45);i.loads[0].odoFinish='1';expect(()=>validateInvoice(i)).toThrow();i.loads[0].odoFinish='100600';i.loads[0].loadDate='2026-07-02';expect(()=>validateInvoice(i)).toThrow();
  });
+ it('one continuous three-calendar-month workspace preserves historical profiles, forms and invoices',async()=>{
+  const months=configs.slice(0,3).map(c=>JSON.parse(readFileSync('simulation-output/'+c.name+'.json','utf8')) as Workspace);
+  const s=months[0],driverId=s.profile.id;
+  for(const source of months.slice(1)){
+   for(const [date,day]of Object.entries(source.days))if(date>=source.books[0].firstDate){day.profile.id=driverId;s.days[date]=day;}
+   source.forms.forEach(f=>{f.driverId=driverId;s.forms.push(f);});s.invoices.push(...source.invoices);
+  }
+  const standard=clone(months[0].profile),bfm=clone(months[1].profile),two=clone(months[2].profile);
+  standard.effectiveFrom='2026-07-01';bfm.id=two.id=driverId;bfm.effectiveFrom='2026-08-01';two.effectiveFrom='2026-09-01';s.profileHistory=[standard,bfm];s.profile=two;
+  for(const date of ['2026-07-31','2026-08-31'])ensureDay(s,date).restDefault='stationary';
+  s.pages=[];
+  for(let n=0;n<92;n++){
+   const date=dateAdd('2026-07-01',n);s.pages.push({id:'continuous-'+n,bookId:'sim-book',number:String(n+1),date,status:'Active',reason:''});
+   const r=analyse(s,date+'T24:00',2);expect(r.findings.filter(f=>f.severity==='breach'),date).toEqual([]);
+   expect(s.days[date].profile.scheme).toBe(date<'2026-08-01'?'Standard':date<'2026-09-01'?'BFM':'Standard');expect(s.days[date].profile.twoUp).toBe(date>='2026-09-01');
+  }
+  expect(s.forms).toHaveLength(64);expect(s.invoices).toHaveLength(64);const backup=await exportBackup(s);expect((await inspectBackup(backup)).state.days).toEqual(s.days);
+  writeFileSync('simulation-output/continuous-three-calendar-months-backup.json',backup);
+ },120000);
  it('two-up moving sleeper rest cannot replace 52/82-hour stationary rest',()=>{
   for(const c of configs.filter(c=>c.twoUp)){
    const s=fixture(c);

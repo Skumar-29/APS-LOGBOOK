@@ -30,7 +30,7 @@ export default defineConfig({
     { name: "desktop", use: { viewport: { width: 1280, height: 900 } } },
     {
       name: "phone-webkit",
-      grep: /first use, work\/rest|overnight active timer|dated Standard change|two-up rest suggestions|today's future work/,
+      grep: /first use, work\/rest|overnight active timer|dated Standard change|two-up rest suggestions|today's future work|live block preview/,
       use: { browserName: "webkit", viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true,
         launchOptions: { args: [] } },
     },
@@ -41,3 +41,4 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
   },
 });
+

@@ -17,7 +17,7 @@ import {
   zones,
 } from "../domain/model";
 import { allocatePage, cancelPage, changes, editRange } from "../domain/diary";
-import { hhmm, minutesLabel, parseSlot, totals, dateAdd } from "../domain/time";
+import { hhmm, minutesLabel, parseSlot, totals, dateAdd, civil } from "../domain/time";
 import {
   Action,
   Check,
@@ -77,7 +77,10 @@ export function Diary({
       row: "work" | "rest";
       axis: "pending" | "horizontal" | "vertical";
     } | null>(null),
-    suppressClick = useRef(false);
+    suppressClick = useRef(false),
+    previewKind = useRef<Activity>("work"),
+    gestureSequence = useRef(0);
+  const gridNow = civil(Date.now(), d.profile.zone);
   const full = s.settings.fullDay,
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
@@ -441,9 +444,14 @@ export function Diary({
                     >
                       {d.slots.slice(p * 24, p * 24 + 24).map((activity, i) => {
                         const slot = p * 24 + i, fraction=daySummary?.fractions[slot]?.[row] || 0;
-                        const future=!readOnly&&!!daySummary&&daySummary.fragments.every(f=>f.endSlot<=slot);
-                        const planned=future&&row==="work"&&activity==="work";
-                        const selected=readOnly ? activity===row : daySummary ? fraction>0 || planned : false;
+                        const preview = !readOnly && dragRange !== null &&
+                          slot >= Math.min(...dragRange) && slot <= Math.max(...dragRange);
+                        const shownActivity = preview ? previewKind.current || "rest" : activity;
+                        const future=!readOnly&&(daySummary ? daySummary.fragments.every(f=>f.endSlot<=slot) :
+                          date > gridNow.date || date === gridNow.date && slot >= Math.ceil(gridNow.slot));
+                        const planned=future&&row==="work"&&shownActivity==="work";
+                        const selected=preview ? shownActivity===row : readOnly ? activity===row :
+                          daySummary ? fraction>0 || planned : activity===row && (!future || planned);
                         const reasons=row==="work" ? redSlots[date+":"+slot] : report?.restSlots[date+":"+slot];
                         const color=reasons?.length?"#bc2934":row==="work"?"#28715e":"#5c88b7";
                         const spans=daySummary?.fragments.filter(f=>f.kind===row&&f.startSlot<slot+1&&f.endSlot>slot) || [];
@@ -459,14 +467,10 @@ export function Diary({
                               (planned ? " planned" : "") +
                               (reasons?.length ? " breach" : "") +
                               ((i + 1) % 4 === 0 ? " hour-end" : "") +
-                              (dragRange &&
-                              drag.current?.kind === row &&
-                              slot >= Math.min(...dragRange) &&
-                              slot <= Math.max(...dragRange)
-                                ? " picking"
-                                : "")
+                              (preview && shownActivity === row ? " picking" : "")
                             }
-                            style={!readOnly&&!planned&&stops.length?{backgroundColor:"var(--bg)",backgroundImage:`linear-gradient(to right, ${stops.join(",")})`}:undefined}
+                            style={preview ? {backgroundColor:selected?color:"var(--bg)",backgroundImage:"none"} :
+                              !readOnly&&!planned&&stops.length?{backgroundColor:"var(--bg)",backgroundImage:`linear-gradient(to right, ${stops.join(",")})`}:undefined}
                             disabled={readOnly}
                             aria-pressed={selected}
                             title={`${hhmm(slot)}–${hhmm(slot + 1)} ${row}${planned?" · planned":""}${reasons?.length ? " · "+reasons.join(" · ") : ""}`}
@@ -474,6 +478,8 @@ export function Diary({
                             onPointerDown={(e) => {
                               if (readOnly) return;
                               suppressClick.current = false;
+                              gestureSequence.current++;
+                              previewKind.current = mode === null ? null : row;
                               drag.current = {
                                 slot,
                                 row,
@@ -483,6 +489,7 @@ export function Diary({
                                 x: e.clientX,
                                 y: e.clientY,
                               };
+                              setDragRange([slot, slot]);
                               e.currentTarget.setPointerCapture(e.pointerId);
                             }}
                             onPointerMove={(e) => {
@@ -492,6 +499,7 @@ export function Diary({
                                 dy = Math.abs(e.clientY - a.y);
                               if (a.axis === "pending" && Math.max(dx, dy) >= 8)
                                 a.axis = dy > dx ? "vertical" : "horizontal";
+                              if (a.axis === "vertical") setDragRange(null);
                               if (a.axis !== "horizontal") return;
                               const hit = document
                                 .elementFromPoint(e.clientX, e.clientY)
@@ -516,6 +524,7 @@ export function Diary({
                             }}
                             onPointerUp={() => {
                               const a = drag.current;
+                              const sequence = gestureSequence.current;
                               if (a?.axis === "vertical")
                                 suppressClick.current = true;
                               if (
@@ -527,10 +536,13 @@ export function Diary({
                                   Math.min(a.slot, a.end),
                                   Math.max(a.slot, a.end) + 1,
                                   a.kind,
-                                ).catch(() => {});
+                                ).catch(() => {}).finally(() => {
+                                  if (gestureSequence.current === sequence) setDragRange(null);
+                                });
+                              } else {
+                                setDragRange(null);
                               }
                               drag.current = null;
-                              setDragRange(null);
                             }}
                             onClick={() => {
                               if (suppressClick.current) {
@@ -965,3 +977,4 @@ export function Diary({
     </>
   );
 }
+
