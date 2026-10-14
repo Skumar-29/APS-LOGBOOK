@@ -15,7 +15,7 @@ export function dayRuleRange(date:string,zone:string) {
 export function saveRuleChange(s:Workspace,from:number,to:number|null,p:Profile,now=Date.now()) {
   if(!Number.isFinite(from) || to!==null&&(!Number.isFinite(to)||to<=from)) throw Error("End must be after the start.");
   if(!["Standard","BFM"].includes(p.scheme)) throw Error("Use the certificate-specific settings for this option.");
-  if(p.id!==s.profile.id || p.zone!==s.profile.zone || p.twoUp!==s.profile.twoUp) throw Error("Change only the hours option here.");
+  if(p.id!==s.profile.id || p.zone!==s.profile.zone) throw Error("Change only the hours option here.");
   const before=clone(s.ruleChanges||[]), end=to??Infinity;
   const kept:RuleChange[]=[];
   for(const c of before) {
