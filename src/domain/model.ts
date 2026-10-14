@@ -244,6 +244,7 @@ export interface Workspace {
   legacy?: Record<string, unknown>;
 }
 export interface RuleChange {
+  companyAddress?: string;
   id: string;
   driverId: string;
   from: number;
