@@ -16,11 +16,17 @@ export function RuleChanges() {
   const [company,setCompany]=useState(current.operator),[certificate,setCertificate]=useState(current.certificate),[expiry,setExpiry]=useState(current.certificateExpiry);
   const [saved,setSaved]=useState("");
   const [companyAddress,setCompanyAddress]=useState("");
+  const [twoUp,setTwoUp]=useState(current.twoUp);
+  const [coDriver,setCoDriver]=useState(current.coDriver);
+  const [coLicence,setCoLicence]=useState(current.coLicence);
+  const [coScheme,setCoScheme]=useState(current.coScheme);
+  const [coBase,setCoBase]=useState(current.coBase);
   const [editing,setEditing]=useState<string|null>(null);
   async function save() {
     const from=mode==="day"?dayRuleRange(date,s.profile.zone).from:ruleChangeInstant(start,s.profile.zone);
     const to=mode==="day"?dayRuleRange(lastDay,s.profile.zone).to:limited?ruleChangeInstant(end,s.profile.zone):null;
-    const p:Profile={...clone(s.profile),scheme,operator:company,certificate,certificateExpiry:expiry};
+    const p:Profile={...clone(s.profile),scheme,twoUp,coDriver:twoUp?coDriver:"",coLicence:twoUp?coLicence:"",coScheme,coBase:twoUp?coBase:"",operator:company,certificate,certificateExpiry:expiry};
+    if(twoUp&&(!coDriver.trim()||!coLicence.trim())){setSaved("Enter the co-driver name and licence for Two-up.");return;}
     if(to!==null&&to<=from){setSaved("End must be after start.");return;}
     await mutate(w=>{
       if(editing) removeRuleChange(w,editing);
@@ -33,6 +39,7 @@ export function RuleChanges() {
   function edit(c:RuleChange) {
     setEditing(c.id);setScheme(c.profile.scheme==="BFM"?"BFM":"Standard");
     setCompany(c.profile.operator);setCompanyAddress(c.companyAddress||"");
+    setTwoUp(c.profile.twoUp);setCoDriver(c.profile.coDriver);setCoLicence(c.profile.coLicence);setCoScheme(c.profile.coScheme);setCoBase(c.profile.coBase);
     setCertificate(c.profile.certificate);setExpiry(c.profile.certificateExpiry);
     const from=civil(c.from,s.profile.zone),to=c.to===null?null:civil(c.to,s.profile.zone);
     setMode("time");setStart(from.date+"T"+from.time);setLimited(c.to!==null);
@@ -56,6 +63,13 @@ export function RuleChanges() {
         <Field label="Last day" type="date" value={lastDay} onChange={setLastDay} />
       </>:<Field label="Start in base time" type="datetime-local" value={start} onChange={setStart} />}
       <Field label="Company for this period" value={company} onChange={v=>{setCompany(v);if(v!==s.profile.operator){setCertificate("");setExpiry("");}setSaved("");}} />
+      <Field label="Driving arrangement" value={twoUp?"Two-up":"Solo"} options={["Solo","Two-up"]} onChange={v=>setTwoUp(v==="Two-up")} />
+      {twoUp&&<>
+        <Field label="Co-driver name" value={coDriver} onChange={setCoDriver} />
+        <Field label="Co-driver licence" value={coLicence} onChange={setCoLicence} />
+        <Field label="Co-driver hours option" value={coScheme} options={["Standard","BFM"]} onChange={v=>setCoScheme(v as "Standard"|"BFM")} />
+        <Field label="Co-driver base" value={coBase} onChange={setCoBase} />
+      </>}
       <Field label="Company operating address (optional)" value={companyAddress} onChange={setCompanyAddress} wide />
       {scheme==="BFM"&&<>
         <Field label="BFM accreditation for this period" value={certificate} onChange={setCertificate} />
@@ -72,7 +86,7 @@ export function RuleChanges() {
     {saved&&error&&<Action onClick={retry}>Retry hours check</Action>}
     <Fold title="Recorded hours-option changes">
       {(s.ruleChanges||[]).filter(c=>c.driverId===s.profile.id).slice().reverse().map(c=><div className="small" key={c.id} style={{padding:"12px 0",borderBottom:"1px solid #ddd"}}>
-        <div>{c.profile.scheme} · {displayDate(civil(c.from,c.profile.zone).date)} {civil(c.from,c.profile.zone).time} → {c.to===null?"until changed":`${displayDate(civil(c.to,c.profile.zone).date)} ${civil(c.to,c.profile.zone).time}`}</div>
+        <div>{c.profile.scheme} · {c.profile.twoUp?"Two-up":"Solo"} · {displayDate(civil(c.from,c.profile.zone).date)} {civil(c.from,c.profile.zone).time} → {c.to===null?"until changed":`${displayDate(civil(c.to,c.profile.zone).date)} ${civil(c.to,c.profile.zone).time}`}</div>
         {c.profile.operator&&<div>{c.profile.operator}{c.companyAddress?` · ${c.companyAddress}`:""}</div>}
         <div style={{display:"flex",gap:8,marginTop:8}}><Action onClick={()=>edit(c)}>Edit</Action><Action onClick={()=>remove(c.id)}>Remove</Action></div>
       </div>)}
