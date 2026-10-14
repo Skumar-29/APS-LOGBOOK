@@ -30,6 +30,12 @@ export function saveRuleChange(s:Workspace,from:number,to:number|null,p:Profile,
   audit(s,"Save dated hours option",entry.id,before,clone(s.ruleChanges));
   return entry;
 }
+export function removeRuleChange(s:Workspace,id:string) {
+  const before=clone(s.ruleChanges||[]);
+  if(!before.some(c=>c.id===id&&c.driverId===s.profile.id)) throw Error("Hours-option change not found.");
+  s.ruleChanges=before.filter(c=>c.id!==id);
+  audit(s,"Remove dated hours option",id,before,clone(s.ruleChanges));
+}
 export function suggestedRestType(s:Workspace,twoUp:boolean) {
   if(!twoUp) return "stationary" as const;
   const last=[...s.activities].reverse().find(t=>t.kind==="rest"&&t.profile.id===s.profile.id&&t.profile.twoUp&&t.restType!=="unknown");
