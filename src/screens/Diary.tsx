@@ -429,8 +429,9 @@ export function Diary({
             </div>
             {visible.map((p) => (
               <div key={p} className="six-hours diary-grid-section swipe-grid">
+                <div className="swipe-period-label">{["12 AM – 6 AM","6 AM – 12 PM","12 PM – 6 PM","6 PM – 12 AM"][p]}</div>
                 <div className="swipe-hour-labels">
-                  {Array.from({length:6},(_,i)=><span key={i}>{String(p*6+i).padStart(2,"0")}</span>)}
+                  {Array.from({length:6},(_,i)=><span key={i}>{(p*6+i)%12||12}</span>)}
                 </div>
                 <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}>
                   {d.slots.slice(p*24,p*24+24).map((activity,i)=>{
