@@ -441,8 +441,8 @@ export function Diary({
                     const slot=p*24+i;
                     const inDrag=dragRange&&slot>=Math.min(...dragRange)&&slot<=Math.max(...dragRange);
                     const kind=inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
-                    const reasons=kind==="work"?redSlots[date+":"+slot]:report?.restSlots[date+":"+slot];
-                    const reviews=kind==="work"?amberSlots[date+":"+slot]:undefined;
+                    const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
+                    const reviews=undefined;
                     return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":reviews?.length?"review":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
                       aria-label={`${hhmm(slot)} to ${hhmm(slot+1)}, ${kind}`}
