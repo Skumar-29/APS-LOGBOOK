@@ -69,6 +69,7 @@ export function Diary({
       revisions: Record<string, number>;
     } | null>(null),
     [dragRange, setDragRange] = useState<number[] | null>(null),
+    [swipeKind,setSwipeKind] = useState<"work"|"rest"|null>(null),
     [breach, setBreach] = useState<string[] | null>(null);
   const drag = useRef<{
       slot: number;
@@ -395,21 +396,13 @@ export function Diary({
             <div className="row wrap block-toolbar">
               <div className="row">
                 <strong>Work / Rest</strong>
-                <button
-                  aria-pressed={mode === null}
-                  disabled={readOnly}
-                  onClick={() => setMode(mode === null ? "work" : null)}
-                >
-                  Erase work
-                </button>
+
               </div>
               <div className="row">
                 <Action disabled={!undo || readOnly} onClick={undoBlocks}>
                   Undo
                 </Action>
-                <Action onClick={() => setRange(true)} disabled={readOnly}>
-                  Time range
-                </Action>
+
               </div>
             </div>
             <div className="periods">
@@ -439,137 +432,48 @@ export function Diary({
               </Action>
             </div>
             {visible.map((p) => (
-              <div key={p} className="six-hours diary-grid-section">
-                <div className="hour-labels">
-                  <span />
-                  {Array.from({ length: 6 }, (_, i) => (
-                    <span key={i}>{String(p * 6 + i).padStart(2, "0")}</span>
-                  ))}
+              <div key={p} className="six-hours diary-grid-section swipe-grid">
+                <div className="swipe-hour-labels">
+                  {Array.from({length:6},(_,i)=><span key={i}>{String(p*6+i).padStart(2,"0")}</span>)}
                 </div>
-                {(["work", "rest"] as const).map((row) => (
-                  <div className="diary-grid-row" key={row}>
-                    <strong className="row-label">
-                      {row === "work" ? "Work" : "Rest"}
-                    </strong>
-                    <div
-                      className="blocks"
-                      role="group"
-                      aria-label={`${row === "work" ? "Work" : "Rest"} blocks ${p * 6} to ${(p + 1) * 6}`}
-                    >
-                      {d.slots.slice(p * 24, p * 24 + 24).map((activity, i) => {
-                        const slot = p * 24 + i, fraction=daySummary?.fractions[slot]?.[row] || 0;
-                        const future=!readOnly&&boundary(date,slot,d.profile.zone)>=now;
-                        const planned=future&&(row==="work" ? activity==="work" : planning&&activity!=="work");
-                        const selected=readOnly ? activity===row : daySummary ? fraction>0 || planned : activity===row;
-                        const reasons=planned ? row==="work" ? plan?.report.breachSlots[date+":"+slot] : plan?.report.restSlots[date+":"+slot] : row==="work" ? redSlots[date+":"+slot] : report?.restSlots[date+":"+slot];
-                        const color=reasons?.length?"#bc2934":row==="work"?"#28715e":"#5c88b7";
-                        const spans=daySummary?.fragments.filter(f=>f.kind===row&&f.startSlot<slot+1&&f.endSlot>slot) || [];
-                        const stops=spans.flatMap(f=>{const a=Math.max(0,f.startSlot-slot)*100,b=Math.min(1,f.endSlot-slot)*100;return [`transparent ${a}%`,`${color} ${a}%`,`${color} ${b}%`,`transparent ${b}%`];});
-                        return (
-                          <button
-                            key={slot}
-                            data-slot={slot}
-                            data-row={row}
-                            className={
-                              "block " +
-                              (selected ? row : "blank") +
-                              (planned ? " planned" : "") +
-                              (reasons?.length ? " breach" : "") +
-                              ((i + 1) % 4 === 0 ? " hour-end" : "") +
-                              (dragRange &&
-                              drag.current?.kind === row &&
-                              slot >= Math.min(...dragRange) &&
-                              slot <= Math.max(...dragRange)
-                                ? " picking"
-                                : "")
-                            }
-                            style={!readOnly&&!planned&&stops.length?{backgroundColor:"var(--bg)",backgroundImage:`linear-gradient(to right, ${stops.join(",")})`}:undefined}
-                            disabled={readOnly}
-                            aria-pressed={selected}
-                            title={`${hhmm(slot)}–${hhmm(slot + 1)} ${row}${planned?" · planned":""}${reasons?.length ? " · "+reasons.join(" · ") : ""}`}
-                            aria-label={`${hhmm(slot)} ${row}${planned?" · planned":""}${reasons?.length ? " · "+reasons.join(" · ") : ""}`}
-                            onPointerDown={(e) => {
-                              if (readOnly) return;
-                              suppressClick.current = false;
-                              drag.current = {
-                                slot,
-                                row,
-                                axis: "pending",
-                                end: slot,
-                                kind: mode === null ? null : row,
-                                x: e.clientX,
-                                y: e.clientY,
-                              };
-                              e.currentTarget.setPointerCapture(e.pointerId);
-                            }}
-                            onPointerMove={(e) => {
-                              const a = drag.current;
-                              if (!a) return;
-                              const dx = Math.abs(e.clientX - a.x),
-                                dy = Math.abs(e.clientY - a.y);
-                              if (a.axis === "pending" && Math.max(dx, dy) >= 8)
-                                a.axis = dy > dx ? "vertical" : "horizontal";
-                              if (a.axis !== "horizontal") return;
-                              const hit = document
-                                .elementFromPoint(e.clientX, e.clientY)
-                                ?.closest("[data-slot]");
-                              if (hit?.getAttribute("data-row") === a.row) {
-                                const end = Number(
-                                  hit.getAttribute("data-slot"),
-                                );
-                                if (
-                                  Math.floor(end / 24) ===
-                                  Math.floor(a.slot / 24)
-                                ) {
-                                  a.end = end;
-                                  setDragRange([a.slot, a.end]);
-                                }
-                              }
-                            }}
-                            onPointerCancel={() => {
-                              drag.current = null;
-                              setDragRange(null);
-                              suppressClick.current = true;
-                            }}
-                            onPointerUp={() => {
-                              const a = drag.current;
-                              if (a?.axis === "vertical")
-                                suppressClick.current = true;
-                              if (
-                                a?.axis === "horizontal" &&
-                                a.slot !== a.end
-                              ) {
-                                suppressClick.current = true;
-                                void blocks(
-                                  Math.min(a.slot, a.end),
-                                  Math.max(a.slot, a.end) + 1,
-                                  a.kind,
-                                ).catch(() => {});
-                              }
-                              drag.current = null;
-                              setDragRange(null);
-                            }}
-                            onClick={() => {
-                              if (suppressClick.current) {
-                                suppressClick.current = false;
-                                return;
-                              }
-                              if (reasons?.length && mode !== null) {
-                                setBreach(reasons);
-                                return;
-                              }
-                              void blocks(
-                                slot,
-                                slot + 1,
-                                mode === null ? null : row,
-                              ).catch(() => {});
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}>
+                  {d.slots.slice(p*24,p*24+24).map((activity,i)=>{
+                    const slot=p*24+i;
+                    const inDrag=dragRange&&slot>=Math.min(...dragRange)&&slot<=Math.max(...dragRange);
+                    const kind=inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
+                    const reasons=kind==="work"?redSlots[date+":"+slot]:report?.restSlots[date+":"+slot];
+                    const reviews=kind==="work"?amberSlots[date+":"+slot]:undefined;
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":reviews?.length?"review":""}`}
+                      disabled={readOnly} aria-pressed={kind==="work"}
+                      aria-label={`${hhmm(slot)} to ${hhmm(slot+1)}, ${kind}`}
+                      title={`${hhmm(slot)}–${hhmm(slot+1)} ${kind}${reasons?.length?" · "+reasons.join(" · "):""}`}
+                      onPointerDown={e=>{
+                        if(readOnly||e.pointerType==="mouse"&&e.button!==0)return;
+                        e.preventDefault();
+                        const next=activity==="work"?"rest":"work";
+                        drag.current={slot,end:slot,kind:next,row:"work",axis:"horizontal",x:e.clientX,y:e.clientY};
+                        setSwipeKind(next);setDragRange([slot,slot]);
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      }}
+                      onPointerMove={e=>{
+                        const state=drag.current;if(!state)return;
+                        const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest("[data-slot]");
+                        if(!hit)return;
+                        const next=Number(hit.getAttribute("data-slot"));
+                        if(Number.isInteger(next)&&next>=0&&next<96&&next!==state.end){
+                          state.end=next;setDragRange([state.slot,next]);
+                        }
+                      }}
+                      onPointerUp={()=>{
+                        const state=drag.current;if(!state)return;
+                        drag.current=null;setDragRange(null);setSwipeKind(null);
+                        void blocks(Math.min(state.slot,state.end),Math.max(state.slot,state.end)+1,state.kind).catch(()=>{});
+                      }}
+                      onPointerCancel={()=>{drag.current=null;setDragRange(null);setSwipeKind(null);}}
+                      onLostPointerCapture={()=>{if(drag.current){drag.current=null;setDragRange(null);setSwipeKind(null);}}}
+                    />;
+                  })}
+                </div>
               </div>
             ))}
           </section>
