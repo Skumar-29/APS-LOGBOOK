@@ -19,7 +19,7 @@ import {
   zones,
 } from "../domain/model";
 import { allocatePage, cancelPage, changes, editRange } from "../domain/diary";
-import { hhmm, minutesLabel, parseSlot, totals, dateAdd } from "../domain/time";
+import { hhmm, minutesLabel, totals, dateAdd } from "../domain/time";
 import {
   Action,
   Check,
