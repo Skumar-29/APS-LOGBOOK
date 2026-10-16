@@ -1344,3 +1344,8 @@ html { scroll-padding-top: 160px; }
 .swipe-block:disabled{opacity:.85;}
 
 .swipe-period-label{font-size:12px;font-weight:700;margin:3px 0 5px;color:var(--text);}
+
+.swipe-clock-picker{justify-content:space-between;gap:6px;flex-wrap:wrap;margin:4px 0 8px;}
+.swipe-clock-picker .row{gap:4px;}
+.swipe-clock-picker button{font-size:11px;padding:5px 8px;border-radius:7px;}
+.swipe-clock-picker button[aria-pressed="true"]{background:#246fca;color:white;border-color:#246fca;}
