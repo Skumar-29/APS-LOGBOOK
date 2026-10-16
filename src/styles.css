@@ -1330,3 +1330,15 @@ html { scroll-padding-top: 160px; }
 .diary-grid-row .block.planned.breach { opacity:1; }
 .planning-summary { margin:8px 0; }
 .planning-summary p { margin:4px 0; }
+
+/* Compact live toggle-and-swipe diary grid. Existing calculation engine remains unchanged. */
+.swipe-grid {max-width:100%;width:100%;touch-action:pan-y;}
+.swipe-hour-labels{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-size:11px;font-weight:650;color:var(--text);text-align:left;margin:0 0 3px;}
+.swipe-hour-labels span{padding-left:2px;}
+.swipe-blocks{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:1px;width:100%;touch-action:none;user-select:none;-webkit-user-select:none;}
+.swipe-block{min-width:0;min-height:43px;padding:0;border:0;border-radius:2px;background:#318beb;touch-action:none;transition:background-color 50ms linear;}
+.swipe-block.work{background:#20c980;}
+.swipe-block.hour-end{margin-right:2px;}
+.swipe-block.breach{outline:2px solid #c72b38;outline-offset:-2px;}
+.swipe-block.review{outline:2px solid #e0a329;outline-offset:-2px;}
+.swipe-block:disabled{opacity:.85;}
