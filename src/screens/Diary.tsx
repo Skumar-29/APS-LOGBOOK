@@ -52,6 +52,7 @@ export function Diary({
     readOnly = !!page && page.status !== "Active",
     d = (readOnly ? page?.snapshot : s.days[date]) || emptyDay(s, date);
   const [period, setPeriod] = useState(0),
+    [clockFormat, setClockFormat] = useState<"12h"|"24h">(() => { try { return localStorage.getItem("aps-diary-clock-format") === "24h" ? "24h" : "12h"; } catch { return "12h"; } }),
     [mode] = useState<Activity>("work"),
     [doc, setDoc] = useState(false),
     [allocation, setAllocation] = useState(false),
@@ -427,11 +428,12 @@ export function Diary({
                 {full ? "Compact" : "Full day"}
               </Action>
             </div>
+            <div className="row swipe-clock-picker"><span className="small">Time format</span><div className="row"><button type="button" aria-pressed={clockFormat==="12h"} onClick={()=>{setClockFormat("12h");try{localStorage.setItem("aps-diary-clock-format","12h");}catch{}}}>12-hour AM/PM</button><button type="button" aria-pressed={clockFormat==="24h"} onClick={()=>{setClockFormat("24h");try{localStorage.setItem("aps-diary-clock-format","24h");}catch{}}}>24-hour</button></div></div>
             {visible.map((p) => (
               <div key={p} className="six-hours diary-grid-section swipe-grid">
-                <div className="swipe-period-label">{["12 AM – 6 AM","6 AM – 12 PM","12 PM – 6 PM","6 PM – 12 AM"][p]}</div>
+                <div className="swipe-period-label">{clockFormat==="12h"?["12 AM – 6 AM","6 AM – 12 PM","12 PM – 6 PM","6 PM – 12 AM"][p]:["00:00 – 06:00","06:00 – 12:00","12:00 – 18:00","18:00 – 24:00"][p]}</div>
                 <div className="swipe-hour-labels">
-                  {Array.from({length:6},(_,i)=><span key={i}>{(p*6+i)%12||12}</span>)}
+                  {Array.from({length:6},(_,i)=><span key={i}>{clockFormat==="12h"?((p*6+i)%12||12):String(p*6+i).padStart(2,"0")}</span>)}
                 </div>
                 <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}>
                   {d.slots.slice(p*24,p*24+24).map((activity,i)=>{
