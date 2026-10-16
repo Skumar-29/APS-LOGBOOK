@@ -1342,3 +1342,5 @@ html { scroll-padding-top: 160px; }
 .swipe-block.breach{outline:2px solid #c72b38;outline-offset:-2px;}
 .swipe-block.review{outline:2px solid #e0a329;outline-offset:-2px;}
 .swipe-block:disabled{opacity:.85;}
+
+.swipe-period-label{font-size:12px;font-weight:700;margin:3px 0 5px;color:var(--text);}
