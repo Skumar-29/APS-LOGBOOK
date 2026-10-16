@@ -52,11 +52,7 @@ export function Diary({
     readOnly = !!page && page.status !== "Active",
     d = (readOnly ? page?.snapshot : s.days[date]) || emptyDay(s, date);
   const [period, setPeriod] = useState(0),
-    [mode, setMode] = useState<Activity>("work"),
-    [range, setRange] = useState(false),
-    [from, setFrom] = useState("00:00"),
-    [to, setTo] = useState("06:00"),
-    [overnight, setOvernight] = useState(false),
+    [mode] = useState<Activity>("work"),
     [doc, setDoc] = useState(false),
     [allocation, setAllocation] = useState(false),
     [bookId, setBookId] = useState(""),
@@ -442,8 +438,7 @@ export function Diary({
                     const inDrag=dragRange&&slot>=Math.min(...dragRange)&&slot<=Math.max(...dragRange);
                     const kind=inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
                     const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
-                    const reviews=undefined;
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":reviews?.length?"review":""}`}
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
                       aria-label={`${hhmm(slot)} to ${hhmm(slot+1)}, ${kind}`}
                       title={`${hhmm(slot)}–${hhmm(slot+1)} ${kind}${reasons?.length?" · "+reasons.join(" · "):""}`}
@@ -698,60 +693,6 @@ export function Diary({
             )}
           </Fold>
         </>
-      )}
-      {range && (
-        <Modal title="Record a time range" onClose={() => setRange(false)}>
-          <div className="fields">
-            <Field
-              label="From"
-              type="time"
-              step="900"
-              value={from}
-              onChange={setFrom}
-            />
-            <Field
-              label="To (24:00 for midnight)"
-              value={to}
-              onChange={setTo}
-            />
-          </div>
-          <Action
-            onClick={async () => {
-              await blocks(0, 96, "rest", false, true);
-              setRange(false);
-            }}
-          >
-            Full day · stationary rest
-          </Action>
-          <Check
-            label="Finishes on the next day"
-            value={overnight}
-            onChange={setOvernight}
-          />
-          <div className="row">
-            {(["work", "rest"] as Activity[]).map((k) => (
-              <Action
-                key={k || "clear"}
-                primary={k === mode}
-                onClick={async () => {
-                  await blocks(
-                    parseSlot(from),
-                    to === "24:00" ? 96 : parseSlot(to),
-                    k,
-                    overnight,
-                  );
-                  setRange(false);
-                }}
-              >
-                {k === "work"
-                  ? "Save work"
-                  : k === "rest"
-                    ? "Save rest"
-                    : "Erase work"}
-              </Action>
-            ))}
-          </div>
-        </Modal>
       )}
       {allocation && (
         <Modal title="Paper page" onClose={() => setAllocation(false)}>
