@@ -109,6 +109,8 @@ test('past, current and future blocks are editable without time locking', async 
   await slot(0).click();
   await expect(slot(0)).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
+  // Reload restores the current diary date; navigate back to the saved future date.
+  await chooseDate(page, '2026-10-12');
   await expect(slot(0)).toHaveAttribute('aria-pressed', 'true');
   await slot(0).click();
   await expect(slot(0)).toHaveAttribute('aria-pressed', 'false');
