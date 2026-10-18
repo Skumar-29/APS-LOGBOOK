@@ -322,3 +322,22 @@ it("identifies the 84-hour budget when it is tighter than the short-period cap",
   expect(r.nextBreak).toBe(120);
   expect(r.controlling?.label).toBe("BFM 84-hour work cap");
 });
+
+
+describe("Elapsed CSV export", () => {
+  it("elapsed CSV has consistent columns and no future-time amounts", () => {
+    const s = fixture();
+    editRange(s, "2026-10-09", 24, 26, "work");
+    const rows = diaryCsv(s, "2026-10-09", "2026-10-09")
+      .split("\r\n")
+      .map(row => row.slice(1, -1).split('","'));
+    const header = rows[0];
+    expect(header).toHaveLength(21);
+    expect(header).not.toContain("Future minutes");
+    expect(header[16]).toBe("Unrecorded minutes");
+    expect(rows.length).toBeGreaterThan(2);
+    expect(rows.every(row => row.length === header.length)).toBe(true);
+    expect(rows[1][9]).toBe(s.days["2026-10-09"].vehicle);
+    expect(rows[1][10]).toBe(s.days["2026-10-09"].profile.name);
+  });
+});
