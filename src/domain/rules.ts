@@ -13,7 +13,7 @@ export interface Check {
 }
 export interface WorkWindow {
   start:string;end:string;limit:number|null;established:boolean;assessedThrough:string;
-  zone?:string;work:number;rest:number;remaining:number;status:Check["status"];review:boolean;unknown:number;future:number;
+  zone?:string;work:number;rest:number;remaining:number;status:Check["status"];review:boolean;unknown:number;
 }
 export interface Finding {
   id:string;code:string;message:string;severity:"breach"|"review"|"due";
@@ -274,7 +274,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
         date:civil(a,p.zone).date,reason,assessedThrough:atBase(b,p.zone),zone:p.zone,restSummary:restSummary(runs,a,b,rule,p)};
       evaluations.push({rule,p,a,b,deadline,established,review:uncertain,row});
       if(rule.minutes===1440) workWindows.push({start:row.start,end:row.end,limit:row.limit,established,assessedThrough:row.assessedThrough,zone:p.zone,work:w,rest:rest(a,b),remaining:row.remaining,status,review:uncertain,
-        unknown:elapsed(runs,a,b,null),future:Math.max(0,deadline-b)/MINUTE});
+        unknown:elapsed(runs,a,b,null)});
     }
   }
   const pendingBreaks:Check[]=[];
@@ -430,7 +430,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
 }
 
 export function windowTotals(_s:Workspace,window:WorkWindow) {
-  return {work:window.work,rest:window.rest,unknown:window.unknown,future:window.future,review:window.review};
+  return {work:window.work,rest:window.rest,unknown:window.unknown,review:window.review};
 }
 export function selectWorkWindow(windows:WorkWindow[],date:string) {
   return windows.filter(w=>w.start.slice(0,10)<=date&&w.end>date+" 00:00").sort((a,b)=>
