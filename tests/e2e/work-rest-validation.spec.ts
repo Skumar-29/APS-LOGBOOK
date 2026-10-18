@@ -119,3 +119,41 @@ test('past, current and future blocks are editable without time locking', async 
   await slot(90).click();
   await expect(slot(90)).toHaveAttribute('aria-pressed', 'true');
 });
+
+
+test('mixed earlier and later selections retain red breaches, without locking future cells', async ({ page }) => {
+  // Reproduces the two consecutive NSW Standard pages in the supplied screenshots.
+  await page.clock.setFixedTime(new Date('2026-10-18T23:15:00Z')); // NSW 19 Oct, 10:15 AEDT
+  await onboard(page);
+  const s=emptyState();
+  s.onboarded=true;
+  s.settings.autoPages=false;
+  Object.assign(s.profile, {
+    name:'Synthetic Test Driver', licence:'TEST', scheme:'Standard',
+    base:'NSW', zone:'Australia/Sydney'
+  });
+  ensureDay(s,'2026-10-17');
+  editRange(s,'2026-10-18',0,52,'work');
+  for (const i of [21,31,42,43]) editRange(s,'2026-10-18',i,i+1,'rest');
+  editRange(s,'2026-10-19',0,90,'work');
+  for (const i of [21,31]) editRange(s,'2026-10-19',i,i+1,'rest');
+  await seed(page,s);
+
+  await chooseDate(page,'2026-10-19');
+  await expect(page.locator('.swipe-block[data-slot="80"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('[aria-label="Page totals"]')).toContainText('22h 00m');
+  await expect(page.locator('[aria-label="Page totals"]')).toContainText('2h 00m');
+  await expect(page.getByText('Counted through 20/10/2026 00:00')).toBeVisible();
+  const breach=page.locator('.swipe-block.work.breach').first();
+  await expect(breach).toBeVisible({timeout:30000});
+  await expect(breach).toHaveCSS('background-color','rgb(198, 40, 40)');
+  await expect(page.locator('.swipe-block[data-slot="80"]')).toBeEnabled();
+
+  await page.reload();
+  await expect(page.locator('.swipe-block.work.breach').first()).toBeVisible({timeout:30000});
+  await expect(page.locator('.swipe-block[data-slot="80"]')).toHaveAttribute('aria-pressed','true');
+
+  await chooseDate(page,'2026-10-18');
+  await expect(page.locator('[aria-label="Page totals"]')).toContainText('12h 00m');
+  await expect(page.locator('[aria-label="Page totals"]')).toContainText('12h 00m');
+});
