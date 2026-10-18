@@ -63,6 +63,21 @@ describe("real hours-worker message contract",()=>{
     expect(recorded.findings.some(f=>f.severity==="breach")).toBe(true);
     expect(s).toEqual(before);
   });
+  it("does not extend a running work timer to the end of a future-entered diary page",()=>{
+    const s=emptyState();
+    Object.assign(s.profile,{scheme:"Standard",base:"NSW",zone:"Australia/Sydney"});
+    ensureDay(s,"2026-10-19");
+    const stamp=(time:string)=>instantFor("2026-10-19",time,s.profile.zone)[0];
+    s.timer={id:"live-now",kind:"work",start:stamp("09:45"),zone:s.profile.zone,
+      vehicle:"TEST",restType:"unknown",profile:recordProfile(s.profile)};
+    const before=clone(s);
+    channel.onmessage!({data:{id:"timer-cutoff",s,asOf:"2026-10-19T24:00",range:1,
+      now:instantFor("2026-10-20","00:00",s.profile.zone)[0],liveThrough:stamp("10:15")}});
+    const result=channel.postMessage.mock.calls[0][0].report;
+    expect(result.days[0].work).toBe(30);
+    expect(result.days[0].rest).toBe(1410);
+    expect(s).toEqual(before);
+  });
   it("returns a short retry error instead of an empty clearance",()=>{
     const log=vi.spyOn(console,"error").mockImplementation(()=>{});
     channel.onmessage!({data:{id:"invalid",s:fixture(),asOf:"invalid",range:1,now:Date.now()}});
