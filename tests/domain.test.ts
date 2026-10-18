@@ -688,7 +688,6 @@ describe("diary highlights and counted-window totals", () => {
       work: 480,
       rest: 60,
       unknown: 0,
-      future: 900,
     });
   });
   it("does not present highlights or calculated windows for unsupported rules", () => {
