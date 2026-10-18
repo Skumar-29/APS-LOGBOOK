@@ -1349,3 +1349,13 @@ html { scroll-padding-top: 160px; }
 .swipe-clock-picker .row{gap:4px;}
 .swipe-clock-picker button{font-size:11px;padding:5px 8px;border-radius:7px;}
 .swipe-clock-picker button[aria-pressed="true"]{background:#246fca;color:white;border-color:#246fca;}
+
+/* Diary: compact 15-minute touch targets and future-entry differentiation. */
+.swipe-block{min-height:36px;}
+.swipe-block.future{opacity:.46;background-image:repeating-linear-gradient(135deg,transparent 0,transparent 5px,rgba(255,255,255,.3) 5px,rgba(255,255,255,.3) 7px);}
+.swipe-block.swipe-preview{opacity:1;outline:2px solid var(--text);outline-offset:-2px;}
+.swipe-grid-legend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0;}
+.swipe-key{width:12px;height:12px;display:inline-block;border-radius:2px;flex:none;}
+.swipe-key.work{background:#20c980;}
+.swipe-key.rest{background:#318beb;}
+.swipe-key.future{background:repeating-linear-gradient(135deg,#20c980 0,#20c980 4px,#a5e8d1 4px,#a5e8d1 7px);}
