@@ -1337,4 +1337,4 @@ html { scroll-padding-top: 160px; }
 .swipe-block.work.breach,.swipe-block.breach{background:#c62828;color:#fff;outline:2px solid #8e1720;outline-offset:-2px;}
 .swipe-block.breach::after{content:"!";color:#fff;font-weight:800;font-size:13px;}
 .swipe-block.review{outline:2px solid #e0a329;outline-offset:-2px;}
-.swipe-block:disabled{opacity:.85;}
+.swipe-block:disabled{opacity:.85;} .swipe-block.future,.swipe-block.future:disabled{background:var(--line);opacity:.55;}
