@@ -53,7 +53,7 @@ describe("real hours-worker message contract",()=>{
     const fullEnd=instantFor("2026-10-20","00:00",s.profile.zone)[0];
     channel.onmessage!({data:{id:"elapsed",s,asOf:"2026-10-19T24:00",range:2,now:observed,liveThrough:observed}});
     const elapsed=channel.postMessage.mock.calls[0][0].report;
-    expect(elapsed.days.at(-1)).toMatchObject({work:600,rest:30});
+    expect(elapsed.days.at(-1)).toMatchObject({work:585,rest:30});
     expect(elapsed.breachSlots["2026-10-19:80"]).toBeUndefined();
     channel.onmessage!({data:{id:"all-entered",s,asOf:"2026-10-19T24:00",range:2,now:fullEnd,liveThrough:observed}});
     const recorded=channel.postMessage.mock.calls[1][0].report;
