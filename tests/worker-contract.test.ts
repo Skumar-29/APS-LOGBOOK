@@ -24,20 +24,20 @@ describe("real hours-worker message contract",()=>{
   it("excludes future rest rather than silently completing the day",()=>{
     const s=fixture();editRange(s,"2026-10-11",0,48,"work");
     channel.onmessage!({data:{id:"today",s,asOf:"2026-10-11T24:00",range:1,now:at("2026-10-11","13:00")}});
-    expect(channel.postMessage.mock.calls[0][0].report.days[0]).toMatchObject({work:720,rest:60,future:660});
+    expect(channel.postMessage.mock.calls[0][0].report.days[0]).toMatchObject({work:720,rest:60,unknown:0});
   });
   it("echoes request identity so the view can reject old calculations",()=>{
     const s=fixture();
     for(const id of ["before-edit","after-edit"]) channel.onmessage!({data:{id,s,asOf:"2026-10-11T13:00",range:1,now:at("2026-10-11","13:00")}});
     expect(channel.postMessage.mock.calls.map(x=>x[0].id)).toEqual(["before-edit","after-edit"]);
   });
-  it("returns projected breaches separately from the real completed totals",()=>{
+  it("does not run discarded future-planning calculations",()=>{
     const s=fixture();editRange(s,"2026-10-11",0,48,"work");editRange(s,"2026-10-11",80,88,"work");const before=clone(s);
     channel.onmessage!({data:{id:"plan",s,asOf:"2026-10-11T24:00",range:1,now:at("2026-10-11","13:00"),includePlan:true}});
     const response=channel.postMessage.mock.calls[0][0];
-    expect(response.report.days[0]).toMatchObject({work:720,rest:60,future:660});
-    expect(response.plan.report.days[0]).toMatchObject({work:840,rest:600,future:0});
-    expect(response.plan.report.breachSlots["2026-10-11:80"]).toContain("24h work limit exceeded");
+    expect(response.report.days[0]).toMatchObject({work:720,rest:60,unknown:0});
+    expect(response).not.toHaveProperty("plan");
+    expect(response.report.days[0]).not.toHaveProperty("future");
     expect(response.report.breachSlots["2026-10-11:80"]).toBeUndefined();expect(s).toEqual(before);
   });
   it("returns a short retry error instead of an empty clearance",()=>{
