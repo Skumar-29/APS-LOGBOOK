@@ -1339,6 +1339,7 @@ html { scroll-padding-top: 160px; }
 .swipe-block{min-width:0;min-height:43px;padding:0;border:0;border-radius:2px;background:#318beb;touch-action:none;transition:background-color 50ms linear;}
 .swipe-block.work{background:#20c980;}
 .swipe-block.hour-end{margin-right:2px;}
-.swipe-block.breach{outline:2px solid #c72b38;outline-offset:-2px;}
+.swipe-block.work.breach,.swipe-block.breach{background:#c62828;color:#fff;outline:2px solid #8e1720;outline-offset:-2px;}
+.swipe-block.breach::after{content:"!";color:#fff;font-weight:800;font-size:13px;}
 .swipe-block.review{outline:2px solid #e0a329;outline-offset:-2px;}
 .swipe-block:disabled{opacity:.85;}
