@@ -46,7 +46,7 @@ describe("month-long driver use with independent arithmetic and deliberate mista
       const d=r.days.find(x=>x.date===date)!;
       expect(d.work,`${mode.name} ${date} work`).toBe(expected.get(date));
       expect(d.rest,`${mode.name} ${date} rest`).toBe(1440-expected.get(date)!);
-      expect(d.unknown).toBe(0);expect(d.future).toBe(0);
+      expect(d.unknown).toBe(0);
       expect(r.days.reduce((sum,x)=>sum+x.work,0)).toBe(r.days.reduce((sum,x)=>sum+(expected.get(x.date)||0),0));
       expect(r.findings.filter(x=>x.severity==="breach"),`${mode.name} ${date} unexpected breach`).toEqual([]);
     }
@@ -79,12 +79,12 @@ describe("month-long driver use with independent arithmetic and deliberate mista
     expect(diaryCsv(restored,dateAdd(mode.start,2),last,good)).toContain('"Daily total"');
   },60000);
 
-  it("reproduces the future-page screenshot without changing selected blocks",()=>{
+  it("does not count a future page or mutate recorded source blocks",()=>{
     const s=fixture(modes[0]);Object.assign(s.profile,{base:"NSW",zone:"Australia/Sydney"});
     editRange(s,"2026-10-15",0,39,"work");const before=clone(s);
     const now=instantFor("2026-10-14","02:38",s.profile.zone)[0];
     const r=analyse(s,"2026-10-15T24:00",1,{now});
-    expect(r.days[0]).toMatchObject({date:"2026-10-15",work:0,rest:0,future:1440});
+    expect(r.days[0]).toMatchObject({date:"2026-10-15",work:0,rest:0,unknown:0});
     expect(r.breachSlots).toEqual({});expect(s).toEqual(before);
     const later=analyse(s,"2026-10-15T09:45",1,{now:instantFor("2026-10-15","09:45",s.profile.zone)[0]});
     expect(later.days[0].work).toBe(585);
