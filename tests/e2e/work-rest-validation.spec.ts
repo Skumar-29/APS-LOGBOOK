@@ -159,3 +159,43 @@ test('mixed earlier and later selections retain red breaches, without locking fu
   await expect(page.locator('[aria-label="Page totals"]')).toContainText('12h 00m');
   await expect(page.locator('[aria-label="Page totals"]')).toContainText('12h 00m');
 });
+
+test('settings effective date reapplies BFM to a previously saved Standard day without erasing blocks',async ({page})=>{
+  await page.clock.setFixedTime(new Date('2026-10-19T01:00:00Z'));
+  await onboard(page);
+  const s=emptyState();
+  s.onboarded=true;s.settings.autoPages=false;
+  Object.assign(s.profile,{name:'Old Driver',licence:'OLD',base:'NSW',zone:'Australia/Sydney',scheme:'Standard',effectiveFrom:'2026-10-01'});
+  ensureDay(s,'2026-10-18');
+  editRange(s,'2026-10-18',0,4,'work');
+  ensureDay(s,'2026-10-19');
+  editRange(s,'2026-10-19',0,52,'work');
+  await seed(page,s);
+  await chooseDate(page,'2026-10-19');
+  await expect(page.locator('.date-nav')).toContainText('NSW · Standard');
+  await expect(page.locator('.swipe-block.work')).toHaveCount(52);
+
+  await page.getByRole('button',{name:'More',exact:true}).click();
+  await page.getByRole('button',{name:/Settings Driver, vehicles/}).click();
+  await page.getByLabel('Driver name',{exact:true}).fill('Updated Driver');
+  await page.getByLabel('Licence number',{exact:true}).fill('NEW');
+  await page.getByLabel('Effective from',{exact:true}).fill('2026-10-19');
+  await page.getByLabel('Driver base',{exact:true}).selectOption('QLD');
+  await page.getByLabel('Usual hours option',{exact:true}).selectOption('BFM');
+  await page.getByLabel('Accreditation / certificate',{exact:true}).fill('BFM-TEST');
+  await page.getByLabel('Certificate expiry',{exact:true}).fill('2027-12-31');
+  await page.getByRole('button',{name:'Save driver settings',exact:true}).click();
+
+  await expect(page.locator('.date-nav')).toContainText('QLD · BFM');
+  await expect(page.locator('.base-clock')).toContainText('QLD base time');
+  await expect(page.locator('.swipe-block.work')).toHaveCount(52);
+  await expect(page.locator('.assessment')).toContainText('QLD time');
+
+  await page.reload();
+  await chooseDate(page,'2026-10-19');
+  await expect(page.locator('.date-nav')).toContainText('QLD · BFM');
+  await expect(page.locator('.swipe-block.work')).toHaveCount(52);
+  await chooseDate(page,'2026-10-18');
+  await expect(page.locator('.date-nav')).toContainText('NSW · Standard');
+  await expect(page.locator('.swipe-block.work')).toHaveCount(4);
+});
