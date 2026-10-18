@@ -276,19 +276,34 @@ export function correctTimerStart(s: Workspace, local: string, occurrence = 0) {
   audit(s, "Correct timer start", s.timer.id, before, s.timer);
 }
 /** Exact assessed intervals and counted totals, shared with Diary and Stats. */
+/** CSV contains only elapsed work/rest records and unrecorded history. */
 export function diaryCsv(s: Workspace, from: string, to: string, report?: RuleReport) {
   if (!validDate(from) || !validDate(to) || from>to) throw Error("Check export dates.");
   const timeline=report ? null : buildTimeline(s,to+"T24:00");
-  const rows: Array<Array<string|number>> = [["Date","Book","Page","From","To","Activity","Location","Odometer","Rest type","Vehicle","Driver","Comments","Interval work minutes","Interval rest minutes","Day work minutes","Day rest minutes","Missing minutes","Future minutes","Counted through","Hours option","Company","Accreditation"]];
+  const rows: Array<Array<string|number>> = [[
+    "Date","Book","Page","From","To","Activity","Location","Odometer","Rest type",
+    "Vehicle","Driver","Comments","Interval work minutes","Interval rest minutes",
+    "Day work minutes","Day rest minutes","Unrecorded minutes","Counted through",
+    "Hours option","Company","Accreditation"
+  ]];
   for (let date=from;date<=to;date=dateAdd(date,1)) {
     const d=s.days[date], profile=d?.profile || profileOn(s,date);
     const summary=report?.days.find(x=>x.date===date) || (timeline&&summarizeDay(timeline,date,profile));
     if(!summary) throw Error("Refresh hours before exporting.");
     const page=s.pages.find(p=>p.date===date&&p.status==="Active"),book=s.books.find(b=>b.id===page?.bookId);
-    rows.push([date,book?.number || "",page?.number || "","","Daily total","","","",d?.vehicle || "",profile.name,"",0,0,summary.work,summary.rest,summary.unknown,summary.future,summary.through,"","",""]);
+    rows.push([
+      date,book?.number || "",page?.number || "","","Daily total","","","","",
+      d?.vehicle || "",profile.name,"",0,0,summary.work,summary.rest,summary.unknown,
+      summary.through,profile.scheme,profile.operator,profile.certificate
+    ]);
     for (const f of summary.fragments) {
       const c=d&&changes(d).filter(c=>c.slot<=f.startSlot).at(-1);
-      rows.push([date,book?.number || "",page?.number || "",atBase(f.start,profile.zone),atBase(f.end,profile.zone),f.kind || "unrecorded",c?.location || "",c?.odometer || "",f.kind==="rest"?f.rest:"",c?.vehicle || d?.vehicle || "",profile.name,c?.note || "",f.work,f.restMinutes,"","","","",summary.through,f.profile.scheme,f.profile.operator,f.profile.scheme==="Standard"?"":f.profile.certificate]);
+      rows.push([
+        date,book?.number || "",page?.number || "",atBase(f.start,profile.zone),atBase(f.end,profile.zone),
+        f.kind || "unrecorded",c?.location || "",c?.odometer || "",
+        f.kind==="rest"?f.rest:"",c?.vehicle || d?.vehicle || "",profile.name,c?.note || "",
+        f.work,f.restMinutes,"","", "",summary.through,f.profile.scheme,f.profile.operator,f.profile.certificate
+      ]);
     }
   }
   return rows.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"').join(",")).join("\r\n");
