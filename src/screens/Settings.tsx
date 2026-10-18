@@ -6,6 +6,7 @@ import {
   audit,
   clone,
   emptyProfile,
+  saveDatedDriverProfile,
   uid,
   zones,
   type Profile,
@@ -48,15 +49,7 @@ export function Settings({ onDone }: { onDone?: () => void }) {
         throw Error(
           "Finish the timer before changing driver or rules.",
         );
-      const old = clone(w.profile);
-      if (old.name) {
-        const index = w.profileHistory.findIndex(
-          (x) => x.id === old.id && x.effectiveFrom === old.effectiveFrom,
-        );
-        if (index >= 0) w.profileHistory[index] = old;
-        else w.profileHistory.push(old);
-      }
-      w.profile = { ...clone(p), effectiveFrom: date };
+      saveDatedDriverProfile(w, p, date);
       w.onboarded = true;
       const existing = w.registry.find(
         (r) => r.type === "driver" && r.id === p.id,
@@ -69,7 +62,6 @@ export function Settings({ onDone }: { onDone?: () => void }) {
       };
       if (existing) Object.assign(existing, record);
       else w.registry.push(record);
-      audit(w, "Save driver settings", p.id, old, w.profile);
     });
     void navigator.storage?.persist?.().catch(() => {});
     onDone?.();
