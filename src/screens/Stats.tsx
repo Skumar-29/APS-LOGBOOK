@@ -74,8 +74,8 @@ export function Stats({
             >
               <span>{displayDate(d.date).slice(0, 5)}</span>
               <span className="stack">
-                <i className="work" style={{ width: d.work / Math.max(1440,d.work+d.rest+d.unknown+d.future) * 100 + "%" }} />
-                <i className="rest" style={{ width: d.rest / Math.max(1440,d.work+d.rest+d.unknown+d.future) * 100 + "%" }} />
+                <i className="work" style={{ width: d.work / Math.max(1440,d.work+d.rest+d.unknown) * 100 + "%" }} />
+                <i className="rest" style={{ width: d.rest / Math.max(1440,d.work+d.rest+d.unknown) * 100 + "%" }} />
               </span>
               <span className="daily-hours">W {minutesLabel(d.work)} · R {minutesLabel(d.rest)}</span>
             </button>
@@ -90,7 +90,6 @@ export function Stats({
             <i className="dot rest" />
             Rest
           </span>
-          <span>Grey = missing or future</span>
         </div>
       </section>
       <section className="card">
