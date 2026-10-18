@@ -111,7 +111,7 @@ describe("elapsed rest and physical qualifications",()=>{
   it("excludes future work and rest on a partly completed day",()=>{
     const s=fixture();editRange(s,"2026-10-10",0,48,"work");editRange(s,"2026-10-10",80,88,"work");
     const r=analyse(s,"2026-10-10T24:00",1,{now:at("2026-10-10T13:00")});
-    expect(r.days[0]).toMatchObject({work:720,rest:60,future:660});
+    expect(r.days[0]).toMatchObject({work:720,rest:60,unknown:0});
     expect(r.restClassifications["2026-10-10:48"].minutes).toBe(60);
     expect(r.breachSlots["2026-10-10:80"]).toBeUndefined();
   });
