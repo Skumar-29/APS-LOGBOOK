@@ -1316,8 +1316,6 @@ html { scroll-padding-top: 160px; }
 .form-save-bar button { min-height: 44px; }
 @media (max-width: 380px) { .form-save-bar > .row { width: 100%; } .form-save-bar button { flex: 1; } }
 
-/* Assessed hours remain distinct from future plans. */
-.diary-grid-row .block.planned { opacity:.55; background-image:repeating-linear-gradient(135deg, transparent 0 3px, var(--card) 3px 5px); }
 .assessment { margin:6px 0; }
 .short-warnings { color:var(--danger, #ba2c32); font-size:13px; margin:8px 0; }
 .short-warnings p { margin:3px 0; }
@@ -1327,9 +1325,6 @@ html { scroll-padding-top: 160px; }
 .stat-day { grid-template-columns:45px minmax(40px,1fr) minmax(105px,auto); }
 .daily-hours { font-size:11px; text-align:right; }
 
-.diary-grid-row .block.planned.breach { opacity:1; }
-.planning-summary { margin:8px 0; }
-.planning-summary p { margin:4px 0; }
 
 /* Compact live toggle-and-swipe diary grid. Existing calculation engine remains unchanged. */
 .swipe-grid {max-width:100%;width:100%;touch-action:pan-y;}
