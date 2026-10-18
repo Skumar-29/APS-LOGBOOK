@@ -134,7 +134,7 @@ export function buildTimeline(s: Workspace, asOf: string, now = Date.now(), live
 
 export interface DayFragment {start: number;end: number;kind: Activity;rest: RestType;work: number;restMinutes: number;startSlot: number;endSlot: number;profile:Profile;}
 export interface DaySummary {
-  date:string;work:number;rest:number;unknown:number;future:number;through:string;
+  date:string;work:number;rest:number;unknown:number;through:string;
   slots:Activity[];fractions:Array<{work:number;rest:number}>;fragments:DayFragment[];
 }
 export function summarizeDay(t: Timeline, date: string, p: Profile): DaySummary {
@@ -152,7 +152,7 @@ export function summarizeDay(t: Timeline, date: string, p: Profile): DaySummary 
     if(f.kind === "work") fractions[i].work+=n;
     if(f.kind === "rest") fractions[i].rest+=n;
   }
-  return {date,work:counted(t.runs,a,b,"work"),rest:counted(t.runs,a,b,"rest"),unknown:elapsed(t.runs,a,b,null),future:Math.max(0,end-b)/MINUTE,
+  return {date,work:counted(t.runs,a,b,"work"),rest:counted(t.runs,a,b,"rest"),unknown:elapsed(t.runs,a,b,null),
     through:atBase(Math.min(t.through,end),p.zone),slots:fractions.map(f=>f.work>0 ? "work" : f.rest>0 ? "rest" : null),fractions,fragments};
 }
 
