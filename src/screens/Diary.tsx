@@ -1,5 +1,4 @@
 import { restTypeAt } from "../domain/rest";
-import { hasFutureWork } from "../domain/planning";
 import {warningLines,zoneLabel} from '../domain/warnings';
 import { assessedDay, boundary } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
@@ -81,23 +80,16 @@ export function Diary({
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
   const restWorkspace = readOnly ? { ...s, days: { ...s.days, [date]: d } } : s;
-  const { report, plan, planError, now, error, retry } = useReport(date + "T24:00", 2, !readOnly && !graph);
-  const planning=!readOnly&&!graph&&hasFutureWork(s,date,now);
-  const planDay=plan?.report.days.find(x=>x.date===date);
-  const daySummary=readOnly ? undefined : report?.days.find(x=>x.date===date);
-  const t=readOnly ? totals(d.slots) : daySummary;
-  const viewDay=readOnly ? d : assessedDay(d,daySummary);
-  const actualWindow = !readOnly && report ? selectWorkWindow(report.workWindows,date) || null : null;
-  const countedWindow = plan?.window || actualWindow;
-  const windowSummary = countedWindow ? windowTotals(s, countedWindow) : null;
+  // Assess only elapsed time; do not show projected work or projected breaches.
+  const { report, error, retry } = useReport(date + "T24:00", 2, false);
+  const daySummary = readOnly ? undefined : report?.days.find(x => x.date === date);
+  const t = readOnly ? totals(d.slots) : daySummary;
+  const viewDay = readOnly ? d : assessedDay(d,daySummary);
+  const countedWindow = !readOnly && report ? selectWorkWindow(report.workWindows,date) || null : null;
+  const windowSummary = countedWindow ? windowTotals(s,countedWindow) : null;
   const redSlots = readOnly ? {} : report?.breachSlots || {};
-  const visibleRedSlots={...redSlots,...Object.fromEntries(Object.entries(plan?.report.breachSlots || {}).filter(([key])=>{
-    const [day,slot]=key.split(":");return day===date&&boundary(day,Number(slot),d.profile.zone)>=now;
-  }))};
-  const dayBreaches = Object.entries(visibleRedSlots).filter(([key]) =>
-    key.startsWith(date + ":"),
-  );
-  const warnings=readOnly||!report ? [] : warningLines(report,date);
+  const dayBreaches = Object.entries(redSlots).filter(([key]) => key.startsWith(date + ":"));
+  const warnings = readOnly || !report ? [] : warningLines(report,date);
   async function updateDay(fn: (d: Day) => void, label = "Edit diary") {
     setUndo(null);
     if (readOnly)
@@ -190,27 +182,14 @@ export function Diary({
           <i className="dot rest" />
           Rest <b>{t?minutesLabel(t.rest):"…"}</b>
         </span>
-        {!!t?.unknown && (
-          <span className="muted">Missing {minutesLabel(t.unknown)}</span>
-        )}
-      </div>
+</div>
       {error ? <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div> :
-        daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)} · {d.profile.base} time{daySummary.future>0?" · Future time excluded":""}</p>}
-      {planning && <div className="planning-summary" aria-label="Shift plan">
-        {planDay && <div className="row wrap small" aria-label="Planned page totals"><strong>Planned page</strong><span>Work <b>{minutesLabel(planDay.work)}</b></span><span>Rest <b>{minutesLabel(planDay.rest)}</b></span></div>}
-        {planError ? <p className="bad">{planError} <Action onClick={retry}>Retry</Action></p> : !plan ? <p className="small">Checking plan…</p> : <>
-          {plan.breakDue && <p className="small bad">Plan: break due at {displayCivil(plan.breakDue)}</p>}
-          {!plan.breakDue && plan.warning && <p className="small bad">Plan: {plan.warning}</p>}
-          {!plan.breakDue && !plan.warning && plan.continuousUntil && <p className="small">Continuous work limit: {displayCivil(plan.continuousUntil)}</p>}
-          {!plan.breakDue && !plan.continuousUntil && plan.shortBreakUntil && <p className="small">Short-break limit: {displayCivil(plan.shortBreakUntil)} · {d.profile.base} time</p>}
-          {plan.review && <p className="small">Plan needs earlier records / confirmation{plan.reviewReasons?.length?`: ${plan.reviewReasons.slice(0,2).join(' · ')}`:''}</p>}
-        </>}
-      </div>}
+        daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)} · {d.profile.base} time</p>}
       {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x} className={x.startsWith('Review:')?'warning-review':'bad'}>{x}</p>)}</div>}
       <details className="window-summary" aria-label="Work window totals">
         <summary>
           <strong>
-            {plan ? "Planned 24h window" : "24h window"}
+            24h window
             {windowSummary?.review || dayBreaches.length || warnings.length ? " · Review" : ""}
           </strong>
           <span>
@@ -221,7 +200,7 @@ export function Diary({
         </summary>
         <div className="window-details">
           <div className="row wrap">
-            <strong>{plan ? "Limiting planned 24-hour window" : "Limiting 24-hour window on this page"}</strong>
+            <strong>Limiting 24-hour window on this page</strong>
             <span className="small">{zoneLabel(countedWindow?.zone||d.profile.zone)} time</span>
           </div>
           {countedWindow && windowSummary ? (
@@ -239,12 +218,7 @@ export function Diary({
                 </span>
                 {windowSummary.unknown > 0 && (
                   <span className="muted">
-                    Missing {minutesLabel(windowSummary.unknown)}
-                  </span>
-                )}
-                {windowSummary.future > 0 && (
-                  <span className="muted">
-                    After assessment {minutesLabel(windowSummary.future)}
+                    Earlier records to review: {minutesLabel(windowSummary.unknown)}
                   </span>
                 )}
               </div>
@@ -268,7 +242,7 @@ export function Diary({
               )}
               <details>
                 <summary>Other overlapping 24-hour windows</summary>
-                {(plan?.report || report)?.workWindows
+                {report?.workWindows
                   .filter(
                     (w) =>
                       w !== countedWindow &&
