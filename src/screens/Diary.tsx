@@ -80,8 +80,8 @@ export function Diary({
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
   const restWorkspace = readOnly ? { ...s, days: { ...s.days, [date]: d } } : s;
-  // Assess only elapsed time; do not show projected work or projected breaches.
-  const { report, error, retry } = useReport(date + "T24:00", 2, false);
+  // Assess the complete entered diary day, while live Driving remains elapsed-only.
+  const { report, error, retry } = useReport(date + "T24:00", 2, false, true);
   const daySummary = readOnly ? undefined : report?.days.find(x => x.date === date);
   const t = readOnly ? totals(d.slots) : daySummary;
   const viewDay = readOnly ? d : assessedDay(d,daySummary);
