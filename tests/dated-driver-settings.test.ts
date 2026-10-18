@@ -58,6 +58,16 @@ describe("Settings effective dates on existing diary pages",()=>{
     expect(profileOn(s,"2026-10-19")).toMatchObject({scheme:"BFM",base:"QLD"});
     expect(ensureDay(s,"2026-10-18").profile.scheme).toBe("Standard");
   });
+  it("preserves an unnamed Standard profile for earlier existing days when driver details are first filled",()=>{
+    const s=emptyState();
+    ensureDay(s,"2026-10-18");
+    editRange(s,"2026-10-18",0,8,"work");
+    const old=clone(s.days["2026-10-18"]);
+    saveDatedDriverProfile(s,{...s.profile,name:"New Name",licence:"TEST",base:"QLD",zone:"Australia/Brisbane",scheme:"BFM"},"2026-10-19");
+    expect(s.days["2026-10-18"]).toEqual(old);
+    expect(profileOn(s,"2026-10-18")).toMatchObject({base:"NSW",scheme:"Standard"});
+    expect(profileOn(s,"2026-10-19")).toMatchObject({base:"QLD",scheme:"BFM"});
+  });
   it("does not silently reinterpret exact timer links when the saved base time zone changes",()=>{
     const s=fixture(),before=clone(s);
     s.days["2026-10-19"].timerMap={0:["test-timer"]};
