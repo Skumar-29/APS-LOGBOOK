@@ -18,7 +18,7 @@ import {
   zones,
 } from "../domain/model";
 import { allocatePage, cancelPage, changes, editRange } from "../domain/diary";
-import { hhmm, minutesLabel, totals, dateAdd } from "../domain/time";
+import { hhmm, minutesLabel, totals, dateAdd, editableSlotLimit } from "../domain/time";
 import {
   Action,
   Check,
@@ -81,7 +81,8 @@ export function Diary({
     allChanges = changes(d);
   const restWorkspace = readOnly ? { ...s, days: { ...s.days, [date]: d } } : s;
   // Assess only elapsed time; do not show projected work or projected breaches.
-  const { report, error, retry } = useReport(date + "T24:00", 2, false);
+  const { report, error, retry, now } = useReport(date + "T24:00", 2, false);
+  const editableLimit = editableSlotLimit(date, d.profile.zone, now);
   const daySummary = readOnly ? undefined : report?.days.find(x => x.date === date);
   const t = readOnly ? totals(d.slots) : daySummary;
   const viewDay = readOnly ? d : assessedDay(d,daySummary);
@@ -110,6 +111,8 @@ export function Diary({
     stationary = false,
   ) {
     if (readOnly) throw Error("This page is read only.");
+    if (next || b > editableSlotLimit(date, d.profile.zone, Date.now()))
+      throw Error("Future diary blocks cannot be recorded.");
     const snapshot: Record<string, Day> = {},
       revisions: Record<string, number> = {};
     await mutate((w) => {
@@ -409,15 +412,16 @@ export function Diary({
                 <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}>
                   {d.slots.slice(p*24,p*24+24).map((activity,i)=>{
                     const slot=p*24+i;
+                    const future=slot>=editableLimit;
                     const inDrag=dragRange&&slot>=Math.min(...dragRange)&&slot<=Math.max(...dragRange);
-                    const kind=inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
-                    const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""}`}
-                      disabled={readOnly} aria-pressed={kind==="work"}
-                      aria-label={`${hhmm(slot)} to ${hhmm(slot+1)}, ${kind}`}
-                      title={`${hhmm(slot)}–${hhmm(slot+1)} ${kind}${reasons?.length?" · "+reasons.join(" · "):""}`}
+                    const kind=future?"rest":inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
+                    const reasons=!future&&kind==="work"?redSlots[date+":"+slot]:undefined;
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""} ${future?"future":""}`}
+                      disabled={readOnly||future} aria-pressed={kind==="work"}
+                      aria-label={`${hhmm(slot)} to ${hhmm(slot+1)}, ${future?"not yet elapsed":kind}`}
+                      title={`${hhmm(slot)}–${hhmm(slot+1)} ${future?"Not yet elapsed":kind}${reasons?.length?" · "+reasons.join(" · "):""}`}
                       onPointerDown={e=>{
-                        if(readOnly||e.pointerType==="mouse"&&e.button!==0)return;
+                        if(readOnly||future||e.pointerType==="mouse"&&e.button!==0)return;
                         e.preventDefault();
                         const next=activity==="work"?"rest":"work";
                         drag.current={slot,end:slot,kind:next,row:"work",axis:"horizontal",x:e.clientX,y:e.clientY};
@@ -428,7 +432,7 @@ export function Diary({
                         const state=drag.current;if(!state)return;
                         const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest("[data-slot]");
                         if(!hit)return;
-                        const next=Number(hit.getAttribute("data-slot"));
+                        const next=Math.min(Number(hit.getAttribute("data-slot")),editableSlotLimit(date,d.profile.zone,Date.now())-1);
                         if(Number.isInteger(next)&&next>=0&&next<96&&next!==state.end){
                           state.end=next;setDragRange([state.slot,next]);
                         }
