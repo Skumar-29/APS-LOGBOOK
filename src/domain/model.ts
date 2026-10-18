@@ -373,7 +373,11 @@ export function saveDatedDriverProfile(s: Workspace, next: Profile, effectiveDat
   if(linked) throw Error(
     "Diary " + linked.date + " has timed records in the old base zone. Review that day's timer records before changing its base."
   );
-  if(old.name) {
+  // Preserve unnamed initial settings too if the driver already recorded
+  // history under them. Otherwise the first named BFM save could relabel
+  // earlier unrecorded pages as BFM.
+  const hasEarlierRecords=Object.values(s.days).some(d=>d.date<effectiveDate && d.profile.id===old.id);
+  if(old.name || hasEarlierRecords) {
     const index=s.profileHistory.findIndex(p=>p.id===old.id && p.effectiveFrom===old.effectiveFrom);
     if(index>=0) s.profileHistory[index]=old;
     else s.profileHistory.push(old);
