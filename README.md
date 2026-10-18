@@ -41,15 +41,15 @@ Driver identity is captured on diary days and timer events. Paper pages have sep
 ## October 19 Work/Rest development fixes
 
 - Selected quarters are Work; unselected quarters are Rest. Tapping again restores Rest.
-- Future quarters are locked at the driver's base-local time. The save handler rejects any swipe range extending beyond elapsed time.
+- Past, current and future quarters are freely editable. Selected means Work; unselected means Rest. No date/time-based selection lock exists.
 - Confirmed elapsed-time breaches are solid red; unsupported or uncertain rules remain review items, not false clearance.
 - No separate future-time total is calculated, returned by the hours worker or exported in CSV. CSV columns are aligned and tested.
-- Earlier stored future selections are not silently erased from user backups. Their safe migration and physical iPhone/PWA verification are release gates.
+- Existing selections, including entries on future dates, are retained and can be edited or unselected. Physical iPhone/PWA verification remains a release gate.
 - Development branch: `fix/work-rest-validation-2026-10-19`; main/GitHub Pages remain unchanged.
 
 ## Beta 8 assessed hours
 
-Diary, Graph, Driving, Stats, CSV and active-page PDFs now share the same exact-time timeline and elapsed-time cutoff. The active timer is included without finishing it or changing records. The current quarter and historical pages remain editable, but future quarters are disabled. Elapsed-time calculations never credit future work or rest.
+Diary, Graph, Driving, Stats, CSV and active-page PDFs now share the same exact-time timeline and elapsed-time cutoff. The active timer is included without finishing it or changing records. Past, current and future diary entries can all be recorded and corrected. Live fatigue calculations credit elapsed time only; entries are preserved for assessment when their time arrives.
 
 A timer's actual continuous duration is rounded once: work up to a 15-minute multiple, rest down. Raw timestamps are separate from the old grid footprint; an off-quarter 17-minute timer counts 30 work minutes even when it touches three cells. Manual block corrections take precedence over completed timer links; Undo restores the previous exact interpretation.
 
