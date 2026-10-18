@@ -40,6 +40,29 @@ describe("real hours-worker message contract",()=>{
     expect(response.report.days[0]).not.toHaveProperty("future");
     expect(response.report.breachSlots["2026-10-11:80"]).toBeUndefined();expect(s).toEqual(before);
   });
+  it("checks all recorded blocks through day end while live timer remains limited to real clock",()=>{
+    const s=emptyState();
+    Object.assign(s.profile,{name:"Synthetic",licence:"TEST",scheme:"Standard",base:"NSW",zone:"Australia/Sydney"});
+    ensureDay(s,"2026-10-17");
+    editRange(s,"2026-10-18",0,52,"work");
+    for(const slot of [21,31,42,43]) editRange(s,"2026-10-18",slot,slot+1,"rest");
+    editRange(s,"2026-10-19",0,90,"work");
+    for(const slot of [21,31]) editRange(s,"2026-10-19",slot,slot+1,"rest");
+    const before=clone(s);
+    const observed=instantFor("2026-10-19","10:15",s.profile.zone)[0];
+    const fullEnd=instantFor("2026-10-20","00:00",s.profile.zone)[0];
+    channel.onmessage!({data:{id:"elapsed",s,asOf:"2026-10-19T24:00",range:2,now:observed,liveThrough:observed}});
+    const elapsed=channel.postMessage.mock.calls[0][0].report;
+    expect(elapsed.days.at(-1)).toMatchObject({work:600,rest:30});
+    expect(elapsed.breachSlots["2026-10-19:80"]).toBeUndefined();
+    channel.onmessage!({data:{id:"all-entered",s,asOf:"2026-10-19T24:00",range:2,now:fullEnd,liveThrough:observed}});
+    const recorded=channel.postMessage.mock.calls[1][0].report;
+    expect(recorded.days.at(-1)).toMatchObject({work:1320,rest:120});
+    expect(recorded.days[0]).toMatchObject({work:720,rest:720});
+    expect(Object.keys(recorded.breachSlots).some(k=>k.startsWith("2026-10-19:"))).toBe(true);
+    expect(recorded.findings.some(f=>f.severity==="breach")).toBe(true);
+    expect(s).toEqual(before);
+  });
   it("returns a short retry error instead of an empty clearance",()=>{
     const log=vi.spyOn(console,"error").mockImplementation(()=>{});
     channel.onmessage!({data:{id:"invalid",s:fixture(),asOf:"invalid",range:1,now:Date.now()}});
