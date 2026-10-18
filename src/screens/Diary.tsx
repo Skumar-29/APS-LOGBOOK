@@ -180,7 +180,6 @@ export function Diary({
   }
   const summary = (
     <div className="diary-totals">
-      {" "}
       <div className="row totals" aria-label="Page totals">
         <strong>Page</strong>
         <span>
@@ -196,7 +195,7 @@ export function Diary({
         )}
       </div>
       {error ? <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div> :
-        daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)} · {d.profile.base} time{daySummary.future>0?" · Future time excluded":""}</p>}
+        daySummary && <p className="small assessment">Counted in 15-minute diary blocks through {displayCivil(daySummary.through)} · {d.profile.base} time{daySummary.future>0?" · Future time excluded":""}</p>}
       {planning && <div className="planning-summary" aria-label="Shift plan">
         {planDay && <div className="row wrap small" aria-label="Planned page totals"><strong>Planned page</strong><span>Work <b>{minutesLabel(planDay.work)}</b></span><span>Rest <b>{minutesLabel(planDay.rest)}</b></span></div>}
         {planError ? <p className="bad">{planError} <Action onClick={retry}>Retry</Action></p> : !plan ? <p className="small">Checking plan…</p> : <>
@@ -207,7 +206,7 @@ export function Diary({
           {plan.review && <p className="small">Plan needs earlier records / confirmation{plan.reviewReasons?.length?`: ${plan.reviewReasons.slice(0,2).join(' · ')}`:''}</p>}
         </>}
       </div>}
-      {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x} className={x.startsWith('Review:')?'warning-review':'bad'}>{x}</p>)}</div>}
+      {warnings.length>0&&<div className="short-warnings" role="status"><p className="small">Recorded-history fatigue warnings (separate from the planned shift assessment):</p>{warnings.map(x=><p key={x} className={x.startsWith('Review:')?'warning-review':'bad'}>{x}</p>)}</div>}
       <details className="window-summary" aria-label="Work window totals">
         <summary>
           <strong>
@@ -429,6 +428,7 @@ export function Diary({
               </Action>
             </div>
             <div className="row swipe-clock-picker"><span className="small">Time format</span><div className="row"><button type="button" aria-pressed={clockFormat==="12h"} onClick={()=>{setClockFormat("12h");try{localStorage.setItem("aps-diary-clock-format","12h");}catch{}}}>12-hour AM/PM</button><button type="button" aria-pressed={clockFormat==="24h"} onClick={()=>{setClockFormat("24h");try{localStorage.setItem("aps-diary-clock-format","24h");}catch{}}}>24-hour</button></div></div>
+            <p className="small swipe-grid-legend"><span className="swipe-key work"/>Work <span className="swipe-key rest"/>Rest <span className="swipe-key future"/>Future entry (not yet completed)</p>
             {visible.map((p) => (
               <div key={p} className="six-hours diary-grid-section swipe-grid">
                 <div className="swipe-period-label">{clockFormat==="12h"?["12 AM – 6 AM","6 AM – 12 PM","12 PM – 6 PM","6 PM – 12 AM"][p]:["00:00 – 06:00","06:00 – 12:00","12:00 – 18:00","18:00 – 24:00"][p]}</div>
@@ -441,10 +441,11 @@ export function Diary({
                     const inDrag=dragRange&&slot>=Math.min(...dragRange)&&slot<=Math.max(...dragRange);
                     const kind=inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
                     const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""}`}
+                    const future=!readOnly && boundary(date,slot,d.profile.zone)>=now;
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future?"future":""} ${inDrag?"swipe-preview":""} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
-                      aria-label={`${hhmm(slot)} to ${hhmm(slot+1)}, ${kind}`}
-                      title={`${hhmm(slot)}–${hhmm(slot+1)} ${kind}${reasons?.length?" · "+reasons.join(" · "):""}`}
+                      aria-label={`${hhmm(slot)} to ${hhmm(slot+1)}, ${kind}${future?", future entry":""}`}
+                      title={`${hhmm(slot)}–${hhmm(slot+1)} ${kind}${future?" · future entry":""}${reasons?.length?" · "+reasons.join(" · "):""}`}
                       onPointerDown={e=>{
                         if(readOnly||e.pointerType==="mouse"&&e.button!==0)return;
                         e.preventDefault();
