@@ -74,18 +74,22 @@ test('work-rest validation: elapsed breaches appear solid red and no future fore
 });
 
 
-test('future quarters cannot be tapped or selected by a swipe, while historical pages remain editable', async ({ page }) => {
-  // 00:20 UTC is 10:20 in the driver's Queensland base on 11 October.
+test('past, current and future blocks are editable without time locking', async ({ page }) => {
+  // 00:20 UTC = 10:20 in the driver's Queensland base on 11 October.
   await page.clock.setFixedTime(new Date('2026-10-11T00:20:00Z'));
   await onboard(page);
-  await chooseDate(page, '2026-10-11');
   const slot = (index: number) => page.locator(`.swipe-block[data-slot="${index}"]`);
-  await expect(slot(41)).toBeEnabled();
-  await expect(slot(42)).toBeDisabled();
-  await expect(slot(42)).toHaveAttribute('aria-pressed', 'false');
-  await expect(slot(42)).toHaveAttribute('aria-label', /not yet elapsed/);
 
-  // Swiping across the current-time boundary must stop at the last elapsed quarter.
+  await chooseDate(page, '2026-10-11');
+  await expect(slot(42)).toBeEnabled(); // 10:30 has not occurred yet.
+  await slot(42).click();
+  await expect(slot(42)).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(slot(42)).toHaveAttribute('aria-pressed', 'true');
+  await slot(42).click();
+  await expect(slot(42)).toHaveAttribute('aria-pressed', 'false');
+
+  // A swipe can cross the current-clock boundary and is saved as requested.
   const start = await slot(40).boundingBox();
   const end = await slot(45).boundingBox();
   if (!start || !end) throw Error('The diary blocks are not visible');
@@ -93,16 +97,23 @@ test('future quarters cannot be tapped or selected by a swipe, while historical 
   await page.mouse.down();
   await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 10 });
   await page.mouse.up();
-  await expect(slot(40)).toHaveAttribute('aria-pressed', 'true');
-  await expect(slot(41)).toHaveAttribute('aria-pressed', 'true');
-  await expect(slot(42)).toHaveAttribute('aria-pressed', 'false');
+  for (const i of [40, 41, 42, 43, 44, 45]) {
+    await expect(slot(i)).toHaveAttribute('aria-pressed', 'true');
+  }
   await page.reload();
-  await expect(slot(41)).toHaveAttribute('aria-pressed', 'true');
-  await expect(slot(42)).toBeDisabled();
+  await expect(slot(45)).toHaveAttribute('aria-pressed', 'true');
 
+  // Tomorrow is editable too, with normal work/rest toggle and persistence.
   await chooseDate(page, '2026-10-12');
-  await expect(slot(0)).toBeDisabled();
+  await expect(slot(0)).toBeEnabled();
+  await slot(0).click();
+  await expect(slot(0)).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(slot(0)).toHaveAttribute('aria-pressed', 'true');
+  await slot(0).click();
   await expect(slot(0)).toHaveAttribute('aria-pressed', 'false');
+
+  // A historical entry is still editable.
   await chooseDate(page, '2026-10-10');
   await expect(slot(90)).toBeEnabled();
   await slot(90).click();
