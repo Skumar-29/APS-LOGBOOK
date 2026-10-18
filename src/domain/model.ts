@@ -334,12 +334,12 @@ export function emptyState(): Workspace {
   };
 }
 export function profileOn(s: Workspace, date: string) {
-  return (
-    [...s.profileHistory, s.profile]
-      .filter((p) => !p.effectiveFrom || p.effectiveFrom <= date)
-      .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))
-      .at(-1) || s.profile
-  );
+  const profiles=[...s.profileHistory,s.profile]
+    .sort((a,b)=>a.effectiveFrom.localeCompare(b.effectiveFrom));
+  // A backdated page before the first known change uses the oldest saved
+  // driver settings, never the latest (potentially future-effective) profile.
+  return profiles.filter(p=>!p.effectiveFrom || p.effectiveFrom<=date).at(-1)
+    || profiles[0] || s.profile;
 }
 export function recordProfile(p: Profile): Profile {
   return { ...clone(p), signature: "", logo: "" };
