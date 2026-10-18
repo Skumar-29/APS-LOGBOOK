@@ -344,6 +344,51 @@ export function profileOn(s: Workspace, date: string) {
 export function recordProfile(p: Profile): Profile {
   return { ...clone(p), signature: "", logo: "" };
 }
+/** Settings effective dates apply to matching saved diary days, not only new pages.
+ * Never rewrite work/rest cells or a deliberately customised day profile.
+ */
+const inheritedDriverFields: Array<keyof Profile> = [
+  "id", "name", "licence", "licenceExpiry", "contact", "base", "zone",
+  "operation", "scheme", "twoUp", "coDriver", "coLicence", "coScheme",
+  "coBase", "operator", "certificate", "certificateExpiry",
+  "recordKeeper", "recordAddress",
+];
+
+export function saveDatedDriverProfile(s: Workspace, next: Profile, effectiveDate: string) {
+  const old = clone(s.profile);
+  // Capture inheritance against the *old* history before saving the new profile.
+  // Later explicit profile changes belong to their own intervals.
+  const later = [...s.profileHistory, s.profile]
+    .filter(p => p.id === old.id && p.effectiveFrom > effectiveDate)
+    .map(p => p.effectiveFrom).sort()[0];
+  const inherited = Object.values(s.days).filter(day => {
+    if(day.date < effectiveDate || later && day.date >= later || day.profile.id !== old.id)
+      return false;
+    const expected = recordProfile(profileOn(s, day.date));
+    return inheritedDriverFields.every(key => day.profile[key] === expected[key]);
+  });
+  // Timestamped timer links are tied to their original local clock. A base change
+  // needs an explicit review rather than quietly moving those saved instants.
+  const linked = inherited.find(d => d.profile.zone !== next.zone && Object.keys(d.timerMap || {}).length > 0);
+  if(linked) throw Error(
+    "Diary " + linked.date + " has timed records in the old base zone. Review that day's timer records before changing its base."
+  );
+  if(old.name) {
+    const index=s.profileHistory.findIndex(p=>p.id===old.id && p.effectiveFrom===old.effectiveFrom);
+    if(index>=0) s.profileHistory[index]=old;
+    else s.profileHistory.push(old);
+  }
+  const updated={...clone(next), effectiveFrom:effectiveDate};
+  s.profile=updated;
+  for(const day of inherited) {
+    const before=clone(day);
+    day.profile=recordProfile(updated);
+    day.revision++;
+    audit(s,"Apply effective driver settings",day.date,before,day);
+  }
+  audit(s,"Save driver settings",next.id,old,updated);
+  return inherited.length;
+}
 export function ruleProfileAt(s: Workspace, at: number, base: Profile): Profile {
   const change = (s.ruleChanges || []).filter(c => c.driverId === base.id && c.from <= at && (c.to === null || at < c.to))
     .sort((a,b) => a.from-b.from).at(-1);
