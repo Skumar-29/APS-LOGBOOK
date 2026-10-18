@@ -79,6 +79,16 @@ export function clockChange(date: string, zone: string) {
     b = instantFor(dateAdd(date, 1), "00:00", zone);
   return a.length !== 1 || b.length !== 1 || b[0] - a[0] !== DAY;
 }
+/** Number of quarters whose start has elapsed in the driver's recorded base zone.
+ * Future dates get none; historical dates remain fully editable.
+ * On a clock-change day the displayed local quarter is a conservative limit.
+ */
+export function editableSlotLimit(date: string, zone: string, at = Date.now()) {
+  const local = civil(at, zone);
+  if (date < local.date) return 96;
+  if (date > local.date) return 0;
+  return Math.max(0, Math.min(96, Math.floor(local.slot) + 1));
+}
 export function hhmm(slot: number) {
   return `${String(Math.floor(slot / 4)).padStart(2, "0")}:${String((slot % 4) * 15).padStart(2, "0")}`;
 }
