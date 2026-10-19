@@ -17,7 +17,7 @@ import {
   type Day,
   zones,
 } from "../domain/model";
-import { allocatePage, cancelPage, changes, editRange } from "../domain/diary";
+import { allocatePage, cancelPage, changes, editRange, suggestedPaperPage } from "../domain/diary";
 import { hhmm, minutesLabel, totals, dateAdd } from "../domain/time";
 import {
   Action,
@@ -90,6 +90,11 @@ export function Diary({
   const redSlots = readOnly ? {} : report?.breachSlots || {};
   const dayBreaches = Object.entries(redSlots).filter(([key]) => key.startsWith(date + ":"));
   const warnings = readOnly || !report ? [] : warningLines(report,date);
+  let suggestedNumber = "";
+  if (allocation && bookId) {
+    try { suggestedNumber = suggestedPaperPage(s,date,bookId); }
+    catch { /* Date/book numbering may require manual review. */ }
+  }
   async function updateDay(fn: (d: Day) => void, label = "Edit diary") {
     setUndo(null);
     if (readOnly)
@@ -622,7 +627,7 @@ export function Diary({
               </span>
               <Action
                 onClick={() => {
-                  setBookId(s.books.find((b) => !b.closed)?.id || "");
+                  setBookId(s.books.filter(b=>!b.closed && (!b.firstDate || b.firstDate<=date)).sort((a,b)=>a.firstDate.localeCompare(b.firstDate)).at(-1)?.id || "");
                   setAllocation(true);
                 }}
               >
@@ -679,10 +684,11 @@ export function Diary({
             onChange={setBookId}
           />
           <Field
-            label="Page number (blank = next unused)"
+            label="Page number (blank = chronological suggestion)"
             value={number}
             onChange={setNumber}
           />
+          {suggestedNumber && <p className="small">Suggested page for {date}: {suggestedNumber}</p>}
           <Action
             primary
             disabled={!s.books.some(b=>!b.closed && b.firstDate<=date)}
