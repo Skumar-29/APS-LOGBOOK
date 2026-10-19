@@ -312,3 +312,21 @@ test('Undo restores prior Rest and releases only the new automatic page',async (
   await slot.click();
   await expect(page.locator('.date-nav')).toContainText('Page 25');
 });
+
+
+test('Statistics matches Diary for a saved full day even when some Work is after the clock time',async ({page})=>{
+  await page.clock.setFixedTime(new Date('2026-10-19T00:00:00Z')); // QLD 10:00
+  await onboard(page);
+  const s=emptyState();
+  s.onboarded=true;s.settings.autoPages=false;
+  Object.assign(s.profile,{name:'Synthetic Test Driver',licence:'TEST',base:'QLD',zone:'Australia/Brisbane'});
+  editRange(s,'2026-10-19',0,72,'work');
+  await seed(page,s);
+  await chooseDate(page,'2026-10-19');
+  await expect(page.locator('[aria-label="Page totals"]')).toContainText('Work 18h 00m');
+  await expect(page.locator('[aria-label="Page totals"]')).toContainText('Rest 6h 00m');
+  await page.getByRole('button',{name:'Stats',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Statistics'})).toBeVisible();
+  await expect(page.locator('.stat-day').last()).toContainText('W 18h 00m · R 6h 00m');
+  await expect(page.getByText('Counted through 20/10/2026 00:00')).toBeVisible();
+});
