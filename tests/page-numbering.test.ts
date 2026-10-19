@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyState } from "../src/domain/model";
-import { allocatePage, cancelPage, findPage, suggestedPaperPage } from "../src/domain/diary";
+import { allocatePage, autoAllocatePage, cancelPage, editRange, findPage, finishTimer, suggestedPaperPage, switchTimer } from "../src/domain/diary";
 
 function diary(firstPage="23",firstDate="2026-10-01") {
   const s=emptyState();
@@ -60,5 +60,40 @@ describe("chronological physical diary page numbering",()=>{
     s.books.push({id:"second",number:"SECOND",firstPage:"1",firstDate:"2026-10-01",closed:false});
     expect(allocatePage(s,"2026-10-18","second").number).toBe("1");
     expect(findPage(s,"book","26").date).toBe("2026-10-19");
+  });
+  it("keeps selected Work even when a booked page gap is impossible",()=>{
+    const s=diary();
+    s.settings.autoPages=true;
+    allocatePage(s,"2026-10-17","book","24");
+    allocatePage(s,"2026-10-19","book","25");
+    const before=s.pages.map(p=>p.number);
+    editRange(s,"2026-10-18",0,4,"work");
+    expect(autoAllocatePage(s,"2026-10-18")).toBeNull();
+    expect(s.days["2026-10-18"].slots.slice(0,4)).toEqual(Array(4).fill("work"));
+    expect(s.pages.map(p=>p.number)).toEqual(before);
+    expect(()=>allocatePage(s,"2026-10-18","book")).toThrow(/No unused paper page/);
+  });
+  it("does not lose a completed driving timer when a paper page cannot be numbered",()=>{
+    const s=diary();
+    Object.assign(s.profile,{name:"Test",licence:"TEST",base:"QLD",zone:"Australia/Brisbane"});
+    s.settings.autoPages=true;
+    allocatePage(s,"2026-10-17","book","24");
+    allocatePage(s,"2026-10-19","book","25");
+    const start=Date.parse("2026-10-18T10:00:00+10:00");
+    switchTimer(s,"work","TRUCK", "unknown",start);
+    expect(()=>finishTimer(s,start+60*60000)).not.toThrow();
+    expect(s.timer).toBeNull();
+    expect(s.activities).toHaveLength(1);
+    expect(s.days["2026-10-18"].slots.slice(40,44)).toEqual(Array(4).fill("work"));
+    expect(s.pages.map(p=>p.number)).toEqual(["24","25"]);
+  });
+  it("allocates a page on the first work entry but not for an all-rest day",()=>{
+    const s=diary();
+    s.settings.autoPages=true;
+    editRange(s,"2026-10-18",0,4,"rest");
+    expect(autoAllocatePage(s,"2026-10-18")).toBeNull();
+    expect(s.pages).toHaveLength(0);
+    editRange(s,"2026-10-18",0,1,"work");
+    expect(autoAllocatePage(s,"2026-10-18")?.number).toBe("23");
   });
 });
