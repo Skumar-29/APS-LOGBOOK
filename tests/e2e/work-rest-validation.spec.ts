@@ -330,3 +330,35 @@ test('Statistics matches Diary for a saved full day even when some Work is after
   await expect(page.locator('.stat-day').last()).toContainText('W 18h 00m · R 6h 00m');
   await expect(page.getByText('Counted through 20/10/2026 00:00')).toBeVisible();
 });
+
+
+test('Next and Previous always navigate calendar days even when physical pages are out of order',async ({page})=>{
+  await page.clock.setFixedTime(new Date('2026-10-19T01:00:00Z'));
+  await onboard(page);
+  const s=emptyState();
+  s.onboarded=true;
+  s.books.push({id:'b',number:'TEST',firstDate:'2026-10-01',firstPage:'23',closed:false});
+  s.pages.push(
+    {id:'older-wrong',bookId:'b',number:'27',date:'2026-10-18',status:'Cancelled',reason:'Older numbering correction'},
+    {id:'current',bookId:'b',number:'26',date:'2026-10-19',status:'Active',reason:''},
+    {id:'later',bookId:'b',number:'28',date:'2026-10-22',status:'Active',reason:''}
+  );
+  await seed(page,s);
+  await chooseDate(page,'2026-10-19');
+  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
+  await page.getByRole('button',{name:'Next diary day'}).click();
+  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-20');
+  await page.getByRole('button',{name:'Next diary day'}).click();
+  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-21');
+  await page.getByRole('button',{name:'Next diary day'}).click();
+  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-22');
+  await page.getByRole('button',{name:'Previous diary day'}).click();
+  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-21');
+  await chooseDate(page,'2026-10-19');
+  await page.getByRole('button',{name:'Previous diary day'}).click();
+  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-18');
+  await page.getByRole('button',{name:'Jump to page'}).click();
+  await page.getByRole('dialog',{name:'Jump to paper page'}).getByLabel('Page number').fill('26');
+  await page.getByRole('dialog',{name:'Jump to paper page'}).getByRole('button',{name:'Go to page'}).click();
+  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
+});
