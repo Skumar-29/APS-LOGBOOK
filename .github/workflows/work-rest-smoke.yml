@@ -1,7 +1,7 @@
 name: Work/rest focused verification
 on:
   push:
-    branches: [fix/work-rest-validation-2026-10-19]
+    branches: [fix/work-rest-validation-2026-10-19, fix/diary-book-error-recovery-2026-10-19]
   pull_request:
     paths:
       - "src/**"
