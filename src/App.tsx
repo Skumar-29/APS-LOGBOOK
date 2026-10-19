@@ -123,14 +123,11 @@ export default function App() {
     if (to === screen) window.scrollTo({top: 0, behavior: "instant"});
     setScreen(to);
   }
+  // These arrows navigate calendar days, never physical-page allocation order.
+  // Page numbers can be entered out of chronological order; use Jump to page
+  // for book/page navigation instead.
   function previous(delta: number) {
-    const b = bookId || page?.bookId,
-      pages = s.pages
-        .filter((p) => p.bookId === b)
-        .sort((a, b) => Number(a.number) - Number(b.number)),
-      index = pages.findIndex((p) => p.id === page?.id);
-    if (index >= 0 && pages[index + delta]) goPage(pages[index + delta].id);
-    else goDate(dateAdd(date, delta));
+    goDate(dateAdd(date, delta));
   }
   const reminder =
     s.settings.backupDays > 0 &&
@@ -155,7 +152,7 @@ export default function App() {
             <section className="date-nav">
               <div className="row">
                 <button
-                  aria-label="Previous recorded page or day"
+                  aria-label="Previous diary day"
                   onClick={() => run(() => previous(-1))}
                 >
                   ‹
@@ -174,7 +171,7 @@ export default function App() {
                   <span aria-hidden="true">{new Date(date + "T12:00:00Z").toLocaleDateString("en-AU", {weekday:"short",timeZone:"UTC"})} {displayDate(date)}</span>
                 </span>
                 <button
-                  aria-label="Next recorded page or day"
+                  aria-label="Next diary day"
                   onClick={() => run(() => previous(1))}
                 >
                   ›
