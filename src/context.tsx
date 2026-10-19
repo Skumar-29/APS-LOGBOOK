@@ -132,8 +132,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return next;
         },
         latest: async () => {
-          await queue.current;
-          return ref.current!;
+          // An earlier rejected save must not block future navigation or reads.
+          await queue.current.catch(() => {});
+          if (!ref.current) throw Error("Records are not loaded.");
+          return ref.current;
         },
       }}
     >
