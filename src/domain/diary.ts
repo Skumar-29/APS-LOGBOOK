@@ -175,6 +175,26 @@ export function allocatePage(
   audit(s,"Allocate page",page.id,undefined,page);
   return page;
 }
+/** Work/rest facts must be saved even when the physical book needs manual review.
+ * This function is only for automatic assignment; explicit page allocation still
+ * validates and reports errors to the user.
+ */
+export function autoAllocatePage(s: Workspace, date: string): PaperPage | null {
+  if (!s.settings.autoPages || !s.days[date]?.slots.includes("work")
+    || s.pages.some(p=>p.date===date && p.status==="Active")) return null;
+  const book=s.books.filter(b=>!b.closed && (!b.firstDate || b.firstDate<=date))
+    .sort((a,b)=>a.firstDate.localeCompare(b.firstDate)).at(-1);
+  if(!book) return null;
+  try {
+    return allocatePage(s,date,book.id);
+  } catch (error) {
+    // Do not suppress unexpected failures (invalid state or programming bugs).
+    // Only a valid but impossible page sequence is a non-blocking condition.
+    if(error instanceof Error && /No unused paper page fits this diary date/.test(error.message))
+      return null;
+    throw error;
+  }
+}
 export function cancelPage(s: Workspace, pageId: string, reason: string) {
   if (!reason.trim()) throw Error("Enter a correction reason.");
   const p = s.pages.find((p) => p.id === pageId);
@@ -247,15 +267,7 @@ export function finishTimer(s: Workspace, now = Date.now()) {
   }
   s.activities.push({ ...t, end: now });
   s.timer = null;
-  if (s.settings.autoPages)
-    for (const date of recordedDates) {
-      if (!s.days[date]?.slots.includes("work") || s.pages.some((p) => p.date === date && p.status === "Active"))
-        continue;
-      const book = s.books
-        .filter((b) => !b.closed && b.firstDate <= date)
-        .at(-1);
-      if (book) allocatePage(s, date, book.id);
-    }
+  for (const date of recordedDates) autoAllocatePage(s,date);
   audit(s, "Finish " + t.kind, t.id, before, { end: now });
 }
 export function switchTimer(
