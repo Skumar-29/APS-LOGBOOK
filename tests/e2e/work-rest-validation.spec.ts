@@ -204,6 +204,7 @@ test('failed page allocation without a book does not trap navigation or block la
   await page.clock.setFixedTime(new Date('2026-10-19T01:00:00Z'));
   await onboard(page);
   await chooseDate(page,'2026-10-20');
+  await page.getByText('Paper page & record copy').click();
   await page.getByRole('button',{name:'Allocate page',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Paper page'})).toBeVisible();
   await expect(page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true})).toBeDisabled();
@@ -220,6 +221,7 @@ test('failed page allocation without a book does not trap navigation or block la
   await expect(page.getByText('TEST-BOOK')).toBeVisible();
   await page.getByRole('button',{name:'Diary',exact:true}).click();
   await chooseDate(page,'2026-10-20');
+  await page.getByText('Paper page & record copy').click();
   await page.getByRole('button',{name:'Allocate page',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true})).toBeEnabled();
   await page.getByRole('dialog',{name:'Paper page'}).getByLabel('Book').selectOption({label:'TEST-BOOK'});
