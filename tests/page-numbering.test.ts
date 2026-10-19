@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyState, type Workspace } from "../src/domain/model";
+import { emptyState } from "../src/domain/model";
 import { allocatePage, cancelPage, findPage, suggestedPaperPage } from "../src/domain/diary";
 
 function diary(firstPage="23",firstDate="2026-10-01") {
