@@ -674,7 +674,7 @@ export function Diary({
             label="Book"
             value={bookId}
             options={s.books
-              .filter((b) => !b.closed)
+              .filter((b) => !b.closed && b.firstDate <= date)
               .map((b) => [b.id, b.number])}
             onChange={setBookId}
           />
@@ -685,6 +685,7 @@ export function Diary({
           />
           <Action
             primary
+            disabled={!s.books.some(b=>!b.closed && b.firstDate<=date)}
             onClick={async () => {
               let id = "";
               await mutate((w) => {
@@ -697,8 +698,8 @@ export function Diary({
           >
             Allocate
           </Action>
-          {!s.books.some((b) => !b.closed) && (
-            <p>Add a diary book in Records first.</p>
+          {!s.books.some((b) => !b.closed && b.firstDate<=date) && (
+            <p>No open book covers this date. Open More → Records → + Book to add your paper diary book.</p>
           )}
         </Modal>
       )}
