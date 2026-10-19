@@ -160,6 +160,8 @@ export function validateState(s: Workspace) {
     )
   )
     throw Error("Invalid default rest setting.");
+  if (s.settings.timeFormat !== undefined && !["12h", "24h"].includes(s.settings.timeFormat))
+    throw Error("Invalid time display setting.");
   if(s.settings.restSelectionMode!==undefined&&!["suggested","confirm"].includes(s.settings.restSelectionMode))
     throw Error("Invalid rest selection setting.");
   for (const [key, d] of Object.entries(s.days)) {

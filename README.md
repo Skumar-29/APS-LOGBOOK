@@ -17,6 +17,10 @@ npm run test:e2e
 
 `dist/` is the complete HTTPS-hosted application. It works at a domain root or a repository subpath. Opening `index.html` directly as a local file does not provide PWA or secure browser APIs.
 
+## Time display preference (19 October 2026)
+
+Settings → **Display & diary** → **Time format** switches between **12-hour (AM/PM)** (default) and **24-hour (00–23)**. Diary hour labels follow the selected preference, e.g. after 12 PM they show 1 PM, 2 PM instead of 13, 14. This preference is stored in the existing workspace data and included in backups. It is display-only; NHVR calculations, internal timestamps and paper PDF records remain unchanged. See `TIME_FORMAT_CHANGE.md`.
+
 ## Features
 
 - Driving timer with saved sessions, base-time-zone handling, quarter-hour rounding and start correction.

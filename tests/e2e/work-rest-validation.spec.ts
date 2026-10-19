@@ -362,3 +362,28 @@ test('Next and Previous always navigate calendar days even when physical pages a
   await page.getByRole('dialog',{name:'Jump to paper page'}).getByRole('button',{name:'Go to page'}).click();
   await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
 });
+
+test('time format can switch 12-hour / 24-hour labels and survives a refresh', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-11T03:00:00Z'));
+  await onboard(page);
+  const slot = page.locator('.swipe-block[data-slot="52"]');
+  await expect(slot).toHaveAttribute('aria-label', '1:00 PM to 1:15 PM, rest');
+  await expect(page.locator('.swipe-hour-labels')).toContainText('1 PM');
+
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('button', { name: /^Settings Driver,/ }).click();
+  await page.getByText('Display & diary', { exact: true }).click();
+  await page.getByLabel('Time format').selectOption('24h');
+  await page.getByRole('button', { name: 'Diary', exact: true }).click();
+  await expect(slot).toHaveAttribute('aria-label', '13:00 to 13:15, rest');
+  await page.reload();
+  await expect(slot).toHaveAttribute('aria-label', '13:00 to 13:15, rest');
+
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('button', { name: /^Settings Driver,/ }).click();
+  await page.getByText('Display & diary', { exact: true }).click();
+  await expect(page.getByLabel('Time format')).toHaveValue('24h');
+  await page.getByLabel('Time format').selectOption('12h');
+  await page.getByRole('button', { name: 'Diary', exact: true }).click();
+  await expect(slot).toHaveAttribute('aria-label', '1:00 PM to 1:15 PM, rest');
+});

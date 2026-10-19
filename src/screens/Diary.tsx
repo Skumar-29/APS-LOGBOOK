@@ -18,7 +18,7 @@ import {
   zones,
 } from "../domain/model";
 import { allocatePage, autoAllocatePage, cancelPage, changes, editRange, suggestedPaperPage } from "../domain/diary";
-import { hhmm, minutesLabel, totals, dateAdd } from "../domain/time";
+import { hhmm, displaySlot, minutesLabel, totals, dateAdd } from "../domain/time";
 import {
   Action,
   Check,
@@ -77,6 +77,7 @@ export function Diary({
       axis: "pending" | "horizontal" | "vertical";
     } | null>(null),
     suppressClick = useRef(false);
+  const timeFormat = s.settings.timeFormat || "12h";
   const full = s.settings.fullDay,
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
@@ -368,7 +369,7 @@ export function Diary({
             <h2>Work / rest changes</h2>
             {allChanges.map((c) => (
               <div className="record-line" key={c.slot}>
-                <strong>{hhmm(c.slot)}</strong>
+                <strong>{displaySlot(c.slot, timeFormat)}{c.slot===96&&timeFormat==="12h"?" (next day)":""}</strong>
                 <span>
                   {d.slots[c.slot] || "Finish"} · {c.location || "No location"}
                 </span>
@@ -404,8 +405,8 @@ export function Diary({
                     });
                   }}
                 >
-                  {String(p * 6).padStart(2, "0")}–
-                  {String((p + 1) * 6).padStart(2, "0")}
+                  {displaySlot(p * 24, timeFormat, false)}–
+                  {displaySlot((p + 1) * 24, timeFormat, false)}
                 </button>
               ))}
               <Action
@@ -421,7 +422,7 @@ export function Diary({
             {visible.map((p) => (
               <div key={p} className="six-hours diary-grid-section swipe-grid">
                 <div className="swipe-hour-labels">
-                  {Array.from({length:6},(_,i)=><span key={i}>{String(p*6+i).padStart(2,"0")}</span>)}
+                  {Array.from({length:6},(_,i)=><span key={i}>{displaySlot((p*6+i)*4,timeFormat,false)}</span>)}
                 </div>
                 <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}>
                   {d.slots.slice(p*24,p*24+24).map((activity,i)=>{
@@ -431,8 +432,8 @@ export function Diary({
                     const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
                     return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
-                      aria-label={`${hhmm(slot)} to ${hhmm(slot+1)}, ${kind}`}
-                      title={`${hhmm(slot)}–${hhmm(slot+1)} ${kind}${reasons?.length?" · "+reasons.join(" · "):""}`}
+                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}`}
+                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):""}`}
                       onPointerDown={e=>{
                         if(readOnly||e.pointerType==="mouse"&&e.button!==0)return;
                         e.preventDefault();
@@ -499,7 +500,7 @@ export function Diary({
                   <tbody>
                     {allChanges.map((c) => (
                       <tr key={date + ":" + c.slot}>
-                        <th scope="row">{hhmm(c.slot)}</th>
+                        <th scope="row">{displaySlot(c.slot,timeFormat)}{c.slot===96&&timeFormat==="12h"?" (next day)":""}</th>
                         <td>
                           <Field
                             label="Odometer"

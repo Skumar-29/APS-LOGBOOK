@@ -230,6 +230,8 @@ export interface Workspace {
   settings: {
     theme: "system" | "light" | "dark";
     fullDay: boolean;
+    /** Display preference only; internally all times remain 24-hour civil time. */
+    timeFormat?: "12h" | "24h";
     diaryLayoutVersion?: number;
     diaryRestDefault?: RestType;
     restDefaultsVersion?: number;
@@ -324,6 +326,7 @@ export function emptyState(): Workspace {
     settings: {
       theme: "system",
       fullDay: true,
+      timeFormat: "12h",
       diaryLayoutVersion: 1,
       locationPicker: true,
       autoPages: true,
@@ -468,6 +471,8 @@ export function audit(
 /** Additive migration: keep all v2 records and their IDs intact. */
 export function upgradeWorkspace(s: Workspace): Workspace {
   s.documents ||= [];
+  // Existing saved diaries default to 12-hour labels without changing any stored times.
+  s.settings.timeFormat ||= "12h";
   if (!s.settings.diaryLayoutVersion) {
     s.settings.fullDay = true;
     s.settings.diaryLayoutVersion = 1;

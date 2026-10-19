@@ -5,6 +5,7 @@ import {
   today,
   validDate,
   displayInstant,
+  type TimeFormat,
   displayDate,
   instantFor,
 } from "./domain/time";
@@ -147,7 +148,7 @@ export default function App() {
             <Appearance />
           </div>
         </header>
-        <BaseClock base={s.profile.base} zone={s.profile.zone} />
+        <BaseClock base={s.profile.base} zone={s.profile.zone} format={s.settings.timeFormat || "12h"} />
           {["Diary", "Graph", "Stats"].includes(screen) && (
             <section className="date-nav">
               <div className="row">
@@ -393,7 +394,7 @@ export default function App() {
   );
 }
 
-function BaseClock({ base, zone }: { base: string; zone: string }) {
+function BaseClock({ base, zone, format }: { base: string; zone: string; format: TimeFormat }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -402,7 +403,7 @@ function BaseClock({ base, zone }: { base: string; zone: string }) {
   return (
     <div className="base-clock">
       <span>{base} base time</span>
-      <time dateTime={new Date(now).toISOString()}><span className="clock-weekday">{new Intl.DateTimeFormat("en-AU", {weekday:"short",timeZone:zone}).format(now)} · </span>{displayInstant(now, zone)}</time>
+      <time dateTime={new Date(now).toISOString()}><span className="clock-weekday">{new Intl.DateTimeFormat("en-AU", {weekday:"short",timeZone:zone}).format(now)} · </span>{displayInstant(now, zone, format)}</time>
     </div>
   );
 }

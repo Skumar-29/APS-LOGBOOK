@@ -249,6 +249,19 @@ export function Settings({ onDone }: { onDone?: () => void }) {
           </Fold>
           <Fold title="Display & diary">
             <Field
+              label="Time format"
+              value={s.settings.timeFormat || "12h"}
+              options={[
+                ["12h", "12-hour (AM/PM)"],
+                ["24h", "24-hour (00–23)"],
+              ]}
+              onChange={(v) => {
+                void mutate((w) => {
+                  w.settings.timeFormat = v as "12h" | "24h";
+                }).catch(() => {});
+              }}
+            />
+            <Field
               label="Rest setting for new diary pages"
               value={s.settings.diaryRestDefault || "unknown"}
               options={[

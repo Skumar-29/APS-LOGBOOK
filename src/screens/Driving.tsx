@@ -3,7 +3,7 @@ import {statusClass,warningLines,zoneLabel,summaryChecks} from '../domain/warnin
 import { useEffect, useState } from "react";
 import { useStore } from "../context";
 import { correctTimerStart, switchTimer } from "../domain/diary";
-import { civil, minutesLabel, today } from "../domain/time";
+import { civil, displayClock, minutesLabel, today } from "../domain/time";
 import { useReport } from "../components/useReport";
 export { useReport } from "../components/useReport";
 import { type RestType, ruleProfileAt, profileOn } from "../domain/model";
@@ -42,7 +42,7 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
               : "READY TO RECORD"}
           </span>
           <span className="small">
-            {s.profile.base} · {clock.time}
+            {s.profile.base} · {displayClock(clock.time,s.settings.timeFormat || "12h")}
           </span>
         </div>
         <div className="timer" aria-label="Elapsed time">
@@ -102,7 +102,7 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
           <div className="row">
             <span className="small">
               Started {displayDate(civil(timer.start, timer.zone).date)} ·{" "}
-              {civil(timer.start, timer.zone).time}
+              {displayClock(civil(timer.start, timer.zone).time,s.settings.timeFormat || "12h")}
             </span>
             <Action
               onClick={() => {

@@ -82,6 +82,24 @@ export function clockChange(date: string, zone: string) {
 export function hhmm(slot: number) {
   return `${String(Math.floor(slot / 4)).padStart(2, "0")}:${String((slot % 4) * 15).padStart(2, "0")}`;
 }
+/** Presentation only. Never use these strings for work/rest arithmetic or storage. */
+export type TimeFormat = "12h" | "24h";
+export function displayClock(time: string, format: TimeFormat = "12h") {
+  if (format === "24h") return time;
+  const match = /^(\d{2}):([0-5]\d)$/.exec(time);
+  if (!match) return time;
+  const hour = Number(match[1]);
+  if (hour > 24 || (hour === 24 && match[2] !== "00")) return time;
+  return `${hour % 12 || 12}:${match[2]} ${hour % 24 < 12 ? "AM" : "PM"}`;
+}
+export function displaySlot(slot: number, format: TimeFormat = "12h", showMinutes = true) {
+  if (!Number.isInteger(slot) || slot < 0 || slot > 96) return hhmm(slot);
+  const time = hhmm(slot);
+  if (format === "24h") return showMinutes ? time : time.slice(0, 2);
+  if (showMinutes) return displayClock(time, "12h");
+  const hour = Math.floor(slot / 4);
+  return `${hour % 12 || 12} ${hour % 24 < 12 ? "AM" : "PM"}`;
+}
 export function minutesLabel(n: number) {
   const m=Math.max(0,Math.round(n));
   return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
@@ -117,9 +135,9 @@ export function displayCivil(value: string) {
     .replace(/\d{4}-\d{2}-\d{2}/g, (date) => displayDate(date))
     .replace("T", " · ");
 }
-export function displayInstant(value: string | number, zone: string) {
+export function displayInstant(value: string | number, zone: string, format: TimeFormat = "24h") {
   const at = typeof value === "number" ? value : Date.parse(value);
   if (!Number.isFinite(at)) return "";
   const c = civil(at, zone);
-  return displayDate(c.date) + " · " + c.time;
+  return displayDate(c.date) + " · " + displayClock(c.time, format);
 }
