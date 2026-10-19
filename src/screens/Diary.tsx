@@ -17,7 +17,7 @@ import {
   type Day,
   zones,
 } from "../domain/model";
-import { allocatePage, cancelPage, changes, editRange, suggestedPaperPage } from "../domain/diary";
+import { allocatePage, autoAllocatePage, cancelPage, changes, editRange, suggestedPaperPage } from "../domain/diary";
 import { hhmm, minutesLabel, totals, dateAdd } from "../domain/time";
 import {
   Action,
@@ -62,6 +62,7 @@ export function Diary({
     [undo, setUndo] = useState<{
       before: Record<string, Day>;
       revisions: Record<string, number>;
+      automaticPages: string[];
     } | null>(null),
     [dragRange, setDragRange] = useState<number[] | null>(null),
     [swipeKind,setSwipeKind] = useState<"work"|"rest"|null>(null),
@@ -90,6 +91,8 @@ export function Diary({
   const redSlots = readOnly ? {} : report?.breachSlots || {};
   const dayBreaches = Object.entries(redSlots).filter(([key]) => key.startsWith(date + ":"));
   const warnings = readOnly || !report ? [] : warningLines(report,date);
+  const pageNeedsReview=!readOnly && s.settings.autoPages && d.slots.includes("work") && !page;
+  const hasEligibleBook=s.books.some(b=>!b.closed && (!b.firstDate || b.firstDate<=date));
   let suggestedNumber = "";
   if (allocation && bookId) {
     try { suggestedNumber = suggestedPaperPage(s,date,bookId); }
@@ -116,7 +119,8 @@ export function Diary({
   ) {
     if (readOnly) throw Error("This page is read only.");
     const snapshot: Record<string, Day> = {},
-      revisions: Record<string, number> = {};
+      revisions: Record<string, number> = {},
+      automaticPages: string[] = [];
     await mutate((w) => {
       const keys = [date, ...(next && b > 0 ? [dateAdd(date, 1)] : [])];
       for (const key of keys) snapshot[key] = clone(ensureDay(w, key));
@@ -138,16 +142,12 @@ export function Diary({
         };
       }
       for (const key of keys) revisions[key] = w.days[key].revision;
-      if (w.settings.autoPages)
-        for (const key of keys)
-          if (w.days[key]?.slots.includes("work") && !w.pages.some((p) => p.date === key && p.status === "Active")) {
-            const book = w.books
-              .filter((b) => !b.closed && b.firstDate <= key)
-              .at(-1);
-            if (book) allocatePage(w, key, book.id);
-          }
+      for (const key of keys) {
+        const created=autoAllocatePage(w,key);
+        if(created) automaticPages.push(created.id);
+      }
     });
-    setUndo({ before: snapshot, revisions });
+    setUndo({ before: snapshot, revisions, automaticPages });
   }
   async function undoBlocks() {
     if (!undo) return;
@@ -160,6 +160,15 @@ export function Diary({
         const old = clone(w.days[key]);
         w.days[key] = { ...clone(before), revision: old.revision + 1 };
         audit(w, "Undo block edit", key, old, w.days[key]);
+      }
+      // Undo the automatic page created by *this same action*, never older
+      // paper pages or pages allocated manually by the driver.
+      for (const id of undo.automaticPages) {
+        const p=w.pages.find(p=>p.id===id);
+        if (!p || p.status!=="Active" || !(p.date in undo.before) || p.snapshot)
+          throw Error("The new page changed since this edit. Review the page before undo.");
+        w.pages=w.pages.filter(page=>page.id!==id);
+        audit(w,"Undo newly allocated automatic page",id,p,undefined);
       }
     });
     setUndo(null);
@@ -191,6 +200,9 @@ export function Diary({
       {error ? <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div> :
         daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)} · {d.profile.base} time</p>}
       {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x} className={x.startsWith('Review:')?'warning-review':'bad'}>{x}</p>)}</div>}
+      {pageNeedsReview && <p className="small warning-review" role="status">
+        Work saved · {hasEligibleBook?"paper page needs numbering review.":"add an open diary book in Records."}
+      </p>}
       <details className="window-summary" aria-label="Work window totals">
         <summary>
           <strong>
