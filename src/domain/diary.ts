@@ -109,50 +109,70 @@ export function findPage(s: Workspace, bookId: string, num: string) {
     );
   return matches[0];
 }
+/** Printed page numbers follow the dates written in the paper book, not entry order.
+ * A cancelled page remains reserved but may not anchor chronology: historic
+ * wrong-number corrections must not prevent allocating their proper page.
+ */
+export function suggestedPaperPage(s: Workspace, date: string, bookId: string): string {
+  const book=s.books.find(b=>b.id===bookId);
+  if(!book || book.closed) throw Error("Choose an open diary book.");
+  if(!validDate(date)) throw Error("Choose a valid diary date.");
+  if(book.firstDate && date<book.firstDate)
+    throw Error("This date is before the diary book starts. Check the book start date.");
+  const first=BigInt(normalizePage(book.firstPage)||"1");
+  const pages=s.pages.filter(p=>p.bookId===bookId);
+  const numbered=pages.map(p=>({p,n:BigInt(normalizePage(p.number)||"0")}));
+  const anchors=numbered.filter(x=>x.p.status!=="Cancelled");
+  const earlier=anchors.filter(x=>x.p.date<date).map(x=>x.n);
+  const later=anchors.filter(x=>x.p.date>date).map(x=>x.n);
+  const prior=earlier.length ? earlier.reduce((a,b)=>a>b?a:b) : null;
+  const next=later.length ? later.reduce((a,b)=>a<b?a:b) : null;
+  const lower=prior!==null&&prior>=first ? prior+1n:first;
+  const sameDate=numbered.filter(x=>x.p.date===date).map(x=>x.n);
+  const lastOnDate=sameDate.length?sameDate.reduce((a,b)=>a>b?a:b):null;
+  // Cancelled/replaced pages normally advance the printed number. If an old
+  // incorrect cancellation sits *after* the next day's page, ignore it as a
+  // chronological anchor while still reserving its physical number.
+  const afterCorrection=lastOnDate!==null && lastOnDate>=lower &&
+    (next===null || lastOnDate+1n<next) ? lastOnDate+1n:null;
+  const candidate=afterCorrection??(prior!==null?lower:next!==null?next-1n:first);
+  const taken=new Set(numbered.map(x=>String(x.n)));
+  if(candidate<lower || next!==null&&candidate>=next || taken.has(String(candidate)))
+    throw Error("No unused paper page fits this diary date. Review the book and existing page numbers; saved pages were not changed.");
+  return String(candidate);
+}
 export function allocatePage(
   s: Workspace,
   date: string,
   bookId: string,
   number?: string,
 ) {
-  const b = s.books.find((x) => x.id === bookId);
-  if (!b || b.closed) throw Error("Choose an open diary book.");
-  if (s.pages.some((p) => p.date === date && p.status === "Active"))
-    throw Error(
-      "This date already has an active paper page. Cancel it before allocating a replacement.",
-    );
-  let n = number?.trim();
-  if (!n) {
-    const max = s.pages
-      .filter((p) => p.bookId === bookId)
-      .reduce(
-        (m, p) => {
-          const k = normalizePage(p.number);
-          return k && BigInt(k) > m ? BigInt(k) : m;
-        },
-        BigInt(normalizePage(b.firstPage) || "1") - 1n,
-      );
-    n = String(max + 1n);
-  }
-  if (!normalizePage(n)) throw Error("Enter a numeric page number.");
-  if (
-    s.pages.some(
-      (p) =>
-        p.bookId === bookId && normalizePage(p.number) === normalizePage(n!),
-    )
-  )
+  const b=s.books.find(x=>x.id===bookId);
+  if(!b || b.closed) throw Error("Choose an open diary book.");
+  if(!validDate(date)) throw Error("Choose a valid diary date.");
+  if(b.firstDate && date<b.firstDate)
+    throw Error("This date is before the diary book starts. Check the book start date.");
+  if(s.pages.some(p=>p.date===date&&p.status==="Active"))
+    throw Error("This date already has an active paper page. Cancel it before allocating a replacement.");
+  const n=number?.trim()?normalizePage(number):suggestedPaperPage(s,date,bookId);
+  if(!n) throw Error("Enter a numeric page number.");
+  const pageNo=BigInt(n),start=BigInt(normalizePage(b.firstPage)||"1");
+  if(pageNo<start) throw Error("This page is before the book's first page.");
+  const sameBook=s.pages.filter(p=>p.bookId===bookId);
+  if(sameBook.some(p=>normalizePage(p.number)===n))
     throw Error("This page number already exists in the book.");
-  const page: PaperPage = {
-    id: uid(),
-    bookId,
-    number: n,
-    date,
-    status: "Active",
-    reason: "",
+  const chronological=sameBook.filter(p=>p.status!=="Cancelled");
+  const earlier=chronological.filter(p=>p.date<date);
+  const later=chronological.filter(p=>p.date>date);
+  if(earlier.some(p=>BigInt(normalizePage(p.number))>=pageNo)
+    ||later.some(p=>BigInt(normalizePage(p.number))<=pageNo))
+    throw Error("Page number is out of date order. Earlier dates need lower page numbers.");
+  const page: PaperPage={
+    id:uid(),bookId,number:n,date,status:"Active",reason:"",
   };
   s.pages.push(page);
-  ensureDay(s, date);
-  audit(s, "Allocate page", page.id, undefined, page);
+  ensureDay(s,date);
+  audit(s,"Allocate page",page.id,undefined,page);
   return page;
 }
 export function cancelPage(s: Workspace, pageId: string, reason: string) {
