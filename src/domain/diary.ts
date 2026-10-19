@@ -249,7 +249,7 @@ export function finishTimer(s: Workspace, now = Date.now()) {
   s.timer = null;
   if (s.settings.autoPages)
     for (const date of recordedDates) {
-      if (s.pages.some((p) => p.date === date && p.status === "Active"))
+      if (!s.days[date]?.slots.includes("work") || s.pages.some((p) => p.date === date && p.status === "Active"))
         continue;
       const book = s.books
         .filter((b) => !b.closed && b.firstDate <= date)
