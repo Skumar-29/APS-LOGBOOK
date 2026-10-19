@@ -225,7 +225,40 @@ test('failed page allocation without a book does not trap navigation or block la
   await page.getByRole('button',{name:'Allocate page',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true})).toBeEnabled();
   await page.getByRole('dialog',{name:'Paper page'}).getByLabel('Book').selectOption({label:'TEST-BOOK'});
-  await page.getByRole('dialog',{name:'Paper page'}).getByLabel('Page number (blank = next unused)').fill('23');
+  await page.getByRole('dialog',{name:'Paper page'}).getByLabel('Page number (blank = chronological suggestion)').fill('23');
   await page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true}).click();
   await expect(page.locator('.date-nav')).toContainText('Page 23');
+});
+
+
+test('backdated Work receives page 25 after 19 October already has page 26',async ({page})=>{
+  await page.clock.setFixedTime(new Date('2026-10-19T00:30:00Z'));
+  await onboard(page);
+  const s=emptyState();
+  s.onboarded=true;s.settings.autoPages=true;
+  Object.assign(s.profile,{name:'Synthetic Test Driver',licence:'TEST',base:'QLD',zone:'Australia/Brisbane'});
+  s.books.push({id:'book',number:'TEST',firstDate:'2026-10-01',firstPage:'23',closed:false});
+  editRange(s,'2026-10-19',0,4,'work');
+  s.pages.push({id:'page-26',bookId:'book',number:'26',date:'2026-10-19',status:'Active',reason:''});
+  await seed(page,s);
+  await chooseDate(page,'2026-10-18');
+  await expect(page.locator('.date-nav')).not.toContainText('Page ');
+  await page.getByText('Paper page & record copy').click();
+  await page.getByRole('button',{name:'Allocate page',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Paper page'})).toContainText('Suggested page for 2026-10-18: 25');
+  await page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true}).click();
+  await expect(page.locator('.date-nav')).toContainText('Page 25');
+  await page.locator('.swipe-block[data-slot="0"]').click();
+  await expect(page.locator('.swipe-block[data-slot="0"]')).toHaveAttribute('aria-pressed','true');
+  await chooseDate(page,'2026-10-19');
+  await expect(page.locator('.date-nav')).toContainText('Page 26');
+  await chooseDate(page,'2026-10-17');
+  await page.locator('.swipe-block[data-slot="0"]').click();
+  await expect(page.locator('.date-nav')).toContainText('Page 24');
+  await chooseDate(page,'2026-10-20');
+  await page.locator('.swipe-block[data-slot="0"]').click();
+  await expect(page.locator('.date-nav')).toContainText('Page 27');
+  await page.reload();
+  await chooseDate(page,'2026-10-18');
+  await expect(page.locator('.date-nav')).toContainText('Page 25');
 });
