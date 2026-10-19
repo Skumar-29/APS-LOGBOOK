@@ -368,7 +368,7 @@ test('time format can switch 12-hour / 24-hour labels and survives a refresh', a
   await onboard(page);
   const slot = page.locator('.swipe-block[data-slot="52"]');
   await expect(slot).toHaveAttribute('aria-label', '1:00 PM to 1:15 PM, rest');
-  await expect(page.locator('.swipe-hour-labels')).toContainText('1 PM');
+  await expect(page.locator('.swipe-hour-labels').nth(2)).toContainText('1 PM');
 
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('button', { name: /^Settings Driver,/ }).click();
