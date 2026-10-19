@@ -379,6 +379,7 @@ export default function App() {
           />
           <Action
             primary
+            disabled={!s.pages.length}
             onClick={() => {
               goPage(findPage(s, bookId, jumpNumber).id);
               setJump(false);
@@ -386,8 +387,8 @@ export default function App() {
           >
             Go to page
           </Action>
-          {!s.books.length && (
-            <p>Add or restore your diary books in Records.</p>
+          {!s.pages.length && (
+            <p>No numbered diary pages yet. Add a book in More → Records, then allocate a page.</p>
           )}
         </Modal>
       )}
