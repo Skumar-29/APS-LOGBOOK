@@ -23,6 +23,8 @@ export function Stats({
           ? asOf
           : "24:00"),
       range,
+      false,
+      true, // Same full recorded-day assessment as Diary; Driving remains elapsed-only.
     );
   if (!report) return <Empty>{error || "Calculating statistics…"}{error&&<Action onClick={retry}>Retry</Action>}</Empty>;
   const sums = report.days.reduce(
