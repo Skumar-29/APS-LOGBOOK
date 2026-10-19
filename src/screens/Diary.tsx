@@ -135,7 +135,7 @@ export function Diary({
       for (const key of keys) revisions[key] = w.days[key].revision;
       if (w.settings.autoPages)
         for (const key of keys)
-          if (!w.pages.some((p) => p.date === key && p.status === "Active")) {
+          if (w.days[key]?.slots.includes("work") && !w.pages.some((p) => p.date === key && p.status === "Active")) {
             const book = w.books
               .filter((b) => !b.closed && b.firstDate <= key)
               .at(-1);
