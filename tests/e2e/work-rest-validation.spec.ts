@@ -199,3 +199,31 @@ test('settings effective date reapplies BFM to a previously saved Standard day w
   await expect(page.locator('.date-nav')).toContainText('NSW · Standard');
   await expect(page.locator('.swipe-block.work')).toHaveCount(4);
 });
+
+test('failed page allocation without a book does not trap navigation or block later edits',async ({page})=>{
+  await page.clock.setFixedTime(new Date('2026-10-19T01:00:00Z'));
+  await onboard(page);
+  await chooseDate(page,'2026-10-20');
+  await page.getByRole('button',{name:'Allocate page',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Paper page'})).toBeVisible();
+  await expect(page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true})).toBeDisabled();
+  await expect(page.getByRole('dialog',{name:'Paper page'})).toContainText('No open book covers this date');
+  await page.getByRole('button',{name:'Close dialog'}).click();
+  await page.getByRole('button',{name:'More',exact:true}).click();
+  await page.getByRole('button',{name:/Records Books, backup/}).click();
+  await expect(page.getByRole('heading',{name:'Diary books'})).toBeVisible();
+  await page.getByRole('button',{name:'+ Book'}).click();
+  await page.getByLabel('Book number').fill('TEST-BOOK');
+  await page.getByLabel('First page number').fill('23');
+  await page.getByLabel('First date').fill('2026-10-19');
+  await page.getByRole('button',{name:'Save book'}).click();
+  await expect(page.getByText('TEST-BOOK')).toBeVisible();
+  await page.getByRole('button',{name:'Diary',exact:true}).click();
+  await chooseDate(page,'2026-10-20');
+  await page.getByRole('button',{name:'Allocate page',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true})).toBeEnabled();
+  await page.getByRole('dialog',{name:'Paper page'}).getByLabel('Book').selectOption({label:'TEST-BOOK'});
+  await page.getByRole('dialog',{name:'Paper page'}).getByLabel('Page number (blank = next unused)').fill('23');
+  await page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true}).click();
+  await expect(page.locator('.date-nav')).toContainText('Page 23');
+});
