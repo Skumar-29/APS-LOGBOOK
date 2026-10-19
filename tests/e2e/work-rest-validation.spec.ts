@@ -262,3 +262,53 @@ test('backdated Work receives page 25 after 19 October already has page 26',asyn
   await chooseDate(page,'2026-10-18');
   await expect(page.locator('.date-nav')).toContainText('Page 25');
 });
+
+
+test('a page-numbering conflict does not discard Work blocks or trap the diary',async ({page})=>{
+  await page.clock.setFixedTime(new Date('2026-10-19T00:30:00Z'));
+  await onboard(page);
+  const s=emptyState();
+  s.onboarded=true;s.settings.autoPages=true;
+  Object.assign(s.profile,{name:'Synthetic Test Driver',licence:'TEST',base:'QLD',zone:'Australia/Brisbane'});
+  s.books.push({id:'book',number:'TEST',firstDate:'2026-10-01',firstPage:'23',closed:false});
+  s.pages.push(
+    {id:'p24',bookId:'book',number:'24',date:'2026-10-17',status:'Active',reason:''},
+    {id:'p25',bookId:'book',number:'25',date:'2026-10-19',status:'Active',reason:''}
+  );
+  await seed(page,s);
+  await chooseDate(page,'2026-10-18');
+  const slot=page.locator('.swipe-block[data-slot="0"]');
+  await slot.click();
+  await expect(slot).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.date-nav')).not.toContainText('Page 26');
+  await expect(page.getByText(/Work saved · paper page needs numbering review/)).toBeVisible();
+  await page.reload();
+  await chooseDate(page,'2026-10-18');
+  await expect(slot).toHaveAttribute('aria-pressed','true');
+  await page.getByRole('button',{name:'More',exact:true}).click();
+  await expect(page.getByText('Your tools')).toBeVisible();
+});
+
+test('Undo restores prior Rest and releases only the new automatic page',async ({page})=>{
+  await page.clock.setFixedTime(new Date('2026-10-19T00:30:00Z'));
+  await onboard(page);
+  const s=emptyState();
+  s.onboarded=true;s.settings.autoPages=true;
+  Object.assign(s.profile,{name:'Synthetic Test Driver',licence:'TEST',base:'QLD',zone:'Australia/Brisbane'});
+  s.books.push({id:'book',number:'TEST',firstDate:'2026-10-01',firstPage:'23',closed:false});
+  s.pages.push({id:'p26',bookId:'book',number:'26',date:'2026-10-19',status:'Active',reason:''});
+  await seed(page,s);
+  await chooseDate(page,'2026-10-18');
+  const slot=page.locator('.swipe-block[data-slot="0"]');
+  await slot.click();
+  await expect(slot).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.date-nav')).toContainText('Page 25');
+  await page.getByRole('button',{name:'Undo',exact:true}).click();
+  await expect(slot).toHaveAttribute('aria-pressed','false');
+  await expect(page.locator('.date-nav')).not.toContainText('Page 25');
+  await chooseDate(page,'2026-10-19');
+  await expect(page.locator('.date-nav')).toContainText('Page 26');
+  await chooseDate(page,'2026-10-18');
+  await slot.click();
+  await expect(page.locator('.date-nav')).toContainText('Page 25');
+});
