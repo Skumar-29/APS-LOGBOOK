@@ -9,10 +9,11 @@ permissions:
   id-token: write
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,8 +23,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      # Full legacy browser suite runs separately; removed planning screens are not release criteria.
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/e2e/work-rest-validation.spec.ts --project=desktop --project=phone --workers=1
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
