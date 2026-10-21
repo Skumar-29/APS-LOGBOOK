@@ -267,7 +267,7 @@ export function Settings({ onDone }: { onDone?: () => void }) {
               options={[
                 ["unknown", "Confirm each break"],
                 ["stationary", "Stationary unless specified"],
-                ["sleeper-moving", "Moving sleeper unless specified"],
+                // A moving sleeper must be explicitly identified for an individual two-up break.
               ]}
               onChange={(v) =>
                 mutate((w) => {
