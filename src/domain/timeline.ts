@@ -96,8 +96,13 @@ export function buildTimeline(s: Workspace, asOf: string, now = Date.now(), live
         const k=timer?.kind || (mapped ? "rest" : kind);
         const firstSlot=timer&&civil(timer.start,p.zone).date===date ? Math.floor(civil(timer.start,p.zone).slot) : 0;
         const override=timer&&timer!==live&&timer.kind==="rest" ? Object.values(starts).filter(c=>c.slot>=firstSlot&&c.slot<=slot&&d?.slots[c.slot]==="rest").sort((a,b)=>b.slot-a.slot)[0] : null;
+        const recordedProfile=ruleProfileAt(s,a,timer===live ? timer.profile : p);
         const physical=k === "rest" ? timer ? override?.restType || timer.restType : mapped && kind === "work" ? d?.restDefault || "unknown" : rest : "unknown";
-        parts.push({start:a,end:b,kind:k,rest:physical,profile:ruleProfileAt(s,a,timer===live ? timer.profile : p),
+        // A moving sleeper is only potentially qualifying during two-up.
+        // Keep the physical Rest minutes, but never credit an incorrectly
+        // inherited solo sleeper entry as a qualifying major break.
+        const eligiblePhysical=physical==="sleeper-moving" && !recordedProfile.twoUp ? "unknown" : physical;
+        parts.push({start:a,end:b,kind:k,rest:eligiblePhysical,profile:recordedProfile,
           review:timer ? !!d?.review : !!d?.review || !!d?.clockReview, clock:timer ? false : clock});
       }
       carry=rest;previousKind=kind;previousEnd=end;
