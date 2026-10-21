@@ -112,7 +112,9 @@ describe("saved diary rest semantics", () => {
     ensureDay(s, "2026-10-09");
     expect(classifyRest(s, "2026-10-09", 0).label).toBe("24-hour rest");
     explicit(s, "2026-10-09", 0, "sleeper-moving");
-    expect(classifyRest(s, "2026-10-09", 0).label).toBe("Moving sleeper rest");
+    // The physical note remains, but a solo driver's moving sleeper must not
+    // count as qualifying rest. It needs review instead.
+    expect(classifyRest(s, "2026-10-09", 0).label).toBe("Rest · confirm type");
     expect(analyse(s, "2026-10-09T24:00").majorRest).toBe("Not established");
     explicit(s, "2026-10-09", 0, "unknown");
     expect(classifyRest(s, "2026-10-09", 0).label).toBe("Rest · confirm type");
