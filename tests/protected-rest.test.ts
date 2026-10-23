@@ -45,6 +45,7 @@ describe("Proactive 7-hour stationary Rest protection",()=>{
     expect(protectedRest(s,"2026-10-22",report.workWindows,when("2026-10-22T02:00:00Z"))).toBeNull();
     s.days["2026-10-22"].profile.twoUp=false;
     s.days["2026-10-22"].restDefault="sleeper-moving";
-    expect(protectedRest(s,"2026-10-22",report.workWindows,when("2026-10-22T02:00:00Z"))).toBeNull();
+    const revised=analyse(s,"2026-10-22T24:00",3,{now:when("2026-10-22T14:00:00Z")});
+    expect(protectedRest(s,"2026-10-22",revised.workWindows,when("2026-10-22T02:00:00Z"))).toBeNull();
   });
 });
