@@ -29,7 +29,7 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
   const startOfDay=boundary(date,0,p.zone),endOfDay=boundary(date,96,p.zone);
   if(!Number.isFinite(startOfDay)||!Number.isFinite(endOfDay)) return null;
   const eligible=windows.filter(w=>w.established&&!w.review && w.unknown===0 && w.zone===p.zone
-    && w.limit!==null && w.end>w.start && w.rest>=0);
+    && w.requiredRest===420 && w.limit!==null && w.end>w.start);
   const opportunities:Array<{start:number;end:number;latest:number}>=[];
   for(const w of eligible){
     const a=stamp(w.start,p.zone),b=stamp(w.end,p.zone);
