@@ -1,7 +1,7 @@
 import { type Workspace } from "./model";
 import { buildTimeline, countRest, type TimelineRun } from "./timeline";
 import { nightEvents } from "./qualifications";
-import { MINUTE, QUARTER, today } from "./time";
+import { MINUTE, QUARTER, civil } from "./time";
 
 export type RestOpportunity={
   startedAt:number;
@@ -18,7 +18,7 @@ export type RestOpportunity={
  */
 export function restExtensionOpportunity(s:Workspace,date:string,now=Date.now()):RestOpportunity|null{
   const profile=s.days[date]?.profile||s.profile;
-  if(today(profile.zone)!==date || profile.twoUp || !["Standard","BFM"].includes(profile.scheme))return null;
+  if(civil(now,profile.zone).date!==date || profile.twoUp || !["Standard","BFM"].includes(profile.scheme))return null;
   if(!s.days[date])return null;
   const t=buildTimeline(s,date+"T24:00",now,now);
   const last=t.runs.at(-1);
