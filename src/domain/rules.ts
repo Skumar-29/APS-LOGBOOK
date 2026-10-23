@@ -273,7 +273,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
         remaining:Math.max(0,Math.min(rule.limit===null?Infinity:rule.limit-w,Math.max(0,(deadline-through)/MINUTE-(restMet(runs,a,b,rule,p)?0:rule.rest)))),
         date:civil(a,p.zone).date,reason,assessedThrough:atBase(b,p.zone),zone:p.zone,restSummary:restSummary(runs,a,b,rule,p)};
       evaluations.push({rule,p,a,b,deadline,established,review:uncertain,row});
-      if(rule.minutes===1440) workWindows.push({start:row.start,end:row.end,limit:row.limit,established,assessedThrough:row.assessedThrough,zone:p.zone,work:w,rest:rest(a,b),remaining:row.remaining,status,review:uncertain,
+      if(rule.minutes===1440) workWindows.push({start:row.start,end:row.end,limit:row.limit,established,assessedThrough:row.assessedThrough,zone:p.zone,work:w,rest:rest(a,b),requiredRest:rule.rest,remaining:row.remaining,status,review:uncertain,
         unknown:elapsed(runs,a,b,null)});
     }
   }
