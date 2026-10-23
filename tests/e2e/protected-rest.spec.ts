@@ -49,9 +49,10 @@ test("BFM protected seven-hour rest paints yellow and projected Work conflicts r
  await expect(banner).toBeVisible({timeout:30000});
  await expect(banner).toContainText("14:30");
  const yellow=page.locator(".swipe-block.rest.protected-rest[data-slot='74']");
- const red=page.locator(".swipe-block.work.rest-risk[data-slot='58']");
+ const red=page.locator(".swipe-block.work[data-slot='58']");
  await expect(yellow).toBeVisible({timeout:30000});
  await expect(red).toBeVisible();
+ await expect(red).toHaveClass(/breach|rest-risk/);
  await expect(red).toHaveCSS("background-color","rgb(198, 40, 40)");
  await expect(yellow).toHaveCSS("background-color","rgb(245, 206, 103)");
  await red.click();
