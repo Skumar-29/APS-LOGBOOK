@@ -1,7 +1,8 @@
 import { restTypeAt } from "../domain/rest";
 import { restExtensionOpportunity } from "../domain/rest-advisor";
+import { protectedRest } from "../domain/protected-rest";
 import {warningLines,zoneLabel} from '../domain/warnings';
-import { assessedDay, boundary } from "../domain/timeline";
+import { assessedDay, boundary, atBase } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
 import { useReport } from "../components/useReport";
 import { selectWorkWindow, windowTotals } from "../domain/rules";
@@ -94,6 +95,7 @@ export function Diary({
   const dayBreaches = Object.entries(redSlots).filter(([key]) => key.startsWith(date + ":"));
   const warnings = readOnly || !report ? [] : warningLines(report,date);
   const opportunity = readOnly ? null : restExtensionOpportunity(s,date);
+  const protection = !readOnly && report ? protectedRest(s,date,report.workWindows) : null;
   const extra=(minutes:number)=>minutes<60?`${minutes}m`:`${Math.floor(minutes/60)}h${minutes%60?` ${minutes%60}m`:""}`;
   const pageNeedsReview=!readOnly && s.settings.autoPages && d.slots.includes("work") && !page;
   const hasEligibleBook=s.books.some(b=>!b.closed && (!b.firstDate || b.firstDate<=date));
@@ -204,14 +206,7 @@ export function Diary({
       {error ? <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div> :
         daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)} · {d.profile.base} time</p>}
       {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x} className={x.startsWith('Review:')?'warning-review':'bad'}>{x}</p>)}</div>}
-      {opportunity && (opportunity.majorExtraMinutes>0 || opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0) &&
-        <div className="banner" role="status">
-          <strong>Rest opportunity</strong>
-          {opportunity.majorExtraMinutes>0 && <p>Continue stationary Rest for {extra(opportunity.majorExtraMinutes)} more to complete 7 continuous hours.</p>}
-          {opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0 &&
-            <p>Continue Rest for {extra(opportunity.nightExtraMinutes)} more to qualify for one night-rest break.</p>}
-          <p className="small">Based on your recorded stationary Rest. Other rolling fatigue limits still apply.</p>
-        </div>}
+
       {pageNeedsReview && <p className="small warning-review" role="status">
         Work saved · {hasEligibleBook?"paper page needs numbering review.":"add an open diary book in Records."}
       </p>}
@@ -391,6 +386,14 @@ export function Diary({
         </>
       ) : (
         <>
+          {(opportunity && (opportunity.majorExtraMinutes>0 || opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0) || protection) &&
+            <div className="prevention-advisor" role="status">
+              {opportunity && opportunity.majorExtraMinutes>0 && <p><strong>Rest opportunity:</strong> {extra(opportunity.majorExtraMinutes)} more stationary Rest completes 7h.</p>}
+              {opportunity && opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0 &&
+                <p><strong>Night rest:</strong> Continue for {extra(opportunity.nightExtraMinutes)} more to qualify.</p>}
+              {protection && <p><strong>Protect 7h Rest:</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest, red = future Work conflict.</p>}
+              <small>Advisory only · other counting periods and actual stationary Rest still matter.</small>
+            </div>}
           <section className="card block-card">
             <div className="row wrap block-toolbar">
               <div className="row">
@@ -441,10 +444,12 @@ export function Diary({
                     const inDrag=dragRange&&slot>=Math.min(...dragRange)&&slot<=Math.max(...dragRange);
                     const kind=inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
                     const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""}`}
+                    const reserve=kind==="rest"&&protection?.slots[slot]==="reserve";
+                    const projected=kind==="work"&&!reasons?.length&&protection?.slots[slot]==="conflict";
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""} ${reserve?"protected-rest":""} ${projected?"rest-risk":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
                       aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}`}
-                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):""}`}
+                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
                       onPointerDown={e=>{
                         if(readOnly||e.pointerType==="mouse"&&e.button!==0)return;
                         e.preventDefault();
