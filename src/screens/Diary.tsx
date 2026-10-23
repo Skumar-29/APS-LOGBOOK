@@ -1,4 +1,5 @@
 import { restTypeAt } from "../domain/rest";
+import { restExtensionOpportunity } from "../domain/rest-advisor";
 import {warningLines,zoneLabel} from '../domain/warnings';
 import { assessedDay, boundary } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
@@ -92,6 +93,8 @@ export function Diary({
   const redSlots = readOnly ? {} : report?.breachSlots || {};
   const dayBreaches = Object.entries(redSlots).filter(([key]) => key.startsWith(date + ":"));
   const warnings = readOnly || !report ? [] : warningLines(report,date);
+  const opportunity = readOnly ? null : restExtensionOpportunity(s,date);
+  const extra=(minutes:number)=>minutes<60?`${minutes}m`:`${Math.floor(minutes/60)}h${minutes%60?` ${minutes%60}m`:""}`;
   const pageNeedsReview=!readOnly && s.settings.autoPages && d.slots.includes("work") && !page;
   const hasEligibleBook=s.books.some(b=>!b.closed && (!b.firstDate || b.firstDate<=date));
   let suggestedNumber = "";
@@ -201,6 +204,14 @@ export function Diary({
       {error ? <div className="banner row"><span>{error}</span><Action onClick={retry}>Retry</Action></div> :
         daySummary && <p className="small assessment">Counted through {displayCivil(daySummary.through)} · {d.profile.base} time</p>}
       {warnings.length>0&&<div className="short-warnings" role="status">{warnings.map(x=><p key={x} className={x.startsWith('Review:')?'warning-review':'bad'}>{x}</p>)}</div>}
+      {opportunity && (opportunity.majorExtraMinutes>0 || opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0) &&
+        <div className="banner" role="status">
+          <strong>Rest opportunity</strong>
+          {opportunity.majorExtraMinutes>0 && <p>Continue stationary Rest for {extra(opportunity.majorExtraMinutes)} more to complete 7 continuous hours.</p>}
+          {opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0 &&
+            <p>Continue Rest for {extra(opportunity.nightExtraMinutes)} more to qualify for one night-rest break.</p>}
+          <p className="small">Based on your recorded stationary Rest. Other rolling fatigue limits still apply.</p>
+        </div>}
       {pageNeedsReview && <p className="small warning-review" role="status">
         Work saved · {hasEligibleBook?"paper page needs numbering review.":"add an open diary book in Records."}
       </p>}
