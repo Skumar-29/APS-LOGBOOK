@@ -46,6 +46,8 @@ describe("Proactive 7-hour stationary Rest protection",()=>{
     s.days["2026-10-22"].profile.twoUp=false;
     s.days["2026-10-22"].restDefault="sleeper-moving";
     const revised=analyse(s,"2026-10-22T24:00",3,{now:when("2026-10-22T14:00:00Z")});
-    expect(protectedRest(s,"2026-10-22",revised.workWindows,when("2026-10-22T02:00:00Z"))).toBeNull();
+    // Moving-sleeper time is not a qualifying seven-hour stationary break;
+    // preserving a protected-rest warning is the safe outcome.
+    expect(protectedRest(s,"2026-10-22",revised.workWindows,when("2026-10-22T02:00:00Z"))?.slots[58]).toBe("conflict");
   });
 });
