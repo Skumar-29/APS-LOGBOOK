@@ -105,3 +105,29 @@ test("Audit: switch Diary to Stats without losing selected Work and no browser e
   await page.screenshot({path:`test-results/audit-statistics-${testInfo.project.name}.png`,fullPage:true});
   expect(errors).toEqual([]);
 });
+
+
+test("Audit: major app screens and More tools open without browser exceptions",async({page},testInfo)=>{
+  await page.clock.setFixedTime(new Date("2026-10-23T01:00:00Z"));
+  await onboard(page);
+  const errors:string[]=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  const direct=["Driving","Diary","Graph","Stats","More"];
+  for(const name of direct){
+    await page.getByRole("button",{name,exact:true}).click();
+    await expect(page.locator("main")).toBeVisible();
+    await page.screenshot({path:`test-results/audit-screen-${name.toLowerCase()}-${testInfo.project.name}.png`,fullPage:false});
+  }
+  for(const [name,pattern] of [
+    ["Invoices",/^Invoices Trips, rates/],["Forms",/^Forms Safe driving/],
+    ["Notes",/^Notes Codes/],["Documents",/^Documents Certificates/],
+    ["Records",/^Records Books/],["NHVR guide",/^NHVR guide Hours/],["Settings",/^Settings Driver/]
+  ] as const){
+    await page.getByRole("button",{name:"More",exact:true}).click();
+    await page.getByRole("button",{name:pattern}).click();
+    await expect(page.locator("main")).toBeVisible();
+    await page.screenshot({path:`test-results/audit-screen-${name.toLowerCase().replaceAll(" ","-")}-${testInfo.project.name}.png`,fullPage:false});
+    console.log("AUDIT opened",name,testInfo.project.name);
+  }
+  expect(errors).toEqual([]);
+});
