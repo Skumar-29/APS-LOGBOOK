@@ -45,7 +45,7 @@ test("BFM protected seven-hour rest paints yellow and projected Work conflicts r
  await seed(page,s);
  const field=page.getByLabel("Diary date",{exact:true});
  await field.fill("2026-10-22");await field.press("Tab");
- const banner=page.getByText(/Protect 7h Rest:/);
+ const banner=page.locator(".prevention-advisor");
  await expect(banner).toBeVisible({timeout:30000});
  await expect(banner).toContainText("14:30");
  const yellow=page.locator(".swipe-block.rest.protected-rest[data-slot='74']");
