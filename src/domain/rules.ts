@@ -13,7 +13,7 @@ export interface Check {
 }
 export interface WorkWindow {
   start:string;end:string;limit:number|null;established:boolean;assessedThrough:string;
-  zone?:string;work:number;rest:number;remaining:number;status:Check["status"];review:boolean;unknown:number;
+  zone?:string;work:number;rest:number;requiredRest:number;remaining:number;status:Check["status"];review:boolean;unknown:number;
 }
 export interface Finding {
   id:string;code:string;message:string;severity:"breach"|"review"|"due";
