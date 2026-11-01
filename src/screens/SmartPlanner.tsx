@@ -50,7 +50,8 @@ export function SmartPlanner({date}:{date:string}){
               <strong>Start at your selected time</strong>
               <span>{fmt(opt.start)}</span>
               <small>{opt.continuousMinutes===opt.requestedMinutes?"Full proposed job can fit in the model":
-                 minutesLabel(opt.continuousMinutes)+" before a detected limit"} · {opt.evidence==="review"?"Needs review":opt.evidence==="conflict"?"Projected conflict":"No new red Work blocks"}</small>
+                 minutesLabel(opt.continuousMinutes)+" before a detected limit"}{opt.firstConflict!==null?" · Limit near "+fmt(opt.firstConflict):""}
+                 {" · "}{opt.evidence==="review"?"Needs review":opt.evidence==="conflict"?"Projected conflict":"No new red Work blocks"}</small>
             </div>)}
             {result.recommended&&result.recommended.start!==result.options[0]?.start&&
               <div className="smart-plan-option preferred">
