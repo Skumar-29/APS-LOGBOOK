@@ -1375,3 +1375,30 @@ html { scroll-padding-top: 160px; }
 .driver-stats-row>small{grid-column:1/-1;color:var(--muted);font-size:11px}
 .driver-history-review{border-left:3px solid #bc8720;background:rgba(247,207,88,.12);padding:9px 11px;border-radius:6px;font-size:12px}
 @media(max-width:410px){.driver-stats-row{grid-template-columns:minmax(0,1fr) minmax(100px,44%);font-size:12px}.driver-stats-row>strong{font-size:12px}}
+
+/* One-glance driver balances; no horizontal scrolling on small phones. */
+.diary-balance-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:6px 0}
+.diary-balance-strip>div{border:1px solid var(--line);border-radius:9px;padding:7px 9px;min-width:0;background:var(--card)}
+.diary-balance-strip small{display:block;font-size:10px;color:var(--muted);line-height:1.25}
+.diary-balance-strip strong{display:block;font-size:13px;overflow-wrap:anywhere;line-height:1.4}
+.smart-planner{border:1px solid var(--line);border-radius:10px;background:var(--card);margin:6px 0 9px}
+.smart-planner>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;cursor:pointer}
+.smart-planner>summary::-webkit-details-marker{display:none}
+.smart-planner>summary::after{content:"⌄";font-weight:800;color:var(--muted)}
+.smart-planner[open]>summary::after{content:"⌃"}
+.smart-planner>summary strong{font-size:13px}
+.smart-planner>summary span{font-size:11px;color:var(--muted);text-align:right}
+.smart-planner-body{padding:0 12px 12px;border-top:1px solid var(--line)}
+.smart-planner-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:9px 0}
+.smart-planner-inputs>*{min-width:0}
+.smart-plan-options{display:grid;gap:6px;margin:9px 0}
+.smart-plan-option{border:1px solid var(--line);border-radius:9px;padding:8px 10px;display:grid;gap:2px}
+.smart-plan-option.preferred{border-left:4px solid #318f71}
+.smart-plan-option strong{font-size:12px}
+.smart-plan-option>span{font-weight:750;font-size:14px}
+.smart-plan-option small{color:var(--muted);font-size:11px}
+.swipe-hour-labels .night-hour{background:rgba(129,141,154,.22);border-radius:4px}
+.swipe-block.night-band:not(.breach):not(.rest-risk){box-shadow:inset 0 4px 0 rgba(134,144,157,.55)}
+/* Keep bright red/yellow overrides legible and distinguish projected risk. */
+.swipe-block.night-band.breach{box-shadow:inset 0 4px 0 rgba(245,247,251,.28)}
+@media(min-width:620px){.diary-balance-strip{grid-template-columns:repeat(4,minmax(0,1fr))}.smart-planner-inputs{grid-template-columns:repeat(3,minmax(0,1fr))}}
