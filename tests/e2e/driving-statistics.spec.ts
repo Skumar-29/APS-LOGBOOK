@@ -42,7 +42,7 @@ test("Driving statistics dashboard renders requested fields on desktop and phone
  await expect(d.getByText("Next night-rest requirement")).toBeVisible();
  await expect(d.getByText("Consecutive night-rest requirement")).toBeVisible();
  await expect(d.getByText("Last finished Work")).toBeVisible();
- await expect(d.getByText("Needs review")).toBeVisible();
+ await expect(d.getByText("Needs review",{exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Calculate as of now"}).click();
  await expect(d).toContainText("Assessed 01/11/2026");
  const width=await page.evaluate(()=>[document.documentElement.clientWidth,document.documentElement.scrollWidth]);
