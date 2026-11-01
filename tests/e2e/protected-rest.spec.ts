@@ -76,6 +76,8 @@ test("BFM diary and Statistics show long/night balance, night-rest progress and 
  await expect(page.locator(".fatigue-quick-summary")).toContainText("Night rests");
  await page.getByRole("button",{name:"Stats",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Statistics"})).toBeVisible();
+ await expect(page.getByLabel("Quick driving availability and rest deadlines")).toBeVisible();
+ await page.getByText("Calendar history & night Rest",{exact:true}).click();
  await expect(page.getByText("Remaining Work · 14d",{exact:true})).toBeVisible();
  await expect(page.getByText("Unrecorded",{exact:true})).toHaveCount(0);
  await expect(page.getByText(/BFM long\/night allowance remaining/)).toBeVisible();
