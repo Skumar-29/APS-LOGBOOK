@@ -1,4 +1,6 @@
 import {test,expect,type Page} from "@playwright/test";
+import {readFile} from "node:fs/promises";
+import {PDFDocument} from "pdf-lib";
 import {emptyState,ensureDay} from "../../src/domain/model";
 import {editRange} from "../../src/domain/diary";
 async function onboard(page:Page){
@@ -69,6 +71,9 @@ test("compact Statistics and company PDF can be shared without changing diary en
   quick.getByRole("button",{name:"Save PDF"}).click()
  ]);
  expect(download.suggestedFilename()).toMatch(/^APS-Availability-.*\.pdf$/);
+ const bytes=await readFile(await download.path());
+ expect(bytes.subarray(0,4).toString("ascii")).toBe("%PDF");
+ expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
  await page.getByText("Full driving calculations",{exact:true}).click();
  await expect(page.getByLabel("Driving eligibility and rolling fatigue statistics")).toBeVisible();
  await page.screenshot({path:`test-results/smart-stats-${info.project.name}.png`,fullPage:true});
