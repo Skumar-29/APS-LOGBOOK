@@ -393,7 +393,7 @@ export function Diary({
               {opportunity && opportunity.majorExtraMinutes>0 && <p><strong>Rest opportunity:</strong> {extra(opportunity.majorExtraMinutes)} more stationary Rest completes 7h.</p>}
               {opportunity && opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0 &&
                 <p><strong>Night rest:</strong> Continue for {extra(opportunity.nightExtraMinutes)} more to qualify.</p>}
-              {protection && <p><strong>{date>new Date().toISOString().slice(0,10)?"Planned 7h Rest:":"Protect 7h Rest:"}</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest, red = future Work conflict.</p>}
+              {protection && <p><strong>{date>civil(Date.now(),d.profile.zone).date?"Planned 7h Rest:":"Protect 7h Rest:"}</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest, red = future Work conflict.</p>}
               {fatigue?.guidance.slice(0,2).map((tip,i)=><p key={i} className="small">{tip}</p>)}
               <small>Advisory only · other counting periods and actual stationary Rest still matter.</small>
             </div>}
