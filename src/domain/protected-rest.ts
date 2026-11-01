@@ -40,7 +40,7 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
     const a=stamp(w.start,p.zone),b=stamp(w.end,p.zone);
     if(a===undefined||b===undefined || a>baseline || b<=baseline || b-a!==24*60*MINUTE) continue;
     const fulfilled=restEpisodes(t.runs).some(r=>r.kind==="rest" && r.rest==="stationary"&&!r.review&&!r.clock
-      && Math.min(r.end,now,b)-Math.max(r.start,a)>=420*MINUTE);
+      && Math.min(r.end,baseline,b)-Math.max(r.start,a)>=420*MINUTE);
     if(fulfilled)continue;
     const latest=b-420*MINUTE;
     if(latest>=endOfDay || b<=startOfDay)continue;
