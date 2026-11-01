@@ -39,7 +39,8 @@ function simulate(s:Workspace,from:number,length:number,realNow:number,zone:stri
     const already=!!c.days[local.date];
     const d=ensureDay(c,local.date);
     if(!already)d.restDefault="unknown"; // Do not manufacture stationary rest in missing future history.
-    if(d.slots[slot]==="work")overlap=true;
+    if(d.slots[slot]==="work"||d.timerMap?.[slot]?.length)overlap=true;
+    if(d.timerMap)delete d.timerMap[slot]; // Mirror manual edits on clone only.
     d.slots[slot]="work";
   }
   const end=civil(to,zone);
