@@ -3,7 +3,7 @@ import type { WorkWindow } from "./rules";
 import { operatingRules } from "./catalogue";
 import { buildTimeline, boundary } from "./timeline";
 import { restEpisodes } from "./qualifications";
-import { civil, instantFor, MINUTE, QUARTER } from "./time";
+import { civil, instantFor, dateAdd, MINUTE, QUARTER } from "./time";
 
 export interface ProtectedRest {
   deadline: number;
