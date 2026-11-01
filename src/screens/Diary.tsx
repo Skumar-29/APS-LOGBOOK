@@ -413,7 +413,7 @@ export function Diary({
             <div><small>Next break</small><strong>{!fatigue?.review&&report?.nextBreak!==null&&report?.nextBreak!==undefined?
               minutesLabel(report.nextBreak):"Review"}</strong></div>
           </div>
-          {!graph&&!readOnly&&<SmartPlanner date={date}/>}
+          {!graph&&!readOnly&&<SmartPlanner key={date} date={date}/>}
           <section className="card block-card">
             <div className="row wrap block-toolbar">
               <div className="row">
