@@ -51,7 +51,7 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
   const first=opportunities[0],slots:ProtectedRest["slots"]={};
   for(let i=0;i<96;i++){
     const a=boundary(date,i,p.zone),b=boundary(date,i+1,p.zone);
-    if(!Number.isFinite(a)||!Number.isFinite(b) || b<=now)continue;
+    if(!Number.isFinite(a)||!Number.isFinite(b) || b<=baseline)continue;
     if(opportunities.some(w=>b>w.latest&&a<w.end)) slots[i]=s.days[date].slots[i]==="work"?"conflict":"reserve";
   }
   return {deadline:first.end,latestStart:first.latest,minutesToDeadline:Math.max(0,Math.floor((first.end-now)/MINUTE)),slots};
