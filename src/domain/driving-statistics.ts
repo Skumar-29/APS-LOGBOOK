@@ -15,6 +15,8 @@ export interface DrivingStatistics {
   nextBreakDue:string|null;
   work24Used:number|null;
   work24Remaining:number|null;
+  work7Used:number|null;
+  work7Remaining:number|null;
   work84Used:number|null;
   work84Remaining:number|null;
   work14Used:number|null;
@@ -61,7 +63,7 @@ export function drivingStatistics(s:Workspace,report:RuleReport,p:Profile):Drivi
   const checks=selectCheckSummaries(report.checks,report.assessedThrough,zone);
   const c24=active(checks,"1 day",zone,at),c14=active(checks,"14 days",zone,at);
   const c7=active(checks,"7 days",zone,at);
-  const v24=limitFor(c24),v14=limitFor(c14);
+  const v24=limitFor(c24),v7=limitFor(c7),v14=limitFor(c14);
   const last24Known=!!report.majorRest && report.majorRest!=="Not established" &&
     !report.issues.some(x=>/24h rest history missing/.test(x));
   const bfmSolo=trustworthy&&p.scheme==="BFM"&&!p.twoUp;
@@ -113,6 +115,7 @@ export function drivingStatistics(s:Workspace,report:RuleReport,p:Profile):Drivi
     canWorkMinutes:allowance,
     controllingReason:allowance===null?"Unverified history / rules — "+controllingReason:controllingReason,
     nextBreakDue,work24Used:v24?.used??null,work24Remaining:v24?.left??null,
+    work7Used:v7?.used??null,work7Remaining:v7?.left??null,
     work84Used:bfmSolo&&last24Known?report.workSince24:null,
     work84Remaining:bfmSolo&&last24Known?Math.max(0,BFM_84_LIMIT-report.workSince24):null,
     work14Used:v14?.used??null,work14Remaining:v14?.left??null,
