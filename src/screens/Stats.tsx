@@ -11,9 +11,11 @@ import { Action, Empty, Field, Fold, download } from "../components/UI";
 export function Stats({
   date,
   onDate,
+  onSelectDate,
 }: {
   date: string;
   onDate: (d: string) => void;
+  onSelectDate: (d: string) => void;
 }) {
   const { s } = useStore(),
     [range, setRange] = useState(14),
@@ -46,7 +48,7 @@ export function Stats({
         asOf={asOf} onAsOf={setAsOf}
         onNow={()=>{
           const clock=civil(Date.now(),s.profile.zone);
-          onDate(clock.date);
+          onSelectDate(clock.date);
           setAsOf(clock.time);
         }}
       />
