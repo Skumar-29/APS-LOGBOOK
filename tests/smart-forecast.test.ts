@@ -46,10 +46,12 @@ describe("Next-job forecasting never edits diary data",()=>{
  });
  it("does not invent rules for certificate-specific ACH and unconfirmed two-up",()=>{
   const s=schedule();
-  s.profile.scheme="ACH";
+  s.days["2026-11-02"].profile.scheme="ACH";
   const a=forecastWork(s,"2026-11-02","15:00",180,now);
   expect(a.options).toHaveLength(0);
-  s.profile.scheme="BFM";s.profile.twoUp=true;s.profile.coDriver="";
+  s.days["2026-11-02"].profile.scheme="BFM";
+  s.days["2026-11-02"].profile.twoUp=true;
+  s.days["2026-11-02"].profile.coDriver="";
   const b=forecastWork(s,"2026-11-02","15:00",180,now);
   expect(b.options).toHaveLength(0);
  });
