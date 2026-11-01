@@ -28,7 +28,7 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
   // Also advise when planning upcoming pages. Projected Rest is never credited
   // as already taken; the planning baseline is that future day's midnight.
   if(p.twoUp || !["Standard","BFM"].includes(p.scheme) || operatingRules(p)!=="HVNL" ||
-    date<today || date>today.slice(0,4)+"-12-31" && date>today || !s.days[date]) return null;
+    date<today || date>dateAdd(today,28) || !s.days[date]) return null;
   const baseline=date===today?now:boundary(date,0,p.zone);
   const t=buildTimeline(s,date+"T24:00",baseline,baseline);
   const startOfDay=boundary(date,0,p.zone),endOfDay=boundary(date,96,p.zone);
