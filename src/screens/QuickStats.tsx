@@ -12,7 +12,7 @@ import {SmartPlanner} from "./SmartPlanner";
 type Props={s:Workspace;report:RuleReport;p:Profile;date:string;onNow:()=>void};
 function companyText(s:Workspace,report:RuleReport,p:Profile,date:string){
   const r=drivingStatistics(s,report,p);
-  const formatted=(v:number|null)=>v===null?"Needs review":minutesLabel(v);
+  const formatted=(v:number|null)=>r.historicalReview||v===null?"Needs review":minutesLabel(v);
   const lines=[
     "APS LOGBOOK - SHIFT AVAILABILITY",
     "Driver: "+(p.name||"Not entered"),
@@ -67,7 +67,7 @@ export function QuickStats({s,report,p,date,onNow}:Props){
   const rest=restExtensionOpportunity(s,date);
   const [message,setMessage]=useState("");
   const clock=(time:string|null)=>time?displayCivil(time):"Check details";
-  const remaining=(n:number|null)=>n===null?"Review":minutesLabel(n);
+  const remaining=(n:number|null)=>r.historicalReview||n===null?"Review":minutesLabel(n);
   const share=()=>{
     const body=companyText(s,report,p,date);
     if(navigator.share){
