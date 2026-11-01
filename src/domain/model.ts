@@ -408,7 +408,9 @@ export function emptyDay(s: Workspace, date: string): Day {
     date,
     slots: Array(96).fill("rest"),
     restDefault: s.settings.restSelectionMode==="confirm" ? "unknown" :
-      s.settings.diaryRestDefault && s.settings.diaryRestDefault!=="unknown" ? s.settings.diaryRestDefault :
+      s.settings.diaryRestDefault && s.settings.diaryRestDefault!=="unknown" &&
+        (s.settings.diaryRestDefault!=="sleeper-moving" || (profileOn(s,date).twoUp && !!profileOn(s,date).coDriver?.trim()))
+        ? s.settings.diaryRestDefault :
       profileOn(s,date).twoUp ? "unknown" : "stationary",
     changes: {},
     profile: recordProfile(profileOn(s, date)),
