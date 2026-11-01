@@ -333,7 +333,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
   if(!tableFor(profile).length) issues.push("Check certificate-specific hours");
   if(cutoffDay<"2026-08-01") issues.push("Check historical rules");
   if(profile.scheme==="BFM"&&(!profile.certificate||!profile.certificateExpiry||profile.certificateExpiry<cutoffDay)) issues.push("Check BFM accreditation");
-  if(profile.twoUp&&!profile.coDriver) issues.push("Add co-driver details");
+  if(profile.twoUp&&(!profile.coDriver?.trim()||!profile.coLicence?.trim())) issues.push("Add co-driver name and licence");
   if(currentBfm&&!last24) issues.push("24h rest history missing");
   const lastReset=checkpoints.filter(r=>r.end-r.start>=2880*MINUTE).at(-1)?.end || -Infinity;
   const changed=runs.some(r=>r.end>Math.max(relevantFrom,lastReset)&&r.kind!==null&&!sameRules(r.profile,profile)&&!compatibleOptions(r.profile,profile));
