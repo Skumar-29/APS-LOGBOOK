@@ -1402,3 +1402,24 @@ html { scroll-padding-top: 160px; }
 /* Keep bright red/yellow overrides legible and distinguish projected risk. */
 .swipe-block.night-band.breach{box-shadow:inset 0 4px 0 rgba(245,247,251,.28)}
 @media(min-width:620px){.diary-balance-strip{grid-template-columns:repeat(4,minmax(0,1fr))}.smart-planner-inputs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* First-glance Stats fits one phone screen; all specialist calculations are opt-in. */
+.quick-stats {gap:7px}
+.quick-stats h2{font-size:19px;margin:0}
+.quick-stats h3{font-size:13px;margin:10px 0 3px}
+.quick-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.quick-stats-grid>div{padding:8px 6px;background:var(--card);border:1px solid var(--line);border-radius:9px;min-width:0}
+.quick-stats-grid small{display:block;font-size:10px;line-height:1.2;color:var(--muted)}
+.quick-stats-grid strong{display:block;margin-top:4px;font-size:15px;line-height:1.2;white-space:normal;overflow-wrap:anywhere}
+.quick-break-list{border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.quick-break-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,48%);gap:6px;padding:8px;border-bottom:1px solid var(--line);align-items:center}
+.quick-break-list>div:last-child{border-bottom:0}
+.quick-break-list span{font-size:12px;color:var(--muted)}
+.quick-break-list strong{font-size:12px;text-align:right;overflow-wrap:anywhere}
+.quick-rest-tip{padding:8px 10px;background:rgba(226,177,57,.14);border-left:3px solid #cf9c23;border-radius:7px;font-size:12px}
+.stats-detail{border:1px solid var(--line);border-radius:12px;margin:8px 0;background:var(--card);overflow:hidden}
+.stats-detail>summary{padding:12px 14px;font-weight:700;font-size:13px;cursor:pointer}
+.stats-detail[open]>summary{border-bottom:1px solid var(--line)}
+.stats-detail>.card{border:0;box-shadow:none;border-radius:0;margin:0}
+.quick-share{gap:7px}
+@media(max-width:370px){.quick-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.quick-stats-grid strong{font-size:14px}}
