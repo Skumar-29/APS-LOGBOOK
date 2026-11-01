@@ -7,7 +7,7 @@ import { assessedDay, boundary, atBase } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
 import { useReport } from "../components/useReport";
 import { selectWorkWindow, windowTotals } from "../domain/rules";
-import { displayCivil } from "../domain/time";
+import { displayCivil, civil } from "../domain/time";
 import { useRef, useState } from "react";
 import { useStore } from "../context";
 import {
