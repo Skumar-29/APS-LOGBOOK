@@ -267,7 +267,7 @@ export function Settings({ onDone }: { onDone?: () => void }) {
               options={[
                 ["unknown", "Confirm each break"],
                 ["stationary", "Stationary unless specified"],
-                ["sleeper-moving", "Moving sleeper unless specified"],
+
               ]}
               onChange={(v) =>
                 mutate((w) => {
