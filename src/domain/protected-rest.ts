@@ -54,5 +54,5 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
     if(!Number.isFinite(a)||!Number.isFinite(b) || b<=baseline)continue;
     if(opportunities.some(w=>b>w.latest&&a<w.end)) slots[i]=s.days[date].slots[i]==="work"?"conflict":"reserve";
   }
-  return {deadline:first.end,latestStart:first.latest,minutesToDeadline:Math.max(0,Math.floor((first.end-now)/MINUTE)),slots};
+  return {deadline:first.end,latestStart:first.latest,minutesToDeadline:Math.max(0,Math.floor((first.end-baseline)/MINUTE)),slots};
 }
