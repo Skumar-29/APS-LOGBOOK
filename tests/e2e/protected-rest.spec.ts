@@ -58,3 +58,26 @@ test("BFM protected seven-hour rest paints yellow and projected Work conflicts r
  await red.click();
  await expect(page.locator(".swipe-block[data-slot='58']")).toHaveAttribute("aria-pressed","false");
 });
+
+test("BFM diary and Statistics show long/night balance, night-rest progress and remaining Work",async({page})=>{
+ await page.clock.setFixedTime(new Date("2026-10-22T02:00:00Z"));
+ await start(page);
+ const s=emptyState();s.onboarded=true;s.settings.autoPages=false;
+ Object.assign(s.profile,{name:"Rest Scenario Driver",licence:"TEST",base:"QLD",zone:"Australia/Brisbane",
+  scheme:"BFM",twoUp:false,certificate:"BFM-TEST",certificateExpiry:"2027-12-31"});
+ const p=ensureDay(s,"2026-10-21");p.restDefault="stationary";
+ const d=ensureDay(s,"2026-10-22");d.restDefault="stationary";
+ editRange(s,"2026-10-21",0,16,"work");
+ editRange(s,"2026-10-22",0,12,"work");
+ await seed(page,s);
+ const field=page.getByLabel("Diary date",{exact:true});
+ await field.fill("2026-10-22");await field.press("Tab");
+ await expect(page.locator(".fatigue-quick-summary")).toContainText("BFM long/night");
+ await expect(page.locator(".fatigue-quick-summary")).toContainText("Night rests");
+ await page.getByRole("button",{name:"Stats",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Statistics"})).toBeVisible();
+ await expect(page.getByText("Remaining Work · 14d",{exact:true})).toBeVisible();
+ await expect(page.getByText("Unrecorded",{exact:true})).toHaveCount(0);
+ await expect(page.getByText(/BFM long\/night allowance remaining/)).toBeVisible();
+ await expect(page.getByText("Consecutive-night pair",{exact:true})).toBeVisible();
+});
