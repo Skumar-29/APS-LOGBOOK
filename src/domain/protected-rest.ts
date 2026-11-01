@@ -38,7 +38,7 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
   const opportunities:Array<{start:number;end:number;latest:number}>=[];
   for(const w of eligible){
     const a=stamp(w.start,p.zone),b=stamp(w.end,p.zone);
-    if(a===undefined||b===undefined || a>now || b<=now || b-a!==24*60*MINUTE) continue;
+    if(a===undefined||b===undefined || a>baseline || b<=baseline || b-a!==24*60*MINUTE) continue;
     const fulfilled=restEpisodes(t.runs).some(r=>r.kind==="rest" && r.rest==="stationary"&&!r.review&&!r.clock
       && Math.min(r.end,now,b)-Math.max(r.start,a)>=420*MINUTE);
     if(fulfilled)continue;
