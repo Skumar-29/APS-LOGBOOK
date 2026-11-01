@@ -87,7 +87,7 @@ export function QuickStats({s,report,p,date,onNow}:Props){
     download(blob,"APS-Availability-"+date+".pdf");
   };
   return <section className="card quick-stats" aria-label="Quick driving availability and rest deadlines">
-    <div className="row wrap"><h2>At a glance</h2><Action onClick={onNow}>As of now</Action></div>
+    <div className="row wrap"><h2>Statistics</h2><Action onClick={onNow}>As of now</Action></div>
     <p className="small">Assessed {displayCivil(report.assessedThrough)} · {p.base} time {date!==civil(Date.now(),p.zone).date?"· Selected diary date":""}</p>
     <div className="quick-stats-grid">
       <div><small>Work today</small><strong>{d?minutesLabel(d.work):"—"}</strong></div>
