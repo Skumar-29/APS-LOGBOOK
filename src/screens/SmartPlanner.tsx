@@ -33,7 +33,7 @@ export function SmartPlanner({date}:{date:string}){
     <div className="smart-planner-body">
       <div className="smart-planner-inputs">
         <Field label="Job date" type="date" value={startDate} onChange={v=>{setStartDate(v);setResult(null);}}/>
-        <Field label="Earliest start" type="time" value={startTime} onChange={v=>{setStartTime(v);setResult(null);}}/>
+        <Field label="Earliest start" type="time" step={900} value={startTime} onChange={v=>{setStartTime(v);setResult(null);}}/>
         <Field label="Work needed" value={length} options={[["1","1 hour"],["2","2 hours"],["3","3 hours"],["4","4 hours"],["5","5 hours"],["6","6 hours"],["7","7 hours"],["8","8 hours"],["10","10 hours"],["12","12 hours"]]}
           onChange={v=>{setLength(v);setResult(null);}}/>
       </div>
