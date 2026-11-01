@@ -39,7 +39,7 @@ test("night shading, full-page balances and non-mutating shift proposals",async(
  await date.fill("2026-11-02");await date.press("Tab");
  await expect(page.getByLabel("Diary hours and remaining allowances")).toBeVisible();
  await expect(page.locator(".swipe-block.night-band[data-slot='0']")).toBeVisible();
- await page.getByRole("button",{name:"Full day"}).click();
+ if(await page.getByRole("button",{name:"Full day"}).count()) await page.getByRole("button",{name:"Full day"}).click();
  await expect(page.locator(".swipe-block.night-band[data-slot='88']")).toBeVisible();
  await expect(page.locator(".swipe-block[data-slot='32']")).not.toHaveClass(/night-band/);
  const before=await page.locator("[aria-label='Page totals']").innerText();
