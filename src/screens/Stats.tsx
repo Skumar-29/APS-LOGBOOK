@@ -1,5 +1,6 @@
 import { displayCivil, displayDate, civil } from "../domain/time";
 import { DrivingStatsDashboard } from "./DrivingStatsDashboard";
+import { QuickStats } from "./QuickStats";
 import {statusClass,warningLines,zoneLabel} from '../domain/warnings';
 import { useState } from "react";
 import { useStore } from "../context";
@@ -43,15 +44,27 @@ export function Stats({
   const fatigue=fatigueGuidance(report,currentProfile);
   return (
     <>
-      <DrivingStatsDashboard
-        s={s} report={report} p={currentProfile}
-        asOf={asOf} onAsOf={setAsOf}
+
+      <QuickStats s={s} report={report} p={currentProfile} date={date}
         onNow={()=>{
           const clock=civil(Date.now(),s.profile.zone);
           onSelectDate(clock.date);
           setAsOf(clock.time);
-        }}
-      />
+        }}/>
+      <details className="stats-detail" aria-label="Full driving calculations">
+        <summary>Full driving calculations</summary>
+        <DrivingStatsDashboard
+          s={s} report={report} p={currentProfile}
+          asOf={asOf} onAsOf={setAsOf}
+          onNow={()=>{
+            const clock=civil(Date.now(),s.profile.zone);
+            onSelectDate(clock.date);
+            setAsOf(clock.time);
+          }}
+        />
+      </details>
+      <details className="stats-detail" aria-label="Calendar history and night Rest">
+        <summary>Calendar history & night Rest</summary>
       <section className="card">
         <div className="row">
           <h2>Statistics</h2>
@@ -133,6 +146,7 @@ export function Stats({
         </div>
         <p className="small">{displayCivil(report.majorRest)}</p>
       </section>
+      </details>
       <Fold title="Rule review & history">
 
         {warningLines(report).map((x, i) => (
