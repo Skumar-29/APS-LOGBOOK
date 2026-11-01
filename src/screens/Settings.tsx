@@ -263,7 +263,7 @@ export function Settings({ onDone }: { onDone?: () => void }) {
             />
             <Field
               label="Rest setting for new diary pages"
-              value={s.settings.diaryRestDefault || "unknown"}
+              value={s.settings.diaryRestDefault==="sleeper-moving" ? "unknown" : s.settings.diaryRestDefault || "unknown"}
               options={[
                 ["unknown", "Confirm each break"],
                 ["stationary", "Stationary unless specified"],
