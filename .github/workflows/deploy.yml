@@ -25,7 +25,7 @@ jobs:
       - run: npm run build
       # Full legacy browser suite runs separately; removed planning screens are not release criteria.
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test tests/e2e/work-rest-validation.spec.ts tests/e2e/protected-rest.spec.ts tests/e2e/driving-statistics.spec.ts --project=desktop --project=phone --workers=1
+      - run: npx playwright test tests/e2e/work-rest-validation.spec.ts tests/e2e/protected-rest.spec.ts tests/e2e/driving-statistics.spec.ts tests/e2e/smart-planner.spec.ts --project=desktop --project=phone --workers=1
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
