@@ -5,6 +5,7 @@ import { useStore } from "../context";
 import { useReport } from "../components/useReport";
 import { dateAdd, minutesLabel } from "../domain/time";
 import { diaryCsv } from "../domain/diary";
+import { fatigueGuidance } from "../domain/fatigue-guidance";
 import { Action, Empty, Field, Fold, download } from "../components/UI";
 export function Stats({
   date,
@@ -35,6 +36,8 @@ export function Stats({
     }),
     { work: 0, rest: 0, unknown: 0 },
   );
+  const currentProfile=s.days[date]?.profile||s.profile;
+  const fatigue=fatigueGuidance(report,currentProfile);
   return (
     <>
       <section className="card">
@@ -61,10 +64,12 @@ export function Stats({
             <strong>{minutesLabel(sums.rest)}</strong>
           </div>
           <div>
-            <span>Unrecorded</span>
-            <strong>{minutesLabel(sums.unknown)}</strong>
+            <span>Remaining Work · 14d</span>
+            <strong>{fatigue.work14Remaining===null ? "Review" : minutesLabel(fatigue.work14Remaining)}</strong>
           </div>
         </div>
+        <p className="small">The 14-day allowance is a separate rolling limit, not a promise of uninterrupted Work. Shorter limits may require Rest sooner.</p>
+        {sums.unknown>0 && <p className="small">Some historical dates were not recorded; confirm those periods before relying on allowances.</p>}
         <p className="small">Calendar pages · {displayDate(report.days[0].date)} → {displayDate(report.days.at(-1)!.date)}</p>
         <p className="small">Counted through {displayCivil(report.assessedThrough)} · {zoneLabel(report.zone)} time</p>
         <div className="stats-bars">
@@ -96,6 +101,11 @@ export function Stats({
       </section>
       <section className="card">
         <h2>Rest & night work</h2>
+        {fatigue.longNightRemaining!==null &&
+          <div className="record-line"><span>BFM long/night allowance remaining · 7d</span><b>{minutesLabel(fatigue.longNightRemaining)} / 36h</b></div>}
+        <div className="record-line"><span>Qualifying night rests remaining · recent 14d</span><b>{fatigue.nightRestsRemaining} / 4</b></div>
+        <div className="record-line"><span>Consecutive-night pair</span><b>{fatigue.pairMet?"Completed":"Not established"}</b></div>
+        {fatigue.guidance.map((line,i)=><p className="small" key={i}>{line}</p>)}
         <div className="record-line">
           <span>Identified night rests · 14 days</span>
           <b>{report.nightRests}</b>
