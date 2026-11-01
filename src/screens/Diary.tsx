@@ -1,6 +1,7 @@
 import { restTypeAt } from "../domain/rest";
 import { restExtensionOpportunity } from "../domain/rest-advisor";
 import { protectedRest } from "../domain/protected-rest";
+import { fatigueGuidance } from "../domain/fatigue-guidance";
 import {warningLines,zoneLabel} from '../domain/warnings';
 import { assessedDay, boundary, atBase } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
@@ -96,6 +97,7 @@ export function Diary({
   const warnings = readOnly || !report ? [] : warningLines(report,date);
   const opportunity = readOnly ? null : restExtensionOpportunity(s,date);
   const protection = !readOnly && report ? protectedRest(s,date,report.workWindows) : null;
+  const fatigue = !readOnly && report ? fatigueGuidance(report,d.profile) : null;
   const extra=(minutes:number)=>minutes<60?`${minutes}m`:`${Math.floor(minutes/60)}h${minutes%60?` ${minutes%60}m`:""}`;
   const pageNeedsReview=!readOnly && s.settings.autoPages && d.slots.includes("work") && !page;
   const hasEligibleBook=s.books.some(b=>!b.closed && (!b.firstDate || b.firstDate<=date));
@@ -392,7 +394,14 @@ export function Diary({
               {opportunity && opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0 &&
                 <p><strong>Night rest:</strong> Continue for {extra(opportunity.nightExtraMinutes)} more to qualify.</p>}
               {protection && <p><strong>Protect 7h Rest:</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest, red = future Work conflict.</p>}
+              {fatigue?.guidance.slice(0,2).map((tip,i)=><p key={i} className="small">{tip}</p>)}
               <small>Advisory only · other counting periods and actual stationary Rest still matter.</small>
+            </div>}
+          {fatigue && (fatigue.longNightRemaining!==null || fatigue.nightRestsRemaining>0) &&
+            <div className="fatigue-quick-summary" role="status" aria-label="Fatigue allowance and night rest progress">
+              {fatigue.longNightRemaining!==null && <span><strong>BFM long/night</strong> {minutesLabel(fatigue.longNightRemaining)} left / 36h</span>}
+              <span><strong>Night rests</strong> {fatigue.nightRests}/4 · {fatigue.pairMet ? "pair completed" : "pair still needed"}</span>
+              {fatigue.review && <small>Review history before relying on remaining hours</small>}
             </div>}
           <section className="card block-card">
             <div className="row wrap block-toolbar">
