@@ -43,6 +43,10 @@ export function DrivingStatsDashboard({s,report,p,asOf,onAsOf,onNow}:{
     <Metric label="Seven-hour Rest period deadline"
       value={model.nextSevenHourRestEnd?displayCivil(model.nextSevenHourRestEnd):"Not established"}/>
     <h3>Last week · major Rest and long/night Work</h3>
+    {p.scheme==="Standard" && <>
+      <Metric label="Work used · active 7-day period" value={hours(model.work7Used)}/>
+      <Metric label="Remaining Work · 7-day limit" value={hours(model.work7Remaining)}/>
+    </>}
     {p.scheme==="BFM"&&!p.twoUp && <>
       <Metric label="Work since qualifying 24-hour Rest" value={hours(model.work84Used)}/>
       <Metric label="Remaining before 84-hour Work threshold" value={hours(model.work84Remaining)}/>
@@ -57,9 +61,9 @@ export function DrivingStatsDashboard({s,report,p,asOf,onAsOf,onNow}:{
       value={model.current14DayEnds?displayCivil(model.current14DayEnds):"Not established"}/>
     <Metric label="Hours to be released" value={model.nextHoursReleased}/>
     <Metric label="Next 14-day period" value={model.next14DayPeriod}/>
-    <Metric label="Night rests completed" value={model.nightRests+" / 4"}/>
-    <Metric label="Next night-rest requirement" value={model.nightRestDue}/>
-    <Metric label="Consecutive night-rest requirement" value={model.consecutiveNightRestDue}/>
+    {(p.scheme==="Standard"||p.scheme==="BFM") && <Metric label="Night rests completed" value={model.nightRests+" / 4"}/> }
+    {(p.scheme==="Standard"||p.scheme==="BFM") && <Metric label="Next night-rest requirement" value={model.nightRestDue}/> }
+    {(p.scheme==="Standard"||p.scheme==="BFM") && <Metric label="Consecutive night-rest requirement" value={model.consecutiveNightRestDue}/> }
     <h3>Last finished Work</h3>
     <p className="small">{displayCivil(model.lastFinishedWork)}</p>
     {model.historicalReview && <p className="driver-history-review" role="status">
