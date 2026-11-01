@@ -589,7 +589,7 @@ export function Diary({
           <Fold title="Day details">
             <Field
               label="Rest setting for this page"
-              value={d.restDefault || "unknown"}
+              value={d.restDefault==="sleeper-moving" ? "unknown" : d.restDefault || "unknown"}
               disabled={readOnly}
               options={[
                 ["unknown", "Confirm each break"],
