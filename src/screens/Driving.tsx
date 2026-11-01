@@ -28,6 +28,7 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
   const clock = civil(now, s.profile.zone),
     effective = ruleProfileAt(s,now,s.days[clock.date]?.profile||profileOn(s,clock.date)),
     { report, error, retry } = useReport(clock.date + "T24:00", 14),
+    selectedRest=restType==="sleeper-moving" && (!effective.twoUp || !effective.coDriver?.trim()) ? "unknown" : restType,
     timer = s.timer,
     elapsed = timer ? Math.max(0, Math.floor((now - timer.start) / 1000)) : 0;
   return (
@@ -66,7 +67,7 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
           <Action
             primary={timer?.kind === "rest"}
             onClick={() =>
-              mutate((w) => switchTimer(w, "rest", vehicle, restType))
+              mutate((w) => switchTimer(w, "rest", vehicle, selectedRest))
             }
           >
             {timer?.kind === "rest" ? timer.restType===restType ? "Resting" : "Change rest" : "Start rest"}
@@ -89,11 +90,11 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
           />
           <Field
             label="Rest type"
-            value={restType}
+            value={selectedRest}
             options={[
               ["unknown", "Confirm rest type"],
               ["stationary", "Stationary"],
-              ...(effective.twoUp ? [["sleeper-moving", "Approved moving sleeper"] as [string,string]] : []),
+              ...(effective.twoUp && effective.coDriver?.trim() ? [["sleeper-moving", "Approved moving sleeper · two-up"] as [string,string]] : []),
             ]}
             onChange={(v) => setRestType(v as RestType)}
           />
