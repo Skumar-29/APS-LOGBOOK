@@ -2,6 +2,7 @@ import { restTypeAt } from "../domain/rest";
 import { restExtensionOpportunity } from "../domain/rest-advisor";
 import { protectedRest } from "../domain/protected-rest";
 import { fatigueGuidance } from "../domain/fatigue-guidance";
+import { SmartPlanner } from "./SmartPlanner";
 import {warningLines,zoneLabel} from '../domain/warnings';
 import { assessedDay, boundary, atBase } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
@@ -403,6 +404,16 @@ export function Diary({
               <span><strong>Night rests</strong> {fatigue.nightRests}/4 · {fatigue.pairMet ? "pair completed" : "pair still needed"}</span>
               {fatigue.review && <small>Review history before relying on remaining hours</small>}
             </div>}
+          <div className="diary-balance-strip" aria-label="Diary hours and remaining allowances">
+            <div><small>Work / Rest</small><strong>{t?minutesLabel(t.work)+" / "+minutesLabel(t.rest):"…"}</strong></div>
+            <div><small>24h Work left</small><strong>{countedWindow&&!countedWindow.review&&countedWindow.limit!==null?
+              minutesLabel(Math.max(0,countedWindow.limit-countedWindow.work)):"Review"}</strong></div>
+            <div><small>Long/night left</small><strong>{fatigue?.longNightRemaining!==null&&fatigue?.longNightRemaining!==undefined?
+              minutesLabel(fatigue.longNightRemaining):"—"}</strong></div>
+            <div><small>Next break</small><strong>{report?.nextBreak!==null&&report?.nextBreak!==undefined?
+              minutesLabel(report.nextBreak):"Review"}</strong></div>
+          </div>
+          {!graph&&!readOnly&&<SmartPlanner date={date}/>}
           <section className="card block-card">
             <div className="row wrap block-toolbar">
               <div className="row">
@@ -445,7 +456,7 @@ export function Diary({
             {visible.map((p) => (
               <div key={p} className="six-hours diary-grid-section swipe-grid">
                 <div className="swipe-hour-labels">
-                  {Array.from({length:6},(_,i)=><span key={i}>{displaySlot((p*6+i)*4,timeFormat,false)}</span>)}
+                  {Array.from({length:6},(_,i)=><span key={i} className={(p*6+i)<8||(p*6+i)>=22?"night-hour":""}>{displaySlot((p*6+i)*4,timeFormat,false)}</span>)}
                 </div>
                 <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}>
                   {d.slots.slice(p*24,p*24+24).map((activity,i)=>{
@@ -455,7 +466,7 @@ export function Diary({
                     const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
                     const reserve=kind==="rest"&&protection?.slots[slot]==="reserve";
                     const projected=kind==="work"&&!reasons?.length&&protection?.slots[slot]==="conflict";
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${reasons?.length?"breach":""} ${reserve?"protected-rest":""} ${projected?"rest-risk":""}`}
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length?"breach":""} ${reserve?"protected-rest":""} ${projected?"rest-risk":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
                       aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}`}
                       title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
