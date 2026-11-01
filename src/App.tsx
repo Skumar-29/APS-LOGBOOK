@@ -267,6 +267,7 @@ export default function App() {
           {screen === "Stats" && (
             <Stats
               date={date}
+              onSelectDate={goDate}
               onDate={(d) => {
                 goDate(d);
                 setScreen("Diary");
