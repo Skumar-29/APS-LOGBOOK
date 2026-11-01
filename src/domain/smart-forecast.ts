@@ -59,6 +59,7 @@ export function forecastWork(s:Workspace,date:string,time:string,jobMinutes:numb
   const profile=s.days[date]?.profile||s.profile;
   if(!Number.isInteger(jobMinutes)||jobMinutes<15||jobMinutes>720||jobMinutes%15)
     throw Error("Choose a job between 15 minutes and 12 hours, in 15-minute steps.");
+  if(!/^([01]\\d|2[0-3]):(00|15|30|45)$/.test(time))throw Error("Use 15-minute start times.");
   const from=instantFor(date,time,profile.zone)[0];
   if(from===undefined)throw Error("Select a valid local start time; check daylight saving changes.");
   if(operatingRules(profile)!=="HVNL"||!tableFor(profile).length)
