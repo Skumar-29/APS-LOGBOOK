@@ -23,7 +23,7 @@ export interface RuleReport {
   breachSlots:Record<string,string[]>;restSlots:Record<string,string[]>;workWindows:WorkWindow[];
   checks:Check[];issues:string[];findings:Finding[];days:DaySummary[];
   restClassifications:Record<string,RestClassification>;
-  lastWork:string;majorRest:string;nightRests:number;longNight:number;workSince24:number;
+  lastWork:string;majorRest:string;nightRests:number;nightRestPair?:boolean;longNight:number;workSince24:number;
   nextBreak:number|null;restartAt:string|null;controlling:Check|null;
   assessedThrough:string;source:string;version:string;revision:number;zone?:string;
   longNightStart?:string;longNightEnd?:string;longNightZone?:string;
@@ -426,7 +426,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
   return {breachSlots,restSlots,workWindows,checks,findings,issues:[...new Set(issues)],days,restClassifications,
     lastWork:lastWork?`${atBase(lastWork.start,lastWork.profile.zone)} — ${atBase(lastWork.end,lastWork.profile.zone)} · ${minutesLabel(countWork((lastWork.end-lastWork.start)/MINUTE))}`:"No completed work established",
     majorRest:major?`${atBase(major.start,major.profile.zone)} · ${minutesLabel(countRest((major.end-major.start)/MINUTE))}`:"Not established",
-    nightRests:recent.length,longNight,longNightZone:longCheck?.zone||profile.zone,longNightStart:longCheck?.start||atBase(through-10080*MINUTE,profile.zone),longNightEnd:longCheck?.assessedThrough||atBase(through,profile.zone),workSince24,nextBreak,restartAt,controlling,zone:profile.zone,assessedThrough:atBase(through,profile.zone),source:RULE_SOURCE,version:RULE_VERSION,revision:s.revision};
+    nightRests:recent.length,nightRestPair:hasPair(recent),longNight,longNightZone:longCheck?.zone||profile.zone,longNightStart:longCheck?.start||atBase(through-10080*MINUTE,profile.zone),longNightEnd:longCheck?.assessedThrough||atBase(through,profile.zone),workSince24,nextBreak,restartAt,controlling,zone:profile.zone,assessedThrough:atBase(through,profile.zone),source:RULE_SOURCE,version:RULE_VERSION,revision:s.revision};
 }
 
 export function windowTotals(_s:Workspace,window:WorkWindow) {
