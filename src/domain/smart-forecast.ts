@@ -1,7 +1,7 @@
 import {analyse, type RuleReport} from "./rules";
 import {clone,ensureDay,type Workspace} from "./model";
 import {civil,instantFor,MINUTE,QUARTER} from "./time";
-import {boundary} from "./timeline";
+
 import {operatingRules,tableFor} from "./catalogue";
 
 export interface WorkOption {
@@ -29,11 +29,11 @@ const reportReview=(r:RuleReport)=>r.issues.some(x=>/histor|earlier|rest type|cl
  * Only the existing NHVR rule engine judges proposed Work, with all prior windows
  * intact. A candidate with missing historical evidence is never called 'safe'.
  */
-function simulate(s:Workspace,from:number,length:number,realNow:number):{report:RuleReport;bad:number|null;overlap:boolean}{
+function simulate(s:Workspace,from:number,length:number,realNow:number,zone:string):{report:RuleReport;bad:number|null;overlap:boolean}{
   const c=clone(s),to=from+length*MINUTE;
   let overlap=false;
   for(let at=from;at<to;at+=QUARTER){
-    const local=civil(at,s.profile.zone);
+    const local=civil(at,zone);
     const slot=local.slot;
     if(!Number.isInteger(slot)||slot<0||slot>=96)throw Error("Clock transition needs manual review");
     const already=!!c.days[local.date];
@@ -42,11 +42,11 @@ function simulate(s:Workspace,from:number,length:number,realNow:number):{report:
     if(d.slots[slot]==="work")overlap=true;
     d.slots[slot]="work";
   }
-  const end=civil(to,s.profile.zone);
+  const end=civil(to,zone);
   const report=analyse(c,end.date+"T"+end.time,21,{now:to,liveThrough:realNow});
   let bad:number|null=null;
   for(let at=from;at<to;at+=QUARTER){
-    const p=civil(at,s.profile.zone),key=p.date+":"+p.slot;
+    const p=civil(at,zone),key=p.date+":"+p.slot;
     if((report.breachSlots[key]||[]).length){bad=at;break;}
   }
   const confirmedBreach=report.findings.filter(f=>f.severity==="breach"&&
@@ -75,7 +75,7 @@ export function forecastWork(s:Workspace,date:string,time:string,jobMinutes:numb
     // Keep forecasts within the next 28 days and do not cross an ambiguous clock.
     if(start>realNow+28*86400000)break;
     try{
-      const result=simulate(s,start,jobMinutes,realNow);
+      const result=simulate(s,start,jobMinutes,realNow,profile.zone);
       const reviewed=reportReview(result.report)||result.overlap;
       // First red Work block gives the continuous Work limit in this proposal.
       const continuous=Math.max(0,Math.min(jobMinutes,
