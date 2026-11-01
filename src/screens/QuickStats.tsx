@@ -115,7 +115,7 @@ export function QuickStats({s,report,p,date,onNow}:Props){
       <Action onClick={pdf}>Save PDF</Action>
     </div>
     {message&&<p className="small" role="status">{message}</p>}
-    <SmartPlanner date={date}/>
+    <SmartPlanner key={date} date={date}/>
     <p className="small">Remaining allowances are separate limits. The smallest applicable limit controls; they cannot be added together.</p>
   </section>;
 }
