@@ -19,7 +19,7 @@ export function DrivingStatsDashboard({s,report,p,asOf,onAsOf,onNow}:{
   const model=drivingStatistics(s,report,p);
   return <section className="card driver-stats-dashboard" aria-label="Driving eligibility and rolling fatigue statistics">
     <div className="row wrap">
-      <h2>Driving statistics</h2>
+      <h2>Driving eligibility</h2>
       <Action onClick={onNow}>Calculate as of now</Action>
     </div>
     <div className="row wrap driver-asof">
