@@ -44,7 +44,7 @@ test("night shading, full-page balances and non-mutating shift proposals",async(
  if(await page.getByRole("button",{name:"Full day"}).count()) await page.getByRole("button",{name:"Full day"}).click();
  await expect(page.locator(".swipe-block.night-band[data-slot='88']")).toBeVisible();
  await expect(page.locator(".swipe-block[data-slot='32']")).not.toHaveClass(/night-band/);
- const before=await page.locator("[aria-label='Page totals']").innerText();
+ const before=await page.locator("[aria-label='Page totals']").textContent();
  await page.getByText("Plan next job",{exact:true}).click();
  await page.getByLabel("Job date",{exact:true}).fill("2026-11-02");
  await page.getByLabel("Earliest start",{exact:true}).fill("15:00");
@@ -52,7 +52,7 @@ test("night shading, full-page balances and non-mutating shift proposals",async(
  await page.getByRole("button",{name:"Compare schedules"}).click();
  await expect(page.getByText("Start at your selected time")).toBeVisible();
  await expect(page.locator(".smart-plan-option").first()).toContainText("02/11/2026");
- await expect(page.locator("[aria-label='Page totals']")).toHaveText(before);
+ expect(await page.locator("[aria-label='Page totals']").textContent()).toBe(before);
  const widths=await page.evaluate(()=>[document.documentElement.clientWidth,document.documentElement.scrollWidth]);
  expect(widths[1]).toBeLessThanOrEqual(widths[0]+3);
  await page.screenshot({path:`test-results/smart-diary-${info.project.name}.png`,fullPage:true});
