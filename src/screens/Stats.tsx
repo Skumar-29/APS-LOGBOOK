@@ -1,4 +1,5 @@
-import { displayCivil, displayDate } from "../domain/time";
+import { displayCivil, displayDate, civil } from "../domain/time";
+import { DrivingStatsDashboard } from "./DrivingStatsDashboard";
 import {statusClass,warningLines,zoneLabel} from '../domain/warnings';
 import { useState } from "react";
 import { useStore } from "../context";
@@ -40,6 +41,15 @@ export function Stats({
   const fatigue=fatigueGuidance(report,currentProfile);
   return (
     <>
+      <DrivingStatsDashboard
+        s={s} report={report} p={currentProfile}
+        asOf={asOf} onAsOf={setAsOf}
+        onNow={()=>{
+          const clock=civil(Date.now(),s.profile.zone);
+          onDate(clock.date);
+          setAsOf(clock.time);
+        }}
+      />
       <section className="card">
         <div className="row">
           <h2>Statistics</h2>
@@ -122,11 +132,7 @@ export function Stats({
         <p className="small">{displayCivil(report.majorRest)}</p>
       </section>
       <Fold title="Rule review & history">
-        <Field
-          label="As of (base time; 24:00 = end of day)"
-          value={asOf}
-          onChange={setAsOf}
-        />
+
         {warningLines(report).map((x, i) => (
           <p className="small" key={i}>
             {x}
