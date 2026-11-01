@@ -28,6 +28,11 @@ describe("Next-job forecasting never edits diary data",()=>{
   expect(later?.requestedMinutes).toBe(360);
   expect(early?.restBeforeMinutes).toBe(0);
   expect(later?.restBeforeMinutes).toBe(120);
+  // Earlier counted periods remain active even after completing 7h Rest.
+  // A 5 PM restart must not be penalised merely because the old period
+  // started at 8 PM the previous day.
+  expect(early?.continuousMinutes).toBeLessThanOrEqual(360);
+  expect(later?.continuousMinutes).toBeGreaterThanOrEqual(early?.continuousMinutes??0);
   expect(JSON.stringify(s)).toBe(before);
  });
  it("compares a two-hour job without changing recorded Work or break types",()=>{
