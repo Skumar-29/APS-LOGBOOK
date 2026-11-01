@@ -327,6 +327,7 @@ test('Statistics matches Diary for a saved full day even when some Work is after
   await expect(page.locator('[aria-label="Page totals"]')).toContainText('Rest 6h 00m');
   await page.getByRole('button',{name:'Stats',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Statistics'})).toBeVisible();
+  await page.getByText("Calendar history & night Rest",{exact:true}).click();
   await expect(page.locator('.stat-day').last()).toContainText('W 18h 00m · R 6h 00m');
   await expect(page.getByText('Counted through 20/10/2026 00:00')).toBeVisible();
 });
