@@ -24,8 +24,13 @@ function stamp(value: string,zone:string) {
  */
 export function protectedRest(s: Workspace, date: string, windows: WorkWindow[], now=Date.now()): ProtectedRest|null {
   const p=s.days[date]?.profile||s.profile;
-  if(p.twoUp || !["Standard","BFM"].includes(p.scheme) || operatingRules(p)!=="HVNL" || civil(now,p.zone).date!==date || !s.days[date]) return null;
-  const t=buildTimeline(s,date+"T24:00",now,now);
+  const today=civil(now,p.zone).date;
+  // Also advise when planning upcoming pages. Projected Rest is never credited
+  // as already taken; the planning baseline is that future day's midnight.
+  if(p.twoUp || !["Standard","BFM"].includes(p.scheme) || operatingRules(p)!=="HVNL" ||
+    date<today || date>today.slice(0,4)+"-12-31" && date>today || !s.days[date]) return null;
+  const baseline=date===today?now:boundary(date,0,p.zone);
+  const t=buildTimeline(s,date+"T24:00",baseline,baseline);
   const startOfDay=boundary(date,0,p.zone),endOfDay=boundary(date,96,p.zone);
   if(!Number.isFinite(startOfDay)||!Number.isFinite(endOfDay)) return null;
   const eligible=windows.filter(w=>w.established&&!w.review && w.unknown===0 && w.zone===p.zone
