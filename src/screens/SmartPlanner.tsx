@@ -1,17 +1,20 @@
 import {useState} from "react";
 import {useStore} from "../context";
 import {forecastWork,type WorkForecast,optionClock} from "../domain/smart-forecast";
-import {civil,displayClock,displayCivil,minutesLabel} from "../domain/time";
+import {civil,dateAdd,displayCivil,minutesLabel} from "../domain/time";
 import {Action,Field} from "../components/UI";
 
 /** Compact optional planner. Hypothetical simulations never mutate saved records. */
 export function SmartPlanner({date}:{date:string}){
   const {s}=useStore(),zone=(s.days[date]?.profile||s.profile).zone;
   const localNow=civil(Date.now(),zone);
-  const initialDate=date<localNow.date?localNow.date:date;
+  const quarter=Math.ceil(localNow.slot);
+  const baseDate=date<localNow.date?localNow.date:date;
+  const initialDate=baseDate===localNow.date&&quarter>=96?dateAdd(baseDate,1):baseDate;
   const [startDate,setStartDate]=useState(initialDate);
   const [startTime,setStartTime]=useState(localNow.date===initialDate ?
-    String(Math.ceil(localNow.slot/1)/4|0).padStart(2,"0")+":"+String((Math.ceil(localNow.slot)%4)*15).padStart(2,"0"):"08:00");
+    String(Math.floor(quarter/4)).padStart(2,"0")+":"+String((quarter%4)*15).padStart(2,"0"):
+    initialDate===date?"08:00":"00:00");
   const [length,setLength]=useState("6");
   const [result,setResult]=useState<WorkForecast|null>(null);
   const [error,setError]=useState("");
