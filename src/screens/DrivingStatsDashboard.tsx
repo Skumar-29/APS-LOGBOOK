@@ -1,7 +1,7 @@
 import type {Workspace,Profile} from "../domain/model";
 import type {RuleReport} from "../domain/rules";
 import {drivingStatistics} from "../domain/driving-statistics";
-import {displayCivil,minutesLabel} from "../domain/time";
+import {displayCivil,minutesLabel,instantFor} from "../domain/time";
 import {Action,Field,Fold} from "../components/UI";
 import {zoneLabel} from "../domain/warnings";
 
@@ -17,6 +17,8 @@ export function DrivingStatsDashboard({s,report,p,asOf,onAsOf,onNow}:{
   onAsOf:(v:string)=>void;onNow:()=>void;
 }){
   const model=drivingStatistics(s,report,p);
+  const assessed=instantFor(report.assessedThrough.slice(0,10),report.assessedThrough.slice(11,16),p.zone).at(-1);
+  const future=assessed!==undefined && assessed>Date.now();
   return <section className="card driver-stats-dashboard" aria-label="Driving eligibility and rolling fatigue statistics">
     <div className="row wrap">
       <h2>Driving eligibility</h2>
@@ -26,6 +28,7 @@ export function DrivingStatsDashboard({s,report,p,asOf,onAsOf,onNow}:{
       <Field label="As of (base time)" value={asOf} onChange={onAsOf}/>
       <span className="small">Assessed {displayCivil(report.assessedThrough)} · {zoneLabel(p.zone)} time</span>
     </div>
+    {future && <p className="driver-history-review">Future planning scenario: selected Work/Rest blocks are not confirmation that the activities have already happened.</p>}
     <h3>When can I work?</h3>
     <p className={"driver-work-status "+(model.eligibleNow===null?"review":model.eligibleNow?"ok":"bad")}>
       {model.eligibilityText}
