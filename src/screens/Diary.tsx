@@ -551,7 +551,7 @@ export function Diary({
                                 options={[
                                   ["unknown", "Rest · type not set"],
                                   ["stationary", "Stationary rest"],
-                                  ["sleeper-moving", "Sleeper berth · moving"],
+                                  ...(d.profile.twoUp && !!d.profile.coDriver?.trim() ? [["sleeper-moving", "Sleeper berth · moving (two-up)"]] as [string,string][] : []),
                                 ]}
                                 onChange={(v) => {
                                   void change(c, "restType", v).catch(() => {});
@@ -585,7 +585,7 @@ export function Diary({
               options={[
                 ["unknown", "Confirm each break"],
                 ["stationary", "Stationary unless specified"],
-                ["sleeper-moving", "Moving sleeper unless specified"],
+
               ]}
               onChange={(v) => {
                 void updateDay((day) => {
