@@ -23,8 +23,9 @@ export function restTypeAt(s: Workspace, date: string, slot: number): RestType {
           activityAt(s, date, c.slot) === "rest",
       )
       .sort((a, b) => b.slot - a.slot)[0];
-    if (explicit) return explicit.restType;
-    if (d.restDefault && d.restDefault !== "unknown") return d.restDefault;
+    if (explicit) return explicit.restType==="sleeper-moving" && (!d.profile.twoUp || !d.profile.coDriver?.trim()) ? "unknown" : explicit.restType;
+    if (d.restDefault && d.restDefault !== "unknown")
+      return d.restDefault==="sleeper-moving" && (!d.profile.twoUp || !d.profile.coDriver?.trim()) ? "unknown" : d.restDefault;
     if (start > 0) return "unknown";
     date = dateAdd(date, -1);
     slot = 95;
