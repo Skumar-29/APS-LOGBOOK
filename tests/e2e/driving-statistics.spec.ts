@@ -31,6 +31,10 @@ test("Driving statistics dashboard renders requested fields on desktop and phone
  editRange(s,"2026-11-01",0,16,"work");
  await seed(page,s);
  await page.getByRole("button",{name:"Stats",exact:true}).click();
+ const quick=page.getByLabel("Quick driving availability and rest deadlines");
+ await expect(quick).toBeVisible();
+ await expect(quick.getByText("Next required breaks")).toBeVisible();
+ await page.getByText("Full driving calculations",{exact:true}).click();
  const d=page.getByLabel("Driving eligibility and rolling fatigue statistics");
  await expect(d).toBeVisible();
  await expect(d.getByText("Can work for (before next applicable limit)")).toBeVisible();
