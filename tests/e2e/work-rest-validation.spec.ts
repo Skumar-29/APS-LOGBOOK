@@ -90,6 +90,10 @@ test('past, current and future blocks are editable without time locking', async 
   await expect(slot(42)).toHaveAttribute('aria-pressed', 'false');
 
   // A swipe can cross the current-clock boundary and is saved as requested.
+  // The new compact balance/legend adds content above the grid. Scroll into
+  // view before using raw mouse coordinates, especially on a phone viewport.
+  await slot(40).scrollIntoViewIfNeeded();
+  await slot(45).scrollIntoViewIfNeeded();
   const start = await slot(40).boundingBox();
   const end = await slot(45).boundingBox();
   if (!start || !end) throw Error('The diary blocks are not visible');
