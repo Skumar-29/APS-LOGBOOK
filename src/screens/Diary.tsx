@@ -3,6 +3,7 @@ import { restExtensionOpportunity } from "../domain/rest-advisor";
 import { protectedRest } from "../domain/protected-rest";
 import { fatigueGuidance } from "../domain/fatigue-guidance";
 import { SmartPlanner } from "./SmartPlanner";
+import { classifyDiaryGesture, isDeliberateDiaryTap } from "../domain/diary-gesture";
 import {warningLines,zoneLabel} from '../domain/warnings';
 import { assessedDay, boundary, atBase } from "../domain/timeline";
 import { operatingRules } from "../domain/catalogue";
@@ -77,10 +78,9 @@ export function Diary({
       end: number;
       x: number;
       y: number;
-      row: "work" | "rest";
+      pointerId: number;
       axis: "pending" | "horizontal" | "vertical";
-    } | null>(null),
-    suppressClick = useRef(false);
+    } | null>(null);
   const timeFormat = s.settings.timeFormat || "12h";
   const full = s.settings.fullDay,
     visible = full ? [0, 1, 2, 3] : [period],
@@ -471,29 +471,60 @@ export function Diary({
                       aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}`}
                       title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
                       onPointerDown={e=>{
-                        if(readOnly||e.pointerType==="mouse"&&e.button!==0)return;
-                        e.preventDefault();
-                        const next=activity==="work"?"rest":"work";
-                        drag.current={slot,end:slot,kind:next,row:"work",axis:"horizontal",x:e.clientX,y:e.clientY};
-                        setSwipeKind(next);setDragRange([slot,slot]);
-                        e.currentTarget.setPointerCapture(e.pointerId);
+                        if(readOnly||(e.pointerType==="mouse"&&e.button!==0))return;
+                        // Keep pan-y enabled: touching a block must not seize scrolling.
+                        drag.current={
+                          slot,end:slot,kind:activity==="work"?"rest":"work",
+                          pointerId:e.pointerId,axis:"pending",x:e.clientX,y:e.clientY
+                        };
                       }}
                       onPointerMove={e=>{
-                        const state=drag.current;if(!state)return;
+                        const state=drag.current;
+                        if(!state||state.pointerId!==e.pointerId||state.axis==="vertical")return;
+                        if(state.axis==="pending"){
+                          const direction=classifyDiaryGesture(e.clientX-state.x,e.clientY-state.y);
+                          if(direction==="pending")return;
+                          state.axis=direction;
+                          if(direction==="vertical")return;
+                          setSwipeKind(state.kind);
+                          setDragRange([state.slot,state.slot]);
+                          try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}
+                        }
+                        if(state.axis!=="horizontal")return;
+                        e.preventDefault();
                         const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest("[data-slot]");
-                        if(!hit)return;
+                        if(!hit||!e.currentTarget.closest(".swipe-grid")?.contains(hit))return;
                         const next=Number(hit.getAttribute("data-slot"));
                         if(Number.isInteger(next)&&next>=0&&next<96&&next!==state.end){
                           state.end=next;setDragRange([state.slot,next]);
                         }
                       }}
-                      onPointerUp={()=>{
-                        const state=drag.current;if(!state)return;
+                      onPointerUp={e=>{
+                        const state=drag.current;
+                        if(!state||state.pointerId!==e.pointerId)return;
                         drag.current=null;setDragRange(null);setSwipeKind(null);
+                        if(state.axis==="vertical")return;
+                        if(state.axis==="pending"){
+                          if(isDeliberateDiaryTap(e.clientX-state.x,e.clientY-state.y))
+                            void blocks(state.slot,state.slot+1,state.kind).catch(()=>{});
+                          return;
+                        }
                         void blocks(Math.min(state.slot,state.end),Math.max(state.slot,state.end)+1,state.kind).catch(()=>{});
                       }}
-                      onPointerCancel={()=>{drag.current=null;setDragRange(null);setSwipeKind(null);}}
-                      onLostPointerCapture={()=>{if(drag.current){drag.current=null;setDragRange(null);setSwipeKind(null);}}}
+                      onPointerCancel={e=>{
+                        if(drag.current?.pointerId!==e.pointerId)return;
+                        drag.current=null;setDragRange(null);setSwipeKind(null);
+                      }}
+                      onLostPointerCapture={e=>{
+                        if(drag.current?.pointerId!==e.pointerId)return;
+                        drag.current=null;setDragRange(null);setSwipeKind(null);
+                      }}
+                      onClick={e=>{
+                        // Keyboard Enter/Space are genuine single-block edits.
+                        // Pointer taps are handled in onPointerUp, never twice.
+                        if(e.detail===0&&!readOnly)
+                          void blocks(slot,slot+1,activity==="work"?"rest":"work").catch(()=>{});
+                      }}
                     />;
                   })}
                 </div>
