@@ -23,6 +23,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium webkit
       - name: Verify diary, engine and preserved features on desktop, phone and WebKit
         run: npm run test:release
       - uses: actions/upload-artifact@v4
