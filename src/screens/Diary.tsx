@@ -477,7 +477,7 @@ export function Diary({
                       aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${reasons?.length?", detected rule breach":projected?", projected protected Rest conflict":reserve?", suggested protected Rest":""}`}
                       title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
                       onPointerDown={e=>{
-                        if(readOnly||(e.pointerType==="mouse"&&e.button!==0))return;
+                        if(readOnly||drag.current||(e.pointerType==="mouse"&&e.button!==0))return;
                         // Keep pan-y enabled: touching a block must not seize scrolling.
                         drag.current={
                           slot,end:slot,kind:activity==="work"?"rest":"work",
@@ -515,7 +515,9 @@ export function Diary({
                             void blocks(state.slot,state.slot+1,state.kind).catch(()=>{});
                           return;
                         }
-                        void blocks(Math.min(state.slot,state.end),Math.max(state.slot,state.end)+1,state.kind).catch(()=>{});
+                        // A sideways brush inside one block is not a swipe.
+                        if(state.end!==state.slot)
+                          void blocks(Math.min(state.slot,state.end),Math.max(state.slot,state.end)+1,state.kind).catch(()=>{});
                       }}
                       onPointerCancel={e=>{
                         if(drag.current?.pointerId!==e.pointerId)return;
