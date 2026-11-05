@@ -45,7 +45,9 @@ test('release review: cumulative 7d night breach and zero remaining cannot be hi
  await expect(cell(page,0)).toHaveAttribute('title',/36h long\/night work exceeded/);
  await expect(cell(page,0)).toHaveClass(/breach/);
  const row=page.locator('.cumulative-limit').filter({hasText:'7d long/night'});
- await expect(row).toContainText('42h 00m / 36h');await expect(row).toContainText('Exceeded');
+ // At midnight the earliest 7-day window expires. Its red breach remains;
+ // the next active window contains 36h, rather than resetting to zero.
+ await expect(row).toContainText('36h 00m / 36h');await expect(row).toContainText('At limit');
  await expect(page.locator('.diary-balance-strip')).toContainText('0h 00m');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(()=>document.documentElement.clientWidth)+2);
  await page.screenshot({path:info.outputPath('7-day-night-excess.png'),fullPage:true});
