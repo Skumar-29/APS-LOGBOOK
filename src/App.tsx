@@ -84,6 +84,9 @@ export default function App() {
         .register("./service-worker.js")
         .then((reg) => {
           if (reg.waiting) setUpdate(reg);
+          // Check on opening the PWA; keep activation user-controlled so a
+          // currently edited diary is not replaced unexpectedly.
+          void reg.update().catch(() => {});
           reg.addEventListener("updatefound", () => {
             const worker = reg.installing;
             worker?.addEventListener("statechange", () => {
