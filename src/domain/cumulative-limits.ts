@@ -9,6 +9,7 @@ export function cumulativeLimits(report:RuleReport,p:Profile):CumulativeLimit[]{
  const checks=selectCheckSummaries(report.checks,report.assessedThrough,p.zone);
  const c14=checks.find(c=>c.label==='14 days'&&c.zone===p.zone);
  const c7=checks.find(c=>c.label==='7 days'&&c.zone===p.zone);
+ const longNight=checks.find(c=>c.label==='7 days long/night'&&c.zone===p.zone);
  const rows:CumulativeLimit[]=[];
  const state=(used:number|null,limit:number,review=false):CumulativeLimit['status']=>review||used===null?'Review':used>limit?'Exceeded':used===limit?'At limit':'Recorded';
  if(p.scheme==='BFM'&&!p.twoUp){
@@ -16,7 +17,7 @@ export function cumulativeLimits(report:RuleReport,p:Profile):CumulativeLimit[]{
   rows.push({label:'84h checkpoint',used:c?.work??null,limit:BFM_84_LIMIT,lowerBound:!c?.exact,since:c?.since,
    status:state(c?.work??null,BFM_84_LIMIT)});
   rows.push({label:'7d long/night',used:report.longNight,limit:LONG_NIGHT_LIMIT,lowerBound:false,
-   status:state(report.longNight,LONG_NIGHT_LIMIT),since:report.longNightStart,end:report.longNightEnd});
+   status:state(report.longNight,LONG_NIGHT_LIMIT,!longNight||longNight.status==='Needs review'),since:report.longNightStart,end:report.longNightEnd});
  }else{
   rows.push({label:'7d Work',used:c7?.work??null,limit:c7?.limit??(p.twoUp?(p.scheme==='BFM'?4200:3600):4320),lowerBound:false,
    status:state(c7?.work??null,c7?.limit??4320,c7?.status==='Needs review'),since:c7?.start,end:c7?.end});
