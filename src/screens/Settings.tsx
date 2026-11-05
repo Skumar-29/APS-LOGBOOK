@@ -1,3 +1,4 @@
+import { version } from "../../package.json";
 import { FormDefaults } from "../components/FormDefaults";
 import { RuleChanges } from "../components/RuleChanges";
 import { useState } from "react";
@@ -496,6 +497,7 @@ export function Settings({ onDone }: { onDone?: () => void }) {
           </Action>
         </Modal>
       )}
+      <p className="small" data-testid="app-version">APS Logbook · v{version}</p>
     </>
   );
 }

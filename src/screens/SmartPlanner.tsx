@@ -57,7 +57,7 @@ export function SmartPlanner({date}:{date:string}){
               <div className="smart-plan-option preferred">
                 <strong>{good?"Earliest modelled full-job option":"Possible option · review first"}</strong>
                 <span>Start {fmt(result.recommended.start)}</span>
-                <small>Finish {fmt(result.recommended.finish)} · Rest longer by {minutesLabel(result.recommended.restBeforeMinutes)}</small>
+                <small>Finish {fmt(result.recommended.finish)} · Start later by {minutesLabel(result.recommended.restBeforeMinutes)}</small>
               </div>}
           </div>
           <p className="small">{result.warning}</p>

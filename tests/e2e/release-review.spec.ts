@@ -85,6 +85,16 @@ test('release review: GitHub Pages subpath installs APS Logbook and reloads offl
  await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
  const scope=await page.evaluate(async()=>(await navigator.serviceWorker.ready).scope);expect(scope).toContain('/APS-LOGBOOK/');
  const manifest=await (await request.get('/APS-LOGBOOK/manifest.webmanifest')).json();expect(manifest.name).toBe('APS Logbook');expect(manifest.scope).toBe('./');
+ await page.evaluate(async()=>{
+  const keys=await caches.keys(),name=keys.find(k=>k.includes(btoa(location.origin+'/APS-LOGBOOK/')))!;
+  const current=await caches.open(name),requests=await current.keys();
+  const entries=await Promise.all(requests.map(async req=>[req,(await current.match(req))!] as const));
+  await caches.delete(name);
+  const old=await caches.open(name+'-previous');
+  await old.put('./manifest.webmanifest',new Response(JSON.stringify({name:'Stale old name'}),{headers:{'Content-Type':'application/json'}}));
+  const restored=await caches.open(name);for(const [req,response] of entries)await restored.put(req,response);
+ });
+ expect(await page.evaluate(async()=>(await (await fetch('./manifest.webmanifest')).json()).name)).toBe('APS Logbook');
  if(browserName==='webkit')expect((await request.post('http://127.0.0.1:4174/offline')).ok()).toBe(true);else await context.setOffline(true);
  try{
   expect((await page.reload())?.fromServiceWorker()).toBe(true);

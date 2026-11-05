@@ -14,7 +14,7 @@ export function Guide() {
     <p className="small">Simple explanations · reviewed {REVIEW_DATE}</p>
     <section className="card">
       <h2>How this app counts</h2>
-      <p>Select work blocks. Unselected blocks on a saved day mean rest. A missing day needs records. Future time earns no completed hours.</p>
+      <p>Select work blocks. Unselected blocks on a saved day mean rest. A missing day needs records. Diary and Statistics assess the whole saved page, including planned Work. Driving counts elapsed time only; future Rest earns no completed credit.</p>
       <p>All screens use the same timeline, including the running timer. Midnight starts a new diary page; the counting periods keep going.</p>
       <p>Warnings name the problem: “15m break overdue”, “24h work limit exceeded” or “Confirm rest type”.</p>
     </section>

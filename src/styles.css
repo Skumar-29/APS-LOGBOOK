@@ -1469,3 +1469,8 @@ html { scroll-padding-top:120px; }
   .header-actions .save-state { max-width:42px; }
   .block-card .periods button { font-size:9px; }
 }
+/* Four short balances share one row; long values wrap inside their own cell. */
+.block-card>.diary-balance-strip { grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
+.block-card>.diary-balance-strip>div { padding:4px; }
+.block-card>.diary-balance-strip small { font-size:9px; }
+.block-card>.diary-balance-strip strong { font-size:11px; }
