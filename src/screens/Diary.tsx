@@ -464,7 +464,65 @@ export function Diary({
                 <div className="swipe-hour-labels">
                   {Array.from({length:6},(_,i)=><span key={i} className={(p*6+i)<8||(p*6+i)>=22?"night-hour":""}>{displaySlot((p*6+i)*4,timeFormat,false)}</span>)}
                 </div>
-                <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}>
+                <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}
+                  onPointerDown={e=>{
+                    if(readOnly||drag.current||(e.pointerType==="mouse"&&e.button!==0)||!e.isPrimary)return;
+                    const origin=e.target instanceof Element ? e.target.closest("[data-slot]") : null;
+                    if(!origin||!e.currentTarget.contains(origin))return;
+                    const start=Number(origin.getAttribute("data-slot"));
+                    if(!Number.isInteger(start)||start<p*24||start>=p*24+24)return;
+                    drag.current={slot:start,end:start,kind:d.slots[start]==="work"?"rest":"work",
+                      pointerId:e.pointerId,axis:"pending",x:e.clientX,y:e.clientY};
+                    // Capture mouse on the row so it cannot lose drag events.
+                    // Never seize a touch on down; native vertical scrolling must win.
+                    if(e.pointerType==="mouse"){
+                      try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}
+                    }
+                  }}
+                  onPointerMove={e=>{
+                    const state=drag.current;
+                    if(!state||state.pointerId!==e.pointerId)return;
+                    if(state.axis==="pending"){
+                      const direction=classifyDiaryGesture(e.clientX-state.x,e.clientY-state.y);
+                      if(direction==="pending")return;
+                      if(direction==="vertical"){
+                        drag.current=null;setDragRange(null);setSwipeKind(null);
+                        return;
+                      }
+                      state.axis="horizontal";
+                      setSwipeKind(state.kind);setDragRange([state.slot,state.slot]);
+                      if(e.pointerType!=="mouse"){
+                        try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}
+                      }
+                    }
+                    if(state.axis!=="horizontal")return;
+                    e.preventDefault();
+                    const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest("[data-slot]");
+                    if(!hit||!e.currentTarget.contains(hit))return;
+                    const next=Number(hit.getAttribute("data-slot"));
+                    if(Number.isInteger(next)&&next>=p*24&&next<p*24+24&&next!==state.end){
+                      state.end=next;setDragRange([state.slot,next]);
+                    }
+                  }}
+                  onPointerUp={e=>{
+                    const state=drag.current;
+                    if(!state||state.pointerId!==e.pointerId)return;
+                    drag.current=null;setDragRange(null);setSwipeKind(null);
+                    if(state.axis==="pending"){
+                      if(isDeliberateDiaryTap(e.clientX-state.x,e.clientY-state.y))
+                        void blocks(state.slot,state.slot+1,state.kind).catch(()=>{});
+                    }else if(state.axis==="horizontal"&&state.end!==state.slot){
+                      void blocks(Math.min(state.slot,state.end),Math.max(state.slot,state.end)+1,state.kind).catch(()=>{});
+                    }
+                  }}
+                  onPointerCancel={e=>{
+                    if(drag.current?.pointerId!==e.pointerId)return;
+                    drag.current=null;setDragRange(null);setSwipeKind(null);
+                  }}
+                  onLostPointerCapture={e=>{
+                    if(drag.current?.pointerId!==e.pointerId)return;
+                    drag.current=null;setDragRange(null);setSwipeKind(null);
+                  }}>
                   {d.slots.slice(p*24,p*24+24).map((activity,i)=>{
                     const slot=p*24+i;
                     const inDrag=dragRange&&slot>=Math.min(...dragRange)&&slot<=Math.max(...dragRange);
@@ -476,62 +534,6 @@ export function Diary({
                       disabled={readOnly} aria-pressed={kind==="work"}
                       aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${reasons?.length?", detected rule breach":projected?", projected protected Rest conflict":reserve?", suggested protected Rest":""}`}
                       title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
-                      onPointerDown={e=>{
-                        if(readOnly||drag.current||(e.pointerType==="mouse"&&e.button!==0))return;
-                        // Keep pan-y enabled: touching a block must not seize scrolling.
-                        if(!e.isPrimary)return;
-                        drag.current={
-                          slot,end:slot,kind:activity==="work"?"rest":"work",
-                          pointerId:e.pointerId,axis:"pending",x:e.clientX,y:e.clientY
-                        };
-                        // Capture immediately so horizontal movements crossing narrow
-                        // 15-minute blocks still reach this start block. CSS pan-y
-                        // remains enabled: a real vertical scroll cancels this
-                        // pointer instead of becoming a diary edit.
-                        try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}
-                      }}
-                      onPointerMove={e=>{
-                        const state=drag.current;
-                        if(!state||state.pointerId!==e.pointerId||state.axis==="vertical")return;
-                        if(state.axis==="pending"){
-                          const direction=classifyDiaryGesture(e.clientX-state.x,e.clientY-state.y);
-                          if(direction==="pending")return;
-                          state.axis=direction;
-                          if(direction==="vertical")return;
-                          setSwipeKind(state.kind);
-                          setDragRange([state.slot,state.slot]);
-                        }
-                        if(state.axis!=="horizontal")return;
-                        e.preventDefault();
-                        const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest("[data-slot]");
-                        if(!hit||!e.currentTarget.closest(".swipe-grid")?.contains(hit))return;
-                        const next=Number(hit.getAttribute("data-slot"));
-                        if(Number.isInteger(next)&&next>=0&&next<96&&next!==state.end){
-                          state.end=next;setDragRange([state.slot,next]);
-                        }
-                      }}
-                      onPointerUp={e=>{
-                        const state=drag.current;
-                        if(!state||state.pointerId!==e.pointerId)return;
-                        drag.current=null;setDragRange(null);setSwipeKind(null);
-                        if(state.axis==="vertical")return;
-                        if(state.axis==="pending"){
-                          if(isDeliberateDiaryTap(e.clientX-state.x,e.clientY-state.y))
-                            void blocks(state.slot,state.slot+1,state.kind).catch(()=>{});
-                          return;
-                        }
-                        // A sideways brush inside one block is not a swipe.
-                        if(state.end!==state.slot)
-                          void blocks(Math.min(state.slot,state.end),Math.max(state.slot,state.end)+1,state.kind).catch(()=>{});
-                      }}
-                      onPointerCancel={e=>{
-                        if(drag.current?.pointerId!==e.pointerId)return;
-                        drag.current=null;setDragRange(null);setSwipeKind(null);
-                      }}
-                      onLostPointerCapture={e=>{
-                        if(drag.current?.pointerId!==e.pointerId)return;
-                        drag.current=null;setDragRange(null);setSwipeKind(null);
-                      }}
                       onClick={e=>{
                         // Keyboard Enter/Space are genuine single-block edits.
                         // Pointer taps are handled in onPointerUp, never twice.
