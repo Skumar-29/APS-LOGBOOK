@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Truck Workspace \u2014 Work Diary",
-  "short_name": "Truck Workspace",
+  "name": "APS Logbook",
+  "short_name": "APS Logbook",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

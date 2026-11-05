@@ -23,9 +23,14 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      # Full legacy browser suite runs separately; removed planning screens are not release criteria.
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test tests/e2e/work-rest-validation.spec.ts tests/e2e/protected-rest.spec.ts tests/e2e/driving-statistics.spec.ts tests/e2e/smart-planner.spec.ts tests/e2e/diary-touch-scroll.spec.ts --project=desktop --project=phone --workers=1
+      - name: Verify diary, engine and preserved features on desktop, phone and WebKit
+        run: npm run test:release
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-browser-results
+          path: test-results
+          retention-days: 7
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

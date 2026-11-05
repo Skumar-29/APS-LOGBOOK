@@ -1227,8 +1227,8 @@ dialog > .row {
 .diary-grid-row .block { min-height:42px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); box-shadow:none; }
 .diary-grid-row .block.hour-end { border-right:2px solid #8997a1; }
 @media (max-width:360px) { .diary-grid-section .hour-labels { grid-template-columns:40px repeat(6,minmax(0,1fr)); } .diary-grid-row { grid-template-columns:40px minmax(0,1fr); } }
-@font-face { font-family:'Workspace Sans'; src:url('/fonts/WorkspaceSans-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
-@font-face { font-family:'Workspace Sans'; src:url('/fonts/WorkspaceSans-Bold.ttf') format('truetype'); font-weight:700; font-display:swap; }
+@font-face { font-family:'Workspace Sans'; src:url('../public/fonts/WorkspaceSans-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
+@font-face { font-family:'Workspace Sans'; src:url('../public/fonts/WorkspaceSans-Bold.ttf') format('truetype'); font-weight:700; font-display:swap; }
 .paper svg text { font-family:'Workspace Sans',sans-serif; }
 
 /* Keep the diary itself in view; one document scrolls beneath a compact header. */
@@ -1445,3 +1445,27 @@ html { scroll-padding-top: 160px; }
 .diary-colour-key .key-reserve{background:#f5ce67;border:1px solid #947521}
 .diary-colour-key .key-project{background:#c62828;border:1px dashed #f5ce67}
 .diary-colour-key .key-breach{background:#c62828;border:1px solid #8e1720}
+
+/* Approved compact shell: clock shares the title row on every screen. */
+.workspace-header .app-header { min-height:48px; padding:3px 10px; }
+.header-title { flex:1; min-width:0; }
+.header-title h1 { font-size:13px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; }
+.workspace-header .header-title .base-clock { display:flex; justify-content:flex-start; padding:0; gap:5px; }
+.workspace-header .header-title .base-clock time { font-size:17px; line-height:1.25; }
+.workspace-header .header-title .base-clock > span { font-size:10px; color:var(--muted); }
+.workspace-header .date-nav { padding:2px 8px; }
+.workspace-header .date-nav .row + .row { min-height:23px; }
+.workspace-header .date-nav .row + .row button { min-height:25px; }
+html { scroll-padding-top:120px; }
+.diary-screen .block-card { padding-top:2px; }
+.block-toolbar button { min-height:32px; }
+.block-card .periods { grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
+.block-card .periods button { min-height:32px; font-size:10px; padding:3px 2px; }
+.diary-colour-key { gap:3px 7px; font-size:9px; }
+.swipe-block.future-work { background-image:repeating-linear-gradient(135deg,transparent 0 4px,rgba(255,255,255,.4) 4px 6px); }
+.diary-colour-key .key-future { background:repeating-linear-gradient(135deg,#20c980 0 3px,#c2f4dc 3px 5px); }
+@media(max-width:360px) {
+  .workspace-header .app-header { padding-left:7px; padding-right:7px; }
+  .header-actions .save-state { max-width:42px; }
+  .block-card .periods button { font-size:9px; }
+}

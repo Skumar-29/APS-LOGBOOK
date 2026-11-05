@@ -4,7 +4,8 @@ import {
   dateAdd,
   today,
   validDate,
-  displayInstant,
+  displayClock,
+  civil,
   type TimeFormat,
   displayDate,
   instantFor,
@@ -142,16 +143,18 @@ export default function App() {
     <div className={"app" + (diaryScreen ? " diary-screen" : "")}>
       <div className="workspace-header">
         <header className="app-header">
-          {diaryScreen || screen === "Driving" ?
-            <h1>{screen === "Diary" ? "Work diary" : screen === "Graph" ? "Diary graph" : screen === "Stats" ? "Records overview" : "Driving"}</h1> :
-            <a href="#" className="brand" onClick={e => {e.preventDefault();run(() => navigate("Diary"));}}>Truck <b>Workspace</b></a>}
+          {!diaryScreen && !["Driving", "More"].includes(screen) && s.onboarded &&
+            <button className="header-icon" aria-label="Back to tools" onClick={() => run(() => navigate("More"))}>‹</button>}
+          <div className="header-title">
+            <h1>{screen === "Diary" ? "Work diary" : screen === "Graph" ? "Diary graph" : screen === "Stats" ? "Records overview" : screen === "More" ? "APS Logbook" : screen}</h1>
+            <BaseClock base={s.profile.base} zone={s.profile.zone} format={s.settings.timeFormat || "12h"} />
+          </div>
           <div className="header-actions">
             <span className="save-state" role="status">{offline ? "Offline" : busy ? "Saving…" : notice ? "Saved" : "On device"}</span>
             {diaryScreen && <button className="header-icon" aria-label="Refresh saved records" disabled={busy} onClick={() => run(refresh)}>↻</button>}
             <Appearance />
           </div>
         </header>
-        <BaseClock base={s.profile.base} zone={s.profile.zone} format={s.settings.timeFormat || "12h"} />
           {["Diary", "Graph", "Stats"].includes(screen) && (
             <section className="date-nav">
               <div className="row">
@@ -406,8 +409,8 @@ function BaseClock({ base, zone, format }: { base: string; zone: string; format:
   }, []);
   return (
     <div className="base-clock">
-      <span>{base} base time</span>
-      <time dateTime={new Date(now).toISOString()}><span className="clock-weekday">{new Intl.DateTimeFormat("en-AU", {weekday:"short",timeZone:zone}).format(now)} · </span>{displayInstant(now, zone, format)}</time>
+      <time aria-label={`${base} base time`} dateTime={new Date(now).toISOString()}>{displayClock(civil(now, zone).time, format)}</time>
+      <span>{base}</span>
     </div>
   );
 }

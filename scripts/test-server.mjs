@@ -17,7 +17,7 @@ const server = http.createServer(async (req, res) => {
         root,
         "." +
           new URL(req.url, "http://localhost").pathname.replace(
-            /^\/Work-Diary(?=\/)/,
+            /^\/(?:Work-Diary|APS-LOGBOOK)(?=\/)/,
             "",
           ),
       );

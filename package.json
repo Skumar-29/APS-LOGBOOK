@@ -1,14 +1,15 @@
 {
   "name": "truck-workspace",
   "private": true,
-  "version": "2.0.0-beta.11",
+  "version": "2.0.0-beta.12",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build && node scripts/build-sw.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "test:release": "playwright test tests/e2e/work-rest-validation.spec.ts tests/e2e/protected-rest.spec.ts tests/e2e/driving-statistics.spec.ts tests/e2e/smart-planner.spec.ts tests/e2e/diary-touch-scroll.spec.ts tests/e2e/feature-preservation.spec.ts tests/e2e/release-review.spec.ts"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "1.1.1",
