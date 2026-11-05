@@ -1,3 +1,4 @@
+import { CumulativeLimits } from "../components/CumulativeLimits";
 import { restTypeAt } from "../domain/rest";
 import { restExtensionOpportunity } from "../domain/rest-advisor";
 import { protectedRest } from "../domain/protected-rest";
@@ -416,7 +417,7 @@ export function Diary({
             <div><small>Work / Rest</small><strong>{t?minutesLabel(t.work)+" / "+minutesLabel(t.rest):"…"}</strong></div>
             <div><small>24h Work left</small><strong>{countedWindow&&!countedWindow.review&&!fatigue?.review&&countedWindow.limit!==null?
               minutesLabel(Math.max(0,countedWindow.limit-countedWindow.work)):"Review"}</strong></div>
-            <div><small>Long/night left</small><strong>{!fatigue?.review&&fatigue?.longNightRemaining!==null&&fatigue?.longNightRemaining!==undefined?
+            <div><small>Long/night left</small><strong>{(!fatigue?.review||fatigue?.longNightRemaining===0)&&fatigue?.longNightRemaining!==null&&fatigue?.longNightRemaining!==undefined?
               minutesLabel(fatigue.longNightRemaining):"—"}</strong></div>
             <div><small>Next break</small><strong>{!fatigue?.review&&report?.nextBreak!==null&&report?.nextBreak!==undefined?
               minutesLabel(report.nextBreak):"Review"}</strong></div>
@@ -537,6 +538,7 @@ export function Diary({
               </div>
             ))}
           </section>
+          {!readOnly && report && <CumulativeLimits report={report} profile={d.profile}/>}
           {(opportunity && (opportunity.majorExtraMinutes>0 || opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0) || protection) &&
             <div className="prevention-advisor" role="status">
               {opportunity && opportunity.majorExtraMinutes>0 && <p><strong>Rest opportunity:</strong> {extra(opportunity.majorExtraMinutes)} more stationary Rest completes 7h.</p>}

@@ -51,7 +51,8 @@ export function DrivingStatsDashboard({s,report,p,asOf,onAsOf,onNow}:{
       <Metric label="Remaining Work · 7-day limit" value={hours(model.work7Remaining)}/>
     </>}
     {p.scheme==="BFM"&&!p.twoUp && <>
-      <Metric label="Work since qualifying 24-hour Rest" value={hours(model.work84Used)}/>
+      <Metric label="Work since qualifying 24-hour Rest" value={(report.checkpoint84&&!report.checkpoint84.exact&&model.work84Used!==null?"≥ ":"")+hours(model.work84Used)}
+        detail={report.checkpoint84&&!report.checkpoint84.exact?"Recorded lower bound; earlier 24h stationary Rest is unconfirmed":undefined}/>
       <Metric label="Remaining before 84-hour Work threshold" value={hours(model.work84Remaining)}/>
       <Metric label="Long/night Work used · 7-day rule" value={hours(model.longNightUsed)}/>
       <Metric label="Long/night Work remaining · 36h cap" value={hours(model.longNightRemaining)}/>

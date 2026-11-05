@@ -1,3 +1,4 @@
+import { checkpointProof } from "./cumulative-proof";
 import { type DaySummary, type TimelineRun, atBase, buildTimeline, boundary, counted, countRest, countWork, elapsed, incomplete, sameRules, summarizeDay } from "./timeline";
 import { type RestClassification } from "./rest";
 import { restLabel, nightEvents, hasPair, restEpisodes } from "./qualifications";
@@ -26,6 +27,7 @@ export interface RuleReport {
   lastWork:string;majorRest:string;nightRests:number;nightRestPair?:boolean;longNight:number;workSince24:number;
   nextBreak:number|null;restartAt:string|null;controlling:Check|null;
   assessedThrough:string;source:string;version:string;revision:number;zone?:string;
+  checkpoint84?:{work:number;since:string;exact:boolean};
   longNightStart?:string;longNightEnd?:string;longNightZone?:string;
 }
 interface Evaluation {rule:PeriodRule;p:Profile;a:number;b:number;deadline:number;established:boolean;review:boolean;row:Check;}
@@ -254,6 +256,15 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
           mark(Math.max(at,phase.start),b,reason,p);
           addFinding("work-history",reason,"review",a,deadline,at,p);
         } else {status="Needs review";reason="Check earlier records";}
+      } else if(rule.minutes>=10080 && rule.limit!==null && provenWork(a,b)>rule.limit && !mixed) {
+        // Recorded excess must remain visible even when its legal period anchor
+        // cannot yet be confirmed. Do not manufacture a confirmed breach or
+        // erase the arithmetic behind a generic history warning.
+        status="Needs review";reason=`${rule.label} recorded work exceeds limit · confirm counting period`;
+        let used=0;for(const packet of workPackets(provenRuns,p.zone).filter(x=>x.start>=a&&x.start<b)){
+          used+=packet.minutes;if(used>rule.limit){at=packet.start;break;}
+        }
+        addFinding(`work-review-${rule.minutes}`,reason,"review",a,deadline,at,p);
       } else if(uncertain) {
         status="Needs review";reason=split?"Check BFM split rest":mixed?"Check rule change":!established||missing?"Check earlier records":"Confirm rest type";
         if(complete && split) addFinding("split-rest",reason,"review",a,deadline,b,p);
@@ -310,15 +321,18 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
       const row:Check={label:rule.label,start:atBase(a,p.zone),end:atBase(deadline,p.zone),work:used,limit:LONG_NIGHT_LIMIT,rest:0,requiredRest:0,status,remaining:Math.max(0,LONG_NIGHT_LIMIT-used),date:civil(a,p.zone).date,reason,zone:p.zone,assessedThrough:atBase(b,p.zone)};
       evaluations.push({rule,p,a,b,deadline,established:true,review:status==="Needs review",row});
     }
-    for(let i=0;i<checkpoints.length;i++) {
-      const a=checkpoints[i].end,b=checkpoints[i+1]?.start ?? through;
-      if(b<=displayFrom || provenWork(a,b)<=BFM_84_LIMIT) continue;
-      let used=0;for(const packet of workPackets(provenRuns,p.zone)) if(packet.start>=a&&packet.start<b) {
-        used+=15;if(used>BFM_84_LIMIT&&runs.some(r=>r.kind==="work"&&sameRules(r.profile,p)&&r.start<packet.end&&r.end>packet.start)){mark(packet.start,packet.end,"84 hours work exceeded",p);addFinding("work-84","84 hours work exceeded","breach",a,b,packet.start,p);break;}
+
+  }
+  const proof84=checkpointProof(runs,through);
+  for(const p of bfmProfiles)for(const segment of proof84.segments){
+    if(segment.to<=displayFrom || provenWork(segment.from,segment.to)<=BFM_84_LIMIT)continue;
+    let used=0;
+    for(const packet of workPackets(provenRuns,p.zone).filter(x=>x.start>=segment.from&&x.start<segment.to)){
+      used+=packet.minutes;
+      if(used>BFM_84_LIMIT&&runs.some(r=>r.kind==="work"&&sameRules(r.profile,p)&&r.start<packet.end&&r.end>packet.start)){
+        mark(packet.start,packet.end,"84 hours work exceeded",p);
+        addFinding("work-84","84 hours work exceeded","breach",segment.from,segment.to,packet.start,p);
       }
-      // Preserve every later confirmed work block until the qualifying rest starts.
-      const first=findings.find(f=>f.code==="work-84"&&f.start===atBase(a,p.zone));
-      if(first) {const matching=workPackets(provenRuns,p.zone).filter(x=>x.start>=a&&x.start<b);let n=0;for(const x of matching){n+=15;if(n>BFM_84_LIMIT) mark(x.start,x.end,"84 hours work exceeded",p);}}
     }
   }
   longNight=longNightTimes.size*15;
@@ -426,6 +440,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
   return {breachSlots,restSlots,workWindows,checks,findings,issues:[...new Set(issues)],days,restClassifications,
     lastWork:lastWork?`${atBase(lastWork.start,lastWork.profile.zone)} — ${atBase(lastWork.end,lastWork.profile.zone)} · ${minutesLabel(countWork((lastWork.end-lastWork.start)/MINUTE))}`:"No completed work established",
     majorRest:major?`${atBase(major.start,major.profile.zone)} · ${minutesLabel(countRest((major.end-major.start)/MINUTE))}`:"Not established",
+    checkpoint84:currentBfm?{work:proof84.current.work,since:atBase(proof84.current.from,profile.zone),exact:proof84.current.exact}:undefined,
     nightRests:recent.length,nightRestPair:hasPair(recent),longNight,longNightZone:longCheck?.zone||profile.zone,longNightStart:longCheck?.start||atBase(through-10080*MINUTE,profile.zone),longNightEnd:longCheck?.assessedThrough||atBase(through,profile.zone),workSince24,nextBreak,restartAt,controlling,zone:profile.zone,assessedThrough:atBase(through,profile.zone),source:RULE_SOURCE,version:RULE_VERSION,revision:s.revision};
 }
 

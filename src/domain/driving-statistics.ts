@@ -96,6 +96,7 @@ export function drivingStatistics(s:Workspace,report:RuleReport,p:Profile):Drivi
   const remainingNight=guidance.nightRestsRemaining;
   const pairRequired=p.twoUp&&p.scheme==="BFM" ? false : trustworthy;
   const next24RestMessage=bfmSolo ?
+    report.checkpoint84 && report.checkpoint84.work>=BFM_84_LIMIT ? "24h stationary Rest required — 84h Work threshold reached" :
     !last24Known?"Review last qualifying 24h stationary Rest":
       report.workSince24>=BFM_84_LIMIT ?
         "24h stationary Rest required — 84h Work threshold reached":
@@ -116,9 +117,9 @@ export function drivingStatistics(s:Workspace,report:RuleReport,p:Profile):Drivi
     controllingReason:allowance===null?"Unverified history / rules — "+controllingReason:controllingReason,
     nextBreakDue,work24Used:v24?.used??null,work24Remaining:v24?.left??null,
     work7Used:v7?.used??null,work7Remaining:v7?.left??null,
-    work84Used:bfmSolo&&last24Known?report.workSince24:null,
-    work84Remaining:bfmSolo&&last24Known?Math.max(0,BFM_84_LIMIT-report.workSince24):null,
-    work14Used:v14?.used??null,work14Remaining:v14?.left??null,
+    work84Used:bfmSolo?(report.checkpoint84?.work ?? (last24Known?report.workSince24:null)):null,
+    work84Remaining:bfmSolo?(report.checkpoint84?.exact?Math.max(0,BFM_84_LIMIT-report.checkpoint84.work):report.checkpoint84&&report.checkpoint84.work>=BFM_84_LIMIT?0:last24Known&&!report.checkpoint84?Math.max(0,BFM_84_LIMIT-report.workSince24):null):null,
+    work14Used:c14?.work??null,work14Remaining:v14?.left??null,
     longNightUsed:bfmSolo?guidance.longNightUsed:null,
     longNightRemaining:bfmSolo?guidance.longNightRemaining:null,
     nextSevenHourRestStart:latestStart===null?null:format(latestStart,zone),

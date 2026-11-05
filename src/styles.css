@@ -1474,3 +1474,13 @@ html { scroll-padding-top:120px; }
 .block-card>.diary-balance-strip>div { padding:4px; }
 .block-card>.diary-balance-strip small { font-size:9px; }
 .block-card>.diary-balance-strip strong { font-size:11px; }
+
+/* Recorded quantities remain visible even when earlier history needs review. */
+.cumulative-limits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:6px 0 8px}
+.cumulative-limit{min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--card);display:grid;align-content:start;gap:3px;line-height:1.3}
+.cumulative-limit>span{font-size:10px;color:var(--muted)}
+.cumulative-limit>strong{font-size:12px;overflow-wrap:anywhere}
+.cumulative-limit>small{font-size:10px;overflow-wrap:anywhere}
+.cumulative-limit.bad{border-color:#c62828;background:rgba(198,40,40,.08)}
+.cumulative-range{color:var(--muted);font-size:9px!important}
+@media(max-width:360px){.cumulative-limit{padding:4px}.cumulative-limit>strong{font-size:11px}}
