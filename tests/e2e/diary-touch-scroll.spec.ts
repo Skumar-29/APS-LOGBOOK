@@ -90,6 +90,9 @@ test("vertical drag is never saved, while a deliberate horizontal swipe and a ta
  await block(page,11).scrollIntoViewIfNeeded();
  const left=await block(page,11).boundingBox(),right=await block(page,16).boundingBox();
  if(!left||!right)throw Error("Horizontal swipe range not visible");
+ const atStart=await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.getAttribute("data-slot")||document.elementFromPoint(x,y)?.tagName,{x:left.x+left.width/2,y:left.y+left.height/2});
+ console.log("HORIZONTAL_START_TARGET",info.project.name,atStart,{left,right});
+ expect(atStart).toBe("11"); // A sticky header must not intercept the finger.
  if(info.project.name==="phone"){
    const cdp=await page.context().newCDPSession(page);
    const y=left.y+left.height/2;
@@ -98,6 +101,7 @@ test("vertical drag is never saved, while a deliberate horizontal swipe and a ta
    await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:touch(x1)});
    for(let i=1;i<=8;i++){
      await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:touch(x1+(x2-x1)*i/8)});
+     await page.waitForTimeout(25); // Approximate real finger motion, avoid event coalescing.
    }
    await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
  }else{
