@@ -91,21 +91,8 @@ test("vertical drag is never saved, while a deliberate horizontal swipe and a ta
  const left=await block(page,11).boundingBox(),right=await block(page,16).boundingBox();
  if(!left||!right)throw Error("Horizontal swipe range not visible");
  const atStart=await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.getAttribute("data-slot")||document.elementFromPoint(x,y)?.tagName,{x:left.x+left.width/2,y:left.y+left.height/2});
- console.log("HORIZONTAL_START_TARGET",info.project.name,atStart,{left,right});
  expect(atStart).toBe("11"); // A sticky header must not intercept the finger.
  if(info.project.name==="phone"){
-   await page.evaluate(()=>{
-     const row=document.querySelector('.swipe-block[data-slot="11"]')?.closest('.swipe-blocks');
-     const w=window as typeof window&{__gestureDebug?:string[]};
-     w.__gestureDebug=[];
-     for(const eventName of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture","touchstart","touchmove","touchend","touchcancel"]){
-       row?.addEventListener(eventName,(event)=>{
-         const e=event as PointerEvent;
-         w.__gestureDebug?.push([e.type,e.pointerId??"",e.isPrimary??"",Math.round(e.clientX??0),Math.round(e.clientY??0),
-           (e.target as Element)?.getAttribute?.("data-slot")??""].join(":"));
-       },true);
-     }
-   });
    const cdp=await page.context().newCDPSession(page);
    const y=left.y+left.height/2;
    const x1=left.x+left.width/2,x2=right.x+right.width/2;
@@ -116,7 +103,6 @@ test("vertical drag is never saved, while a deliberate horizontal swipe and a ta
      await page.waitForTimeout(25); // Approximate real finger motion, avoid event coalescing.
    }
    await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
-   console.log("PHONE_TOUCH_DEBUG",JSON.stringify(await page.evaluate(()=>(window as typeof window&{__gestureDebug?:string[]}).__gestureDebug||[])));
  }else{
    await page.mouse.move(left.x+left.width/2,left.y+left.height/2);
    await page.mouse.down();
