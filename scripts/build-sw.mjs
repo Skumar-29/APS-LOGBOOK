@@ -1,6 +1,12 @@
 import { readdir, readFile, writeFile, rename } from "node:fs/promises";
 import { createHash } from "node:crypto";
 await rename("dist/app-source.html", "dist/index.html");
+// The manifest is a public file, not a bundled asset: its relative id/start URL
+// and icon URLs must resolve from the app root, never from /assets/.
+const html=await readFile("dist/index.html","utf8");
+await writeFile("dist/index.html",html
+  .replace(/(<link rel="manifest" href=")[^"]+("\s*\/>)/,'$1./manifest.webmanifest$2')
+  .replace(/(<link rel="apple-touch-icon" href=")[^"]+("\s*\/>)/,'$1./icon-192.png$2'));
 const {version}=JSON.parse(await readFile("package.json","utf8"));
 await writeFile("dist/release.json",JSON.stringify({version,commit:process.env.GITHUB_SHA||null})+"\n");
 async function files(dir) {

@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit && vite build && node scripts/build-sw.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/build-sw.mjs && node scripts/verify-build.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "preview": "vite preview --host 0.0.0.0",
-    "test:release": "playwright test tests/e2e/work-rest-validation.spec.ts tests/e2e/protected-rest.spec.ts tests/e2e/driving-statistics.spec.ts tests/e2e/smart-planner.spec.ts tests/e2e/diary-touch-scroll.spec.ts tests/e2e/feature-preservation.spec.ts tests/e2e/release-review.spec.ts"
+    "test:release": "playwright test tests/e2e/work-rest-validation.spec.ts tests/e2e/protected-rest.spec.ts tests/e2e/driving-statistics.spec.ts tests/e2e/smart-planner.spec.ts tests/e2e/diary-touch-scroll.spec.ts tests/e2e/feature-preservation.spec.ts tests/e2e/release-review.spec.ts --max-failures=3"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "1.1.1",

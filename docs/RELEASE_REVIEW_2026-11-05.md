@@ -38,6 +38,7 @@ The exact original numbered 24-item message was not available in retrieval. This
 - Shared clock/title row replaces the separate clock row. Existing widened day arrows, date picker, page jump and colour modes are retained.
 - Diary blocks and balances precede the optional planner, Rest advice and detailed calculations.
 - Future selected Work is striped, retaining the red background for detected breaches and the separate projected-Rest conflict marker.
+- Install manifest is served at the app root, fixing bundled-manifest URLs that previously resolved start/scope/icons under `/assets/`. A build integrity check verifies both root and repository-subpath resolution.
 - Install title is APS Logbook. Manifest identity, start URL and scope remain unchanged.
 - PDF preview fonts are built as relative assets, so repository subpaths and offline rendering load the same fonts.
 - Tool pages have an explicit Back to tools action.

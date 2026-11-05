@@ -84,6 +84,7 @@ test('release review: GitHub Pages subpath installs APS Logbook and reloads offl
  await expect(page.locator('.swipe-block[data-slot="0"]')).toHaveAttribute('aria-pressed','true');
  await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
  const scope=await page.evaluate(async()=>(await navigator.serviceWorker.ready).scope);expect(scope).toContain('/APS-LOGBOOK/');
+ const manifestUrl=await page.locator('link[rel=manifest]').getAttribute('href');expect(manifestUrl).toBe('./manifest.webmanifest');
  const manifest=await (await request.get('/APS-LOGBOOK/manifest.webmanifest')).json();expect(manifest.name).toBe('APS Logbook');expect(manifest.scope).toBe('./');
  await page.evaluate(async()=>{
   const keys=await caches.keys(),name=keys.find(k=>k.includes(btoa(location.origin+'/APS-LOGBOOK/')))!;
