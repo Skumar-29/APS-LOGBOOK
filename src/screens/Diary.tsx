@@ -436,7 +436,6 @@ export function Diary({
             <div><small>Next break</small><strong>{!fatigue?.review&&report?.nextBreak!==null&&report?.nextBreak!==undefined?
               minutesLabel(report.nextBreak):"Review"}</strong></div>
           </div>
-            </div>
             <div className="periods">
               {[0, 1, 2, 3].map((p) => (
                 <button
