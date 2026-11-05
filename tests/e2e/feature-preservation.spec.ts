@@ -238,20 +238,19 @@ test("save failure is visible and cannot replace the previous saved record", asy
   page,
 }) => {
   await start(page);
-  await page.getByRole("button", { name: "00:00 work", exact: true }).click();
+  await page.locator('.swipe-block[data-slot="0"]').click();
   await expect(page.locator(".totals")).toContainText("Work 0h 15m");
   await page.evaluate(() => {
     IDBObjectStore.prototype.put = function () {
       throw new DOMException("Simulated storage full", "QuotaExceededError");
     };
   });
-  await page.getByRole("button", { name: "00:15 work", exact: true }).click();
+  await page.locator('.swipe-block[data-slot="1"]').click();
   await expect(page.getByRole("alert")).toBeVisible();
   await page.reload();
   await expect(page.locator(".totals")).toContainText("Work 0h 15m");
-  await expect(
-    page.getByRole("button", { name: "00:15 work", exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('.swipe-block[data-slot="0"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.swipe-block[data-slot="1"]')).toHaveAttribute('aria-pressed','false');
 });
 
 

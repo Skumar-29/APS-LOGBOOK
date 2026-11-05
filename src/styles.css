@@ -1462,7 +1462,7 @@ html { scroll-padding-top:120px; }
 .block-card .periods { grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
 .block-card .periods button { min-height:32px; font-size:10px; padding:3px 2px; }
 .diary-colour-key { gap:3px 7px; font-size:9px; }
-.swipe-block.future-work { background-image:repeating-linear-gradient(135deg,transparent 0 4px,rgba(255,255,255,.4) 4px 6px); }
+.swipe-block.work.future-work { background-image:repeating-linear-gradient(135deg,transparent 0 4px,rgba(255,255,255,.4) 4px 6px); }
 .diary-colour-key .key-future { background:repeating-linear-gradient(135deg,#20c980 0 3px,#c2f4dc 3px 5px); }
 @media(max-width:360px) {
   .workspace-header .app-header { padding-left:7px; padding-right:7px; }

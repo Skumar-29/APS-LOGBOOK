@@ -30,7 +30,7 @@ export default defineConfig({
     { name: "desktop", use: { viewport: { width: 1280, height: 900 } } },
     {
       name: "phone-webkit",
-      grep: /first use, work\/rest|overnight active timer|dated Standard change|two-up rest suggestions|today's future work|future page screenshot|future planning:|screenshot audit:|release review:|feature preservation:/,
+      grep: /first use, work\/rest|overnight active timer|dated Standard change|two-up rest suggestions|today's future work|future page screenshot|future planning:|screenshot audit:|release review:|feature preservation:|all controls fit|vertical drag|cancelled horizontal|save failure is visible/,
       use: { browserName: "webkit", viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true,
         launchOptions: { args: [] } },
     },

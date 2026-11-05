@@ -191,7 +191,7 @@ test('settings effective date reapplies BFM to a previously saved Standard day w
   await page.getByRole('button',{name:'Save driver settings',exact:true}).click();
 
   await expect(page.locator('.date-nav')).toContainText('QLD · BFM');
-  await expect(page.locator('.base-clock')).toContainText('QLD base time');
+  await expect(page.locator('.base-clock time')).toHaveAttribute('aria-label','QLD base time');
   await expect(page.locator('.swipe-block.work')).toHaveCount(52);
   await expect(page.locator('.assessment')).toContainText('QLD time');
 
