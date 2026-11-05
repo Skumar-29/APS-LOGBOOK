@@ -66,6 +66,7 @@ test("vertical drag is never saved, while a deliberate horizontal swipe and a ta
  await page.evaluate(()=>window.scrollTo(0,0));
  await block(page,2).scrollIntoViewIfNeeded();
  const before=await slotsAndRevision(page);
+ const originalScroll=await page.evaluate(()=>window.scrollY);
  const area=await block(page,2).boundingBox();
  if(!area)throw Error("Block not on screen");
  const x=area.x+area.width/2,y=area.y+area.height/2;
@@ -77,6 +78,7 @@ test("vertical drag is never saved, while a deliberate horizontal swipe and a ta
    await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:touch(x+2,y-110)});
    await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
    await page.waitForTimeout(150);
+   expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(originalScroll);
  }else{
    await page.mouse.move(x,y);
    await page.mouse.down();
@@ -88,10 +90,22 @@ test("vertical drag is never saved, while a deliberate horizontal swipe and a ta
  await block(page,11).scrollIntoViewIfNeeded();
  const left=await block(page,11).boundingBox(),right=await block(page,16).boundingBox();
  if(!left||!right)throw Error("Horizontal swipe range not visible");
- await page.mouse.move(left.x+left.width/2,left.y+left.height/2);
- await page.mouse.down();
- await page.mouse.move(right.x+right.width/2,right.y+right.height/2,{steps:14});
- await page.mouse.up();
+ if(info.project.name==="phone"){
+   const cdp=await page.context().newCDPSession(page);
+   const y=left.y+left.height/2;
+   const x1=left.x+left.width/2,x2=right.x+right.width/2;
+   const touch=(x:number)=>[{x,y,radiusX:3,radiusY:3,force:1}];
+   await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:touch(x1)});
+   for(let i=1;i<=8;i++){
+     await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:touch(x1+(x2-x1)*i/8)});
+   }
+   await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }else{
+   await page.mouse.move(left.x+left.width/2,left.y+left.height/2);
+   await page.mouse.down();
+   await page.mouse.move(right.x+right.width/2,right.y+right.height/2,{steps:14});
+   await page.mouse.up();
+ }
  for(let i=11;i<=16;i++)await expect(block(page,i)).toHaveAttribute("aria-pressed","true");
  const justPainted=await slotsAndRevision(page);
  expect(justPainted.revision).toBeGreaterThan(before.revision);
