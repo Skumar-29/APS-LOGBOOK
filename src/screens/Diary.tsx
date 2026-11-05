@@ -520,6 +520,10 @@ export function Diary({
                     drag.current=null;setDragRange(null);setSwipeKind(null);
                   }}
                   onLostPointerCapture={e=>{
+                    // Touch has implicit capture on the initial block. Moving
+                    // capture to this row emits a *bubbled* lost-capture event
+                    // from the block; it is NOT a cancelled user gesture.
+                    if(e.target!==e.currentTarget)return;
                     if(drag.current?.pointerId!==e.pointerId)return;
                     drag.current=null;setDragRange(null);setSwipeKind(null);
                   }}>
