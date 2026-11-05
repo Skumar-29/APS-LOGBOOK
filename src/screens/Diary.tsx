@@ -404,15 +404,6 @@ export function Diary({
               <span><strong>Night rests</strong> {fatigue.nightRests}/4 · {fatigue.pairMet ? "pair completed" : "pair still needed"}</span>
               {fatigue.review && <small>Review history before relying on remaining hours</small>}
             </div>}
-          <div className="diary-balance-strip" aria-label="Diary hours and remaining allowances">
-            <div><small>Work / Rest</small><strong>{t?minutesLabel(t.work)+" / "+minutesLabel(t.rest):"…"}</strong></div>
-            <div><small>24h Work left</small><strong>{countedWindow&&!countedWindow.review&&!fatigue?.review&&countedWindow.limit!==null?
-              minutesLabel(Math.max(0,countedWindow.limit-countedWindow.work)):"Review"}</strong></div>
-            <div><small>Long/night left</small><strong>{!fatigue?.review&&fatigue?.longNightRemaining!==null&&fatigue?.longNightRemaining!==undefined?
-              minutesLabel(fatigue.longNightRemaining):"—"}</strong></div>
-            <div><small>Next break</small><strong>{!fatigue?.review&&report?.nextBreak!==null&&report?.nextBreak!==undefined?
-              minutesLabel(report.nextBreak):"Review"}</strong></div>
-          </div>
           {!graph&&!readOnly&&<SmartPlanner key={date} date={date}/>}
           <section className="card block-card">
             <div className="row wrap block-toolbar">
@@ -424,8 +415,27 @@ export function Diary({
                 <Action disabled={!undo || readOnly} onClick={undoBlocks}>
                   Undo
                 </Action>
+              <Action
+                onClick={() =>
+                  mutate((w) => {
+                    w.settings.fullDay = !w.settings.fullDay;
+                  })
+                }
+              >
+                {full ? "Compact" : "Full day"}
+              </Action>
 
               </div>
+            </div>
+          <div className="diary-balance-strip" aria-label="Diary hours and remaining allowances">
+            <div><small>Work / Rest</small><strong>{t?minutesLabel(t.work)+" / "+minutesLabel(t.rest):"…"}</strong></div>
+            <div><small>24h Work left</small><strong>{countedWindow&&!countedWindow.review&&!fatigue?.review&&countedWindow.limit!==null?
+              minutesLabel(Math.max(0,countedWindow.limit-countedWindow.work)):"Review"}</strong></div>
+            <div><small>Long/night left</small><strong>{!fatigue?.review&&fatigue?.longNightRemaining!==null&&fatigue?.longNightRemaining!==undefined?
+              minutesLabel(fatigue.longNightRemaining):"—"}</strong></div>
+            <div><small>Next break</small><strong>{!fatigue?.review&&report?.nextBreak!==null&&report?.nextBreak!==undefined?
+              minutesLabel(report.nextBreak):"Review"}</strong></div>
+          </div>
             </div>
             <div className="periods">
               {[0, 1, 2, 3].map((p) => (
@@ -443,15 +453,12 @@ export function Diary({
                   {displaySlot((p + 1) * 24, timeFormat, false)}
                 </button>
               ))}
-              <Action
-                onClick={() =>
-                  mutate((w) => {
-                    w.settings.fullDay = !w.settings.fullDay;
-                  })
-                }
-              >
-                {full ? "Compact" : "Full day"}
-              </Action>
+
+            </div>
+            <div className="diary-colour-key" aria-label="Work and rest block colours">
+              <span><i className="key-reserve"/> Yellow: Rest to protect</span>
+              <span><i className="key-project"/> Red ?: proposed Work conflicts with protected Rest</span>
+              <span><i className="key-breach"/> Red !: detected rule breach</span>
             </div>
             {visible.map((p) => (
               <div key={p} className="six-hours diary-grid-section swipe-grid">
@@ -468,7 +475,7 @@ export function Diary({
                     const projected=kind==="work"&&!reasons?.length&&protection?.slots[slot]==="conflict";
                     return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length?"breach":""} ${reserve?"protected-rest":""} ${projected?"rest-risk":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
-                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}`}
+                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${reasons?.length?", detected rule breach":projected?", projected protected Rest conflict":reserve?", suggested protected Rest":""}`}
                       title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
                       onPointerDown={e=>{
                         if(readOnly||(e.pointerType==="mouse"&&e.button!==0))return;
