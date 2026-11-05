@@ -479,10 +479,16 @@ export function Diary({
                       onPointerDown={e=>{
                         if(readOnly||drag.current||(e.pointerType==="mouse"&&e.button!==0))return;
                         // Keep pan-y enabled: touching a block must not seize scrolling.
+                        if(!e.isPrimary)return;
                         drag.current={
                           slot,end:slot,kind:activity==="work"?"rest":"work",
                           pointerId:e.pointerId,axis:"pending",x:e.clientX,y:e.clientY
                         };
+                        // Capture immediately so horizontal movements crossing narrow
+                        // 15-minute blocks still reach this start block. CSS pan-y
+                        // remains enabled: a real vertical scroll cancels this
+                        // pointer instead of becoming a diary edit.
+                        try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}
                       }}
                       onPointerMove={e=>{
                         const state=drag.current;
@@ -494,7 +500,6 @@ export function Diary({
                           if(direction==="vertical")return;
                           setSwipeKind(state.kind);
                           setDragRange([state.slot,state.slot]);
-                          try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}
                         }
                         if(state.axis!=="horizontal")return;
                         e.preventDefault();
