@@ -19,7 +19,7 @@ test('release review: clear test diary requires confirmation, preserves settings
  },workspace);
  await page.reload();
  await page.getByRole('button',{name:'More',exact:true}).click();
- await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:/^Settings /}).click();
  await page.getByText('Clear test diary',{exact:true}).click();
  await page.getByRole('button',{name:'Clear test diary…',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Clear all test diary entries?'});
