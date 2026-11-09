@@ -148,7 +148,7 @@ export function Records({ onPage }: { onPage: (id: string) => void }) {
               Find older truck invoices
             </Action>
             <Action onClick={() => setRecovery(true)}>
-              Restore pre-import checkpoint
+              Restore recovery checkpoint
             </Action>
           </div>
         </Fold>
@@ -475,12 +475,12 @@ export function Records({ onPage }: { onPage: (id: string) => void }) {
       )}
       {recovery && (
         <Modal
-          title="Restore pre-import checkpoint?"
+          title="Restore recovery checkpoint?"
           onClose={() => setRecovery(false)}
         >
           <p>
             This restores the saved workspace from before the most recent
-            import. Current records become the new recovery checkpoint.
+            import or diary clear. Current records become the new recovery checkpoint.
           </p>
           <Action
             onClick={async () => {

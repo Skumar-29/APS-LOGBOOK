@@ -1,3 +1,4 @@
+import { clearTestDiary } from "../domain/clear-diary";
 import { version } from "../../package.json";
 import { FormDefaults } from "../components/FormDefaults";
 import { RuleChanges } from "../components/RuleChanges";
@@ -24,7 +25,10 @@ import {
 } from "../components/UI";
 import { Signature } from "../components/Signature";
 export function Settings({ onDone }: { onDone?: () => void }) {
-  const { s, mutate } = useStore(),
+  const { s, mutate, busy } = useStore(),
+    [clearOpen, setClearOpen] = useState(false),
+    [clearText, setClearText] = useState(""),
+    [diaryCleared, setDiaryCleared] = useState(false),
     [p, setP] = useState<Profile>(clone(s.profile)),
     [newDriver, setNewDriver] = useState(false),
     [formDefaultsOpen, setFormDefaultsOpen] = useState(false),
@@ -379,6 +383,14 @@ export function Settings({ onDone }: { onDone?: () => void }) {
                 </div>
               ))}
           </Fold>
+          <Fold title="Clear test diary">
+            <p>Clear all diary days and selected Work blocks, including past and future test entries.</p>
+            <Action danger disabled={busy || !!s.timer} onClick={() => { setClearText(""); setClearOpen(true); }}>
+              Clear test diary…
+            </Action>
+            {s.timer && <p>Finish the active timer before clearing the diary.</p>}
+            {diaryCleared && <p role="status">Test diary cleared. A recovery copy is available in Records.</p>}
+          </Fold>
           <Fold title="About & privacy">
             <p>
               Version 2.0 beta. Records stay in this browser on this device.
@@ -406,6 +418,19 @@ export function Settings({ onDone }: { onDone?: () => void }) {
           </Fold>
         </>
       )}
+      {clearOpen && <Modal title="Clear all test diary entries?" onClose={() => setClearOpen(false)}>
+        <p>This clears {Object.keys(s.days).length} diary days, all recorded timer activities and all paper-page allocations, including cancelled pages, for every driver on this device.</p>
+        <p>Driver settings, rule history, diary books, vehicles, signatures, forms, invoices, notes and documents are kept.</p>
+        <p>A recovery copy is saved before clearing. Export a backup in Records first if you want a separate copy. A later import or clear replaces the recovery copy.</p>
+        <Field label="Type CLEAR to confirm" value={clearText} onChange={setClearText} />
+        <div className="row wrap">
+          <Action disabled={busy} onClick={() => setClearOpen(false)}>Cancel</Action>
+          <Action danger disabled={busy || clearText !== "CLEAR" || !!s.timer} onClick={async () => {
+            await mutate((w) => { clearTestDiary(w, clearText); }, true);
+            setClearOpen(false); setClearText(""); setDiaryCleared(true);
+          }}>Clear all diary entries</Action>
+        </div>
+      </Modal>}
       {formDefaultsOpen && <Modal title="Form defaults" onClose={() => setFormDefaultsOpen(false)}>
         <FormDefaults key={s.profile.id} onSaved={() => setFormDefaultsOpen(false)} />
       </Modal>}

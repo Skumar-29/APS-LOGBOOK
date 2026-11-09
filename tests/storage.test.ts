@@ -161,3 +161,15 @@ describe("offline documents and existing installations", () => {
     expect(twice.documents).toHaveLength(1);
   });
 });
+
+import { clearTestDiary } from '../src/domain/clear-diary';
+it('atomically clears diary and retains a reloadable recovery copy', async () => {
+ const s=emptyState(); ensureDay(s,'2026-11-08').slots[80]='work';
+ const saved=await saveWorkspace(s,0), next=clone(saved);
+ clearTestDiary(next,'CLEAR'); await saveWorkspace(next,saved.revision,true);
+ expect((await loadWorkspace()).days).toEqual({});
+ const recovery=(await recoveryWorkspace())!;
+ expect(recovery.days['2026-11-08'].slots[80]).toBe('work');
+ await saveWorkspace(recovery,saved.revision+1,true);
+ expect((await loadWorkspace()).days['2026-11-08'].slots[80]).toBe('work');
+});
