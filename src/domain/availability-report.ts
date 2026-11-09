@@ -19,7 +19,7 @@ const stamp=(value:string,zone:string)=>instantFor(value.slice(0,10),value.slice
 const show=(value:string|null)=>value?displayCivil(value):"Not established";
 const hours=(n:number|null)=>n===null?"Needs review":minutesLabel(n);
 const number=(n:number|null,unverified:boolean)=>n===null?"Needs review":(unverified?"At least ":"")+hours(n);
-const windowWork=(start:number,end:number,s:ReturnType<typeof buildTimeline>)=>counted(s.runs,start,end,"work");
+const windowWork=(start:number,end:number,s:ReturnType<typeof buildTimeline>)=>start>=end?0:counted(s.runs,start,end,"work");
 const nightWork=(start:number,end:number,zone:string,t:ReturnType<typeof buildTimeline>)=>{
   let total=0;
   for(let day=dateAdd(civil(start,zone).date,-1);day<=civil(end,zone).date;day=dateAdd(day,1)){
