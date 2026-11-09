@@ -1,18 +1,22 @@
 import { test, expect } from '@playwright/test';
+import { emptyState, ensureDay } from '../../src/domain/model';
 test('release review: clear test diary requires confirmation, preserves settings and survives reload', async ({page}) => {
  await page.goto('/');
  await page.getByLabel('Driver name',{exact:true}).fill('Clear Test Driver');
  await page.getByLabel('Licence number',{exact:true}).fill('TEST');
  await page.getByRole('button',{name:'Save driver settings',exact:true}).click();
  await expect(page.locator('.swipe-block').first()).toBeVisible();
- await page.evaluate(async()=>{
+ const workspace=emptyState(); workspace.onboarded=true; workspace.settings.autoPages=false;
+ workspace.profile.name='Clear Test Driver'; workspace.profile.licence='TEST';
+ for(let i=1;i<=45;i++){const date=new Date(Date.UTC(2026,9,i)).toISOString().slice(0,10);ensureDay(workspace,date).slots[0]='work';}
+ await page.evaluate(async(workspace)=>{
   await new Promise<void>((resolve,reject)=>{
    const req=indexedDB.open('aps-truck-workspace-v2',2);
    req.onsuccess=()=>{const db=req.result, tx=db.transaction('workspace','readwrite'), st=tx.objectStore('workspace'), r=st.get('current');
-    r.onsuccess=()=>{const s=r.result;const day=Object.values(s.days)[0] as any;day.slots[0]='work';for(let i=1;i<=45;i++){const date=new Date(Date.UTC(2026,9,i)).toISOString().slice(0,10);s.days[date]={...day,date};}s.revision++;st.put(s,'current');};
+    r.onsuccess=()=>{workspace.revision=r.result.revision+1;st.put(workspace,'current');};
     tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};
   });
- });
+ },workspace);
  await page.reload();
  await page.getByRole('button',{name:'More',exact:true}).click();
  await page.getByRole('button',{name:'Settings',exact:true}).click();
