@@ -4,6 +4,7 @@ import {drivingStatistics} from "./driving-statistics";
 import {buildTimeline,atBase,counted,incomplete} from "./timeline";
 import {restEpisodes} from "./qualifications";
 import {dateAdd,instantFor,MINUTE,minutesLabel,displayCivil,civil} from "./time";
+import {restRequirement,tableFor} from "./catalogue";
 
 export type AvailabilityStatus = "Review required"|"No immediate limit identified"|"Rest required";
 export interface AvailabilityMetric {label:string;used:string;limit:string;remaining:string;}
@@ -54,6 +55,9 @@ export function employerAvailability(s:Workspace,r:RuleReport,p:Profile,now=Date
   const status:AvailabilityStatus=review||!activeAsOf||d.eligibleNow===null?"Review required":
     d.eligibleNow?"No immediate limit identified":"Rest required";
   const current=status==="No immediate limit identified";
+  const restRequired=status==="Rest required";
+  const controlling=tableFor(p).find(rule=>rule.label===r.controlling?.label);
+  const nextRestBasis=controlling?restRequirement(controlling,p):"Check the controlling rest requirement";
   const active14=r.checks.filter(c=>c.label==="14 days"&&c.zone===zone&&
       stamp(c.start,zone)<=through&&stamp(c.end,zone)>through&&c.status!=="Needs review")
       .sort((a,b)=>a.remaining-b.remaining)[0];
@@ -86,10 +90,11 @@ export function employerAvailability(s:Workspace,r:RuleReport,p:Profile,now=Date
   return {
     driver:p.name||"Not entered",scheme:p.scheme+(p.twoUp?" (two-up)":" (solo)"),
     base:p.base,zone,assessed:r.assessedThrough,assessmentKind,status,
-    start:current?show(r.assessedThrough):"Not verified",
-    workToBreak:current?hours(d.canWorkMinutes):"Needs review",
-    nextBreak:current&&d.nextBreakDue?show(d.nextBreakDue):"Not established",
-    breakBasis:current?"Assumes Work starts at assessment; shorter limits and breaks still apply":
+    start:current?show(r.assessedThrough):restRequired?"Rest required; next start unverified":"Not verified",
+    workToBreak:current?hours(d.canWorkMinutes):restRequired?"0h 00m":"Needs review",
+    nextBreak:current&&d.nextBreakDue?show(d.nextBreakDue):restRequired?"Rest required now":"Not established",
+    breakBasis:current?"Next restricting requirement: "+nextRestBasis+"; assumes Work begins at assessment":
+      restRequired?"Rest needed before further Work; verify the restart time":
       "Do not roster from an unverified or historical assessment",
     metrics,rests,
     midnightNight:number(nightUsed,missing7)+" (past 168h; separate from BFM 36h cap)",
