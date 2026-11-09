@@ -71,7 +71,7 @@ export function QuickStats({s,report,p,date,onNow}:Props){
    }
  };
  return <section className="card quick-stats" aria-label="Quick driving availability and rest deadlines">
-   <div className="row wrap"><h2>Driver shift availability</h2><Action onClick={onNow}>As of now</Action></div>
+   <div className="row wrap"><h2>Statistics</h2><Action onClick={onNow}>As of now</Action></div>
    <p className="small">Assessed {displayCivil(report.assessedThrough)} · {p.base} time {r.assessmentKind!=="Current assessment"?"· "+r.assessmentKind:""}</p>
    <div className={r.review?"banner warning-review":"record-line"} role="status">
      <strong>{r.status}</strong>
@@ -103,7 +103,7 @@ export function QuickStats({s,report,p,date,onNow}:Props){
      "History and stationary Rest types need review before scheduling."}</p>}
    <div className="row wrap quick-share">
      <Action primary onClick={()=>{void share();}}>Share availability</Action>
-     <Action onClick={()=>{void savePdf();}}>Save one-page PDF</Action>
+     <Action onClick={()=>{void savePdf();}}>Save PDF</Action>
    </div>
    {message&&<p className="small" role="status">{message}</p>}
    <SmartPlanner key={date} date={date}/>
