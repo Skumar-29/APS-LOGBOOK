@@ -4,9 +4,8 @@ import type {Workspace,Profile} from "../domain/model";
 import type {RuleReport} from "../domain/rules";
 import {employerAvailability,type EmployerAvailability} from "../domain/availability-report";
 import {employerAvailabilityPdf} from "../documents/availability-page";
-import {fatigueGuidance} from "../domain/fatigue-guidance";
 import {restExtensionOpportunity} from "../domain/rest-advisor";
-import {displayCivil,minutesLabel,civil} from "../domain/time";
+import {displayCivil,minutesLabel} from "../domain/time";
 import {Action,download} from "../components/UI";
 import {SmartPlanner} from "./SmartPlanner";
 
@@ -42,12 +41,9 @@ function companyText(r:EmployerAvailability){
  return lines.join("\n");
 }
 export function QuickStats({s,report,p,date,onNow}:Props){
- const d=report.days.find(x=>x.date===date);
  const r=employerAvailability(s,report,p);
- const f=fatigueGuidance(report,p);
  const rest=restExtensionOpportunity(s,date);
  const [message,setMessage]=useState("");
- const clock=(time:string|null)=>time?displayCivil(time):"Check details";
  const metrics=r.metrics;
  const available=(i:number)=>metrics[i]?.remaining||"Review";
  const exportFile=async()=>{
