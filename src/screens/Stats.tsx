@@ -1,4 +1,5 @@
 import { displayCivil, displayDate, civil } from "../domain/time";
+import {profileOn} from "../domain/model";
 import { DrivingStatsDashboard } from "./DrivingStatsDashboard";
 import { QuickStats } from "./QuickStats";
 import {statusClass,warningLines,zoneLabel} from '../domain/warnings';
@@ -31,6 +32,10 @@ export function Stats({
       false,
       true, // Same full recorded-day assessment as Diary; Driving remains elapsed-only.
     );
+  // Employer availability always assesses the actual current time, even when
+  // the lower history charts are showing an older diary page.
+  const liveClock=civil(Date.now(),s.profile.zone);
+  const {report:liveReport,error:liveError}=useReport(liveClock.date+"T"+liveClock.time,14,false,false);
   if (!report) return <Empty>{error || "Calculating statistics…"}{error&&<Action onClick={retry}>Retry</Action>}</Empty>;
   const sums = report.days.reduce(
     (a, d) => ({
@@ -45,12 +50,12 @@ export function Stats({
   return (
     <>
 
-      <QuickStats s={s} report={report} p={currentProfile} date={date}
+      {liveReport ? <QuickStats s={s} report={liveReport} p={profileOn(s,liveClock.date)} date={liveClock.date}
         onNow={()=>{
           const clock=civil(Date.now(),s.profile.zone);
           onSelectDate(clock.date);
           setAsOf(clock.time);
-        }}/>
+        }}/> : <section className="card" aria-label="Calculating current driver availability">{liveError||"Calculating current shift availability..."}</section>}
       <details className="stats-detail" aria-label="Full driving calculations">
         <summary>Full driving calculations</summary>
         <DrivingStatsDashboard
