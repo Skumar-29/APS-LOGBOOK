@@ -1,3 +1,4 @@
+import { assessmentTime, overlappingRestart, restartDay } from "./fixtures/bfm-overlapping-restart";
 import { describe, it, expect } from "vitest";
 import { emptyState,ensureDay } from "../src/domain/model";
 import { editRange } from "../src/domain/diary";
@@ -49,5 +50,49 @@ describe("Proactive 7-hour stationary Rest protection",()=>{
     // Invalid solo moving-sleeper metadata makes the rest type uncertain;
     // suppress predictive clearance until the actual stationary rest is confirmed.
     expect(protectedRest(s,"2026-10-22",revised.workWindows,when("2026-10-22T02:00:00Z"))).toBeNull();
+  });
+});
+
+describe("Overlapping BFM restart options from the November diary", () => {
+  const assess = (s: ReturnType<typeof overlappingRestart>) =>
+    analyse(s, restartDay + "T24:00", 2, {
+      now: when("2026-11-09T14:00:00Z"),
+      liveThrough: assessmentTime,
+    });
+
+  it.each([
+    [68, 72, "17:00"],
+    [76, 80, "19:00"],
+  ] as const)("credits planned stationary rest before restart at slot %s", (start, finish, clock) => {
+    const s = overlappingRestart();
+    editRange(s, restartDay, start, finish, "work");
+    editRange(s, restartDay, 80, 96, "work");
+    const report = assess(s);
+    expect(report.workWindows).toEqual(expect.arrayContaining([
+      expect.objectContaining({start: "2026-11-08 20:00", end: restartDay + " 20:00", work: 840}),
+      expect.objectContaining({start: restartDay + " " + clock, work: 300}),
+    ]));
+    const protection = protectedRest(s, restartDay, report.workWindows, assessmentTime);
+    for (let slot = start; slot < finish; slot++) {
+      expect(protection?.slots[slot]).toBeUndefined();
+      expect(report.breachSlots[restartDay + ":" + slot]).toBeUndefined();
+    }
+  });
+
+  it("marks extra Work before 8 pm after the one remaining hour is used", () => {
+    const s = overlappingRestart();
+    editRange(s, restartDay, 68, 96, "work");
+    const report = assess(s);
+    for (let slot = 72; slot < 80; slot++) {
+      expect(report.breachSlots[restartDay + ":" + slot]).toContain("24h work limit exceeded");
+    }
+    expect(report.breachSlots[restartDay + ":80"]).toBeUndefined();
+  });
+
+  it("retains projected rest protection when a restart interrupts rest at 6h 45m", () => {
+    const s = overlappingRestart();
+    editRange(s, restartDay, 67, 96, "work");
+    const report = assess(s);
+    expect(protectedRest(s, restartDay, report.workWindows, assessmentTime)?.slots[67]).toBe("conflict");
   });
 });

@@ -1,4 +1,5 @@
 import {test,expect,type Page} from "@playwright/test";
+import { assessmentTime, overlappingRestart, restartDay } from "../fixtures/bfm-overlapping-restart";
 import {emptyState,ensureDay} from "../../src/domain/model";
 import {editRange} from "../../src/domain/diary";
 
@@ -82,4 +83,27 @@ test("BFM diary and Statistics show long/night balance, night-rest progress and 
  await expect(page.getByText("Unrecorded",{exact:true})).toHaveCount(0);
  await expect(page.getByText(/BFM long\/night allowance remaining/)).toBeVisible();
  await expect(page.getByText("Consecutive-night pair",{exact:true})).toBeVisible();
+});
+
+test("release review: overlapping BFM restart credits planned Rest and retains the old cap", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(assessmentTime));
+  await start(page);
+  const workspace = overlappingRestart();
+  editRange(workspace, restartDay, 76, 96, "work");
+  await seed(page, workspace);
+
+  const block = (slot: number) => page.locator(`.swipe-block[data-slot="${slot}"]`);
+  // Wait for the analysis to load before checking that the restart stays green.
+  await expect(page.locator(".assessment")).toContainText("QLD time");
+  for (let slot = 76; slot < 96; slot++) {
+    await expect(block(slot)).toHaveClass(/future-work/);
+    await expect(block(slot)).not.toHaveClass(/breach|rest-risk/);
+  }
+
+  // Add a quarter at 5 pm. The old window now runs out at 7:45 pm,
+  // while the 8 pm block falls outside the old window.
+  await block(68).click();
+  await expect(block(79)).toHaveClass(/breach/);
+  await expect(block(79)).toHaveAttribute("title", /24h work limit exceeded/);
+  await expect(block(80)).not.toHaveClass(/breach|rest-risk/);
 });

@@ -25,23 +25,36 @@ function stamp(value: string,zone:string) {
 export function protectedRest(s: Workspace, date: string, windows: WorkWindow[], now=Date.now()): ProtectedRest|null {
   const p=s.days[date]?.profile||s.profile;
   const today=civil(now,p.zone).date;
-  // Also advise when planning upcoming pages. Projected Rest is never credited
-  // as already taken; the planning baseline is that future day's midnight.
+  // On a future page the baseline is midnight, so only windows already open
+  // at the start of that page are considered for protection.
   if(p.twoUp || !["Standard","BFM"].includes(p.scheme) || operatingRules(p)!=="HVNL" ||
     date<today || date>dateAdd(today,28) || !s.days[date]) return null;
   const baseline=date===today?now:boundary(date,0,p.zone);
-  const t=buildTimeline(s,date+"T24:00",baseline,baseline);
   const startOfDay=boundary(date,0,p.zone),endOfDay=boundary(date,96,p.zone);
   if(!Number.isFinite(startOfDay)||!Number.isFinite(endOfDay)) return null;
   const eligible=windows.filter(w=>w.established&&!w.review && w.unknown===0 && w.zone===p.zone
     && w.requiredRest===420 && w.limit!==null && w.end>w.start);
+  // Assess the saved plan through the page end. The running timer is still
+  // limited to the baseline, so it does not create future recorded activity.
+  const plan = buildTimeline(s, date + "T24:00", endOfDay, baseline);
+  const stationaryRests = restEpisodes(plan.runs).filter(
+    (rest) => rest.rest === "stationary" && !rest.review && !rest.clock,
+  );
+  const workStarts = new Set(plan.runs.filter((run) => run.kind === "work").map((run) => run.start));
   const opportunities:Array<{start:number;end:number;latest:number}>=[];
   for(const w of eligible){
     const a=stamp(w.start,p.zone),b=stamp(w.end,p.zone);
     if(a===undefined||b===undefined || a>baseline || b<=baseline || b-a!==24*60*MINUTE) continue;
-    const fulfilled=restEpisodes(t.runs).some(r=>r.kind==="rest" && r.rest==="stationary"&&!r.review&&!r.clock
-      && Math.min(r.end,baseline,b)-Math.max(r.start,a)>=420*MINUTE);
-    if(fulfilled)continue;
+    const completedRest = stationaryRests.some(
+      (rest) => Math.min(rest.end, baseline, b) - Math.max(rest.start, a) >= w.requiredRest * MINUTE,
+    );
+    // A selected restart can follow enough planned Rest before the deadline.
+    // Keep the yellow reserve for an open-ended plan with no selected restart.
+    const plannedRestart = stationaryRests.some(
+      (rest) => rest.end > baseline && rest.end < b && workStarts.has(rest.end)
+        && rest.end - Math.max(rest.start, a) >= w.requiredRest * MINUTE,
+    );
+    if (completedRest || plannedRestart) continue;
     const latest=b-420*MINUTE;
     if(latest>=endOfDay || b<=startOfDay)continue;
     opportunities.push({start:a,end:b,latest});
