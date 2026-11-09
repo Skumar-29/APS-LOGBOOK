@@ -38,7 +38,7 @@ describe("Employer availability - one page factual outputs",()=>{
   expect(a.rests[2].last).toContain("01/10/2026");
   expect(a.rests[2].next).toContain("hours options");
  });
- it("does not count unknown Rest as a verified 24/48h break",()=>{
+ it("preserves a proven 24h rest but does not extend it across an unknown day to 48h",()=>{
   const s=setup("2026-10-01","2026-10-02","2026-10-03");
   s.days["2026-10-02"].restDefault="unknown";
   s.days["2026-10-02"].changes[0]={slot:0,location:"",odometer:"",restType:"unknown",note:"",vehicle:""};
@@ -46,7 +46,7 @@ describe("Employer availability - one page factual outputs",()=>{
   const now=at("2026-10-03 02:00");
   const r=analyse(s,"2026-10-03T02:00",14,{now,liveThrough:now});
   const a=employerAvailability(s,r,s.profile,now);
-  expect(a.rests[1].last).toBe("Not established");
+  expect(a.rests[1].last).toContain("01/10/2026");
   expect(a.rests[2].last).toBe("Not established");
  });
  it("marks yesterday's assessment historical rather than current eligibility",()=>{
