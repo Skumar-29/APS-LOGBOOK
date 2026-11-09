@@ -41,6 +41,7 @@ describe("Employer availability - one page factual outputs",()=>{
  it("does not count unknown Rest as a verified 24/48h break",()=>{
   const s=setup("2026-10-01","2026-10-02","2026-10-03");
   s.days["2026-10-02"].restDefault="unknown";
+  s.days["2026-10-02"].changes[0]={slot:0,location:"",odometer:"",restType:"unknown",note:"",vehicle:""};
   editRange(s,"2026-10-03",0,4,"work");
   const now=at("2026-10-03 02:00");
   const r=analyse(s,"2026-10-03T02:00",14,{now,liveThrough:now});
