@@ -54,9 +54,9 @@ test("Driving statistics dashboard renders requested fields on desktop and phone
  const width=await page.evaluate(()=>[document.documentElement.clientWidth,document.documentElement.scrollWidth]);
  expect(width[1]).toBeLessThanOrEqual(width[0]+3);
  const pdfWait=page.waitForEvent("download");
- await quick.getByRole("button",{name:"Save one-page PDF"}).click();
+ await quick.getByRole("button",{name:"Save PDF"}).click();
  const exported=await pdfWait;
- expect(exported.suggestedFilename()).toMatch(/^APS-Availability-\\d{4}-\\d{2}-\\d{2}\\.pdf$/);
+ expect(exported.suggestedFilename()).toMatch(/^APS-Availability-\d{4}-\d{2}-\d{2}\.pdf$/);
  const file=info.outputPath("employer-availability.pdf");await exported.saveAs(file);
  const checked=await PDFDocument.load(await readFile(file));
  expect(checked.getPageCount()).toBe(1);
