@@ -163,7 +163,7 @@ export default function App() {
                 <label className="diary-date-selector">
                   <span className="diary-date-visible">{new Date(date+"T12:00:00Z").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short",year:"numeric",timeZone:"UTC"})} ▾</span>
                   <input lang="en-AU" aria-label="Diary date" type="date" value={date}
-                    onChange={e=>run(()=>goDate(e.currentTarget.value))}/>
+                    onChange={e=>{const next=e.currentTarget.value;run(()=>goDate(next));}}/>
                 </label>
                 <button className="diary-page-selector" aria-label="Jump to page" onClick={()=>{
                   setBookId(page?.bookId || s.books.at(-1)?.id || "");
