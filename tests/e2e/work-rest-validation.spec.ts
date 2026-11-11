@@ -363,22 +363,22 @@ test('Next and Previous always navigate calendar days even when physical pages a
   );
   await seed(page,s);
   await chooseDate(page,'2026-10-19');
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-19');
   await page.getByRole('button',{name:'Next diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-20');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-20');
   await page.getByRole('button',{name:'Next diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-21');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-21');
   await page.getByRole('button',{name:'Next diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-22');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-22');
   await page.getByRole('button',{name:'Previous diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-21');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-21');
   await chooseDate(page,'2026-10-19');
   await page.getByRole('button',{name:'Previous diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-18');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-18');
   await page.getByRole('button',{name:'Jump to page'}).click();
   await page.getByRole('dialog',{name:'Jump to paper page'}).getByLabel('Scroll to page number').selectOption('26');
   await page.getByRole('dialog',{name:'Jump to paper page'}).getByRole('button',{name:'Go to page'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-19');
 });
 
 test('time format can switch 12-hour / 24-hour labels and survives a refresh', async ({ page }) => {
