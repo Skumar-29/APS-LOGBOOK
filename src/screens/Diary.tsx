@@ -610,7 +610,7 @@ export function Diary({
                     };
                   })
                 }
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
               >
                 + Finish
               </Action>
@@ -634,7 +634,7 @@ export function Diary({
                           <Field
                             label="Odometer"
                             value={c.odometer}
-                            disabled={readOnly}
+                            disabled={readOnly || pastLocked}
                             type="number"
                             min="0"
                             onChange={(v) => {
@@ -645,7 +645,7 @@ export function Diary({
                         <td>
                           <Location
                             value={c.location}
-                            disabled={readOnly}
+                            disabled={readOnly || pastLocked}
                             onChange={(v) => {
                               void change(c, "location", v).catch(() => {});
                             }}
@@ -660,7 +660,7 @@ export function Diary({
                               <Field
                                 label="Rest setting"
                                 value={restTypeAt(restWorkspace, date, c.slot)}
-                                disabled={readOnly}
+                                disabled={readOnly || pastLocked}
                                 options={[
                                   ["unknown", "Rest · type not set"],
                                   ["stationary", "Stationary rest"],
@@ -694,7 +694,7 @@ export function Diary({
             <Field
               label="Rest setting for this page"
               value={d.restDefault==="sleeper-moving" ? "unknown" : d.restDefault || "unknown"}
-              disabled={readOnly}
+              disabled={readOnly || pastLocked}
               options={[
                 ["unknown", "Confirm each break"],
                 ["stationary", "Stationary unless specified"],
@@ -709,7 +709,7 @@ export function Diary({
             <Check
               label="Fit for duty confirmed for this day"
               value={!!d.fitForDuty}
-              disabled={readOnly}
+              disabled={readOnly || pastLocked}
               onChange={(v) => {
                 void updateDay((day) => {
                   day.fitForDuty = v;
@@ -726,7 +726,7 @@ export function Diary({
                     day.vehicle = v;
                   }).catch(() => {});
                 }}
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
               />
               <Field
                 label="Daily check time"
@@ -737,7 +737,7 @@ export function Diary({
                     day.dailyCheckTime = v;
                   }).catch(() => {});
                 }}
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
               />
               <Field
                 label="Comments"
@@ -749,14 +749,14 @@ export function Diary({
                     day.comments = v;
                   }).catch(() => {});
                 }}
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
               />
             </div>
             <p className="small">
               {d.profile.name || "Driver not set"} · {d.profile.scheme} ·{" "}
               {d.profile.twoUp ? "Two-up" : "Solo"} · {d.profile.base}
             </p>
-            <Action onClick={() => setEditingProfile(true)} disabled={readOnly}>
+            <Action onClick={() => setEditingProfile(true)} disabled={readOnly || pastLocked}>
               Edit this day’s driver / rules
             </Action>
           </Fold>
@@ -795,7 +795,7 @@ export function Diary({
                 label="Submitted to record keeper"
                 type="date"
                 value={d.submittedAt}
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
                 onChange={(v) => {
                   void updateDay((day) => {
                     day.submittedAt = v;
