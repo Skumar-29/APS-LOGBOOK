@@ -26,6 +26,7 @@ const attempts=[480,600,720,780];
  */
 export function assessTrip(s:Workspace,date:string,time:string,workMinutes:number,restMinutes:number,roundTrip=false,realNow=Date.now()):PlannedTrip {
   const p=s.days[date]?.profile||s.profile;
+  if(!/^([01]\\d|2[0-3]):(00|15|30|45)$/.test(time))throw Error("Use 15-minute departure intervals.");
   const start=instantFor(date,time,p.zone)[0];
   if(start===undefined||!quarter(workMinutes)||!quarter(restMinutes)||workMinutes===0)
     throw Error("Enter valid quarter-hour Work/Rest estimates and a start time.");
