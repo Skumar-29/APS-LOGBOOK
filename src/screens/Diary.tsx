@@ -76,6 +76,7 @@ export function Diary({
     [breach, setBreach] = useState<string[] | null>(null),
     [unlockPrompt,setUnlockPrompt] = useState(false),
     [editUntil,setEditUntil] = useState(0),
+    [editDate,setEditDate] = useState(""),
     [clockTick,setClockTick] = useState(Date.now());
   const drag = useRef<{
       slot: number;
@@ -95,7 +96,7 @@ export function Diary({
   const timeFormat = s.settings.timeFormat || "12h";
   const clock = civil(clockTick, d.profile.zone);
   const historic=date<clock.date;
-  const pastLocked=historic && clockTick>=editUntil;
+  const pastLocked=historic && (editDate!==date || clockTick>=editUntil);
   const full = s.settings.fullDay,
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
@@ -124,7 +125,7 @@ export function Diary({
   async function updateDay(fn: (d: Day) => void, label = "Edit diary") {
     setUndo(null);
     if (readOnly) throw Error("This paper page is retained as a historical copy.");
-    if (pastLocked || historic && Date.now()>=editUntil) throw Error("Unlock this historical page before editing.");
+    if (pastLocked || historic && (editDate!==date || Date.now()>=editUntil)) throw Error("Unlock this historical page before editing.");
     await mutate((w) => {
       const day = ensureDay(w, date),
         before = clone(day);
@@ -141,7 +142,7 @@ export function Diary({
     stationary = false,
   ) {
     if (readOnly) throw Error("This page is read only.");
-    if (pastLocked || historic && Date.now()>=editUntil) throw Error("Unlock this historical page before changing Work/Rest.");
+    if (pastLocked || historic && (editDate!==date || Date.now()>=editUntil)) throw Error("Unlock this historical page before changing Work/Rest.");
     const snapshot: Record<string, Day> = {},
       revisions: Record<string, number> = {},
       automaticPages: string[] = [];
@@ -334,7 +335,7 @@ export function Diary({
         <p>Unlock Work/Rest edits for 15 minutes on this page. One confirmation allows multiple deliberate corrections. Changes are saved with an audit history.</p>
         <div className="row wrap">
           <Action onClick={()=>setUnlockPrompt(false)}>Cancel</Action>
-          <Action primary onClick={()=>{setEditUntil(Date.now()+15*60*1000);setUnlockPrompt(false);}}>Unlock for 15 minutes</Action>
+          <Action primary onClick={()=>{setEditDate(date);setEditUntil(Date.now()+15*60*1000);setUnlockPrompt(false);}}>Unlock for 15 minutes</Action>
         </div>
       </Modal>}
       {breach && (
