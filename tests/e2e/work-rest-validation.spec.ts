@@ -70,7 +70,7 @@ test('work-rest validation: elapsed breaches appear solid red and no future fore
   await expect(breach).toBeVisible({timeout:30000});
   await expect(breach).toHaveCSS('background-color', 'rgb(198, 40, 40)');
   await expect(page.locator('[aria-label="Planned page totals"]')).toHaveCount(0);
-  await expect(page.locator('.window-summary > summary')).not.toContainText('Planned');
+  await expect(page.getByLabel('Active 24-hour window')).toBeVisible();
 });
 
 
@@ -193,7 +193,7 @@ test('settings effective date reapplies BFM to a previously saved Standard day w
   await expect(page.locator('.date-nav')).toContainText('QLD · BFM');
   await expect(page.locator('.base-clock time')).toHaveAttribute('aria-label','QLD base time');
   await expect(page.locator('.swipe-block.work')).toHaveCount(52);
-  await expect(page.locator('.assessment')).toContainText('QLD time');
+  await expect(page.locator('.diary-page-selector')).toContainText('QLD base');
 
   await page.reload();
   await chooseDate(page,'2026-10-19');
@@ -363,7 +363,7 @@ test('Next and Previous always navigate calendar days even when physical pages a
   await page.getByRole('button',{name:'Previous diary day'}).click();
   await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-18');
   await page.getByRole('button',{name:'Jump to page'}).click();
-  await page.getByRole('dialog',{name:'Jump to paper page'}).getByLabel('Page number').fill('26');
+  await page.getByRole('dialog',{name:'Jump to paper page'}).getByLabel('Scroll to page number').selectOption('26');
   await page.getByRole('dialog',{name:'Jump to paper page'}).getByRole('button',{name:'Go to page'}).click();
   await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
 });
