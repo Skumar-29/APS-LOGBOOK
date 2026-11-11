@@ -428,6 +428,9 @@ export function Diary({
               </details>
             </> : <p className="small">Counting history needs review</p>}
             {error && <div className="row"><span>{error}</span><Action onClick={retry}>Retry</Action></div>}
+            {pageNeedsReview && <p role="status" className="warning-review small">
+              Work saved · {hasEligibleBook?"paper page needs numbering review.":"add an open diary book in Records."}
+            </p>}
             {warnings.length>0 && <div className="short-warnings" role="status">{warnings.slice(0,3).map(w=><p key={w} className={w.startsWith("Review:")?"warning-review":"bad"}>{w}</p>)}{warnings.length>3 && <details className="diary-active-details"><summary>{warnings.length-3} more warnings</summary>{warnings.slice(3).map(w=><p key={w} className={w.startsWith("Review:")?"warning-review":"bad"}>{w}</p>)}</details>}</div>}
           </div>
           <section className="card block-card">
