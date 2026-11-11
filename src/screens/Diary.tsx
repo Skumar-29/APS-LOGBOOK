@@ -111,7 +111,7 @@ export function Diary({
   const dayBreaches = Object.entries(redSlots).filter(([key]) => key.startsWith(date + ":"));
   const warnings = readOnly || !report ? [] : warningLines(report,date);
   const opportunity = readOnly ? null : restExtensionOpportunity(s,date);
-  const protection = !readOnly && report ? protectedRest(s,date,report.workWindows) : null;
+  const protection = !readOnly && report ? protectedRest(s,date,report.workWindows,Date.now(),report.checks) : null;
   const fatigue = !readOnly && report ? fatigueGuidance(report,d.profile) : null;
   const extra=(minutes:number)=>minutes<60?`${minutes}m`:`${Math.floor(minutes/60)}h${minutes%60?` ${minutes%60}m`:""}`;
   const pageNeedsReview=!readOnly && s.settings.autoPages && d.slots.includes("work") && !page;
