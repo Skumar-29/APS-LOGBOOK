@@ -3,14 +3,14 @@ import type { WorkWindow } from "./rules";
 import { operatingRules } from "./catalogue";
 import { buildTimeline, boundary } from "./timeline";
 import { restEpisodes } from "./qualifications";
-import { civil, instantFor, dateAdd, MINUTE, QUARTER } from "./time";
+import { civil, instantFor, MINUTE, QUARTER } from "./time";
 
 export interface ProtectedRest {
   deadline: number;
   latestStart: number;
   minutesToDeadline: number;
-  /** Future Work that conflicts with the protective Rest window is a projection,
-   * not a confirmed NHVR breach until the corresponding actual Work occurs. */
+  /** Advisory only; selected Work is red only when the rule engine confirms
+   * that the complete planned counting period cannot contain its required Rest. */
   slots: Record<number, "reserve"|"conflict">;
 }
 
@@ -27,18 +27,18 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
   const today=civil(now,p.zone).date;
   // On a future page the baseline is midnight, so only windows already open
   // at the start of that page are considered for protection.
-  if(p.twoUp || !["Standard","BFM"].includes(p.scheme) || operatingRules(p)!=="HVNL" ||
-    date<today || date>dateAdd(today,28) || !s.days[date]) return null;
+  if(!["Standard","BFM"].includes(p.scheme) || (p.scheme==="BFM"&&p.twoUp) || operatingRules(p)!=="HVNL" ||
+    date<today || !s.days[date]) return null;
   const baseline=date===today?now:boundary(date,0,p.zone);
   const startOfDay=boundary(date,0,p.zone),endOfDay=boundary(date,96,p.zone);
   if(!Number.isFinite(startOfDay)||!Number.isFinite(endOfDay)) return null;
   const eligible=windows.filter(w=>w.established&&!w.review && w.unknown===0 && w.zone===p.zone
-    && w.requiredRest===420 && w.limit!==null && w.end>w.start);
+    && w.requiredRest===(p.twoUp?300:420) && w.limit!==null && w.end>w.start);
   // Assess the saved plan through the page end. The running timer is still
   // limited to the baseline, so it does not create future recorded activity.
   const plan = buildTimeline(s, date + "T24:00", endOfDay, baseline);
   const stationaryRests = restEpisodes(plan.runs).filter(
-    (rest) => rest.rest === "stationary" && !rest.review && !rest.clock,
+    (rest) => (rest.rest === "stationary" || (p.twoUp && p.scheme==="Standard" && !!p.coDriver?.trim() && rest.rest==="sleeper-moving")) && !rest.review && !rest.clock,
   );
   const workStarts = new Set(plan.runs.filter((run) => run.kind === "work").map((run) => run.start));
   const opportunities:Array<{start:number;end:number;latest:number}>=[];
@@ -55,7 +55,7 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
         && rest.end - Math.max(rest.start, a) >= w.requiredRest * MINUTE,
     );
     if (completedRest || plannedRestart) continue;
-    const latest=b-420*MINUTE;
+    const latest=b-w.requiredRest*MINUTE;
     if(latest>=endOfDay || b<=startOfDay)continue;
     opportunities.push({start:a,end:b,latest});
   }
