@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {emptyState,ensureDay} from "../src/domain/model";
 import {editRange} from "../src/domain/diary";
-import {analyse} from "../src/domain/rules";
+import {analyse,type Check} from "../src/domain/rules";
 import {protectedRest} from "../src/domain/protected-rest";
 const zone="Australia/Brisbane";
 const moment=(local:string)=>Date.parse(local+"+10:00");
@@ -45,6 +45,17 @@ describe("mandatory major Rest is a Work-breach decision, not a separate conflic
     const r=analyse(s,"2026-11-21T24:00",3,{now:moment("2026-11-22T00:00")});
     expect(r.workWindows.every(w=>w.requiredRest===0)).toBe(true);
     expect(Object.values(r.breachSlots).flat().some(x=>/7h continuous|5h continuous/.test(x))).toBe(false);
+  });
+  it.each([
+    ["Standard","52h00m","2026-11-11 20:00","2026-11-14 00:00","2026-11-13",56],
+    ["BFM","82h00m","2026-11-11 20:00","2026-11-15 06:00","2026-11-14",80]
+  ] as const)("Two-up %s protects the last part of its continuous 10h stationary Rest window",(
+    scheme,label,start,end,date,slot)=>{
+    const s=example(scheme,true);
+    ensureDay(s,date).restDefault="stationary";
+    const checks=[{label,start,end,zone,requiredRest:600,status:"Open period"} as Check];
+    const result=protectedRest(s,date,[],moment("2026-11-11T12:00"),checks);
+    expect(result?.slots[slot]).toBe("reserve");
   });
   it("protects a saved future BFM Solo page beyond 28 days of today's date",()=>{
     const s=example("BFM");
