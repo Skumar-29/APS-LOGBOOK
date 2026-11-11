@@ -156,54 +156,26 @@ export default function App() {
           </div>
         </header>
           {["Diary", "Graph", "Stats"].includes(screen) && (
-            <section className="date-nav">
-              <div className="row">
-                <button
-                  aria-label="Previous diary day"
-                  onClick={() => run(() => previous(-1))}
-                >
-                  ‹
+            <section className="date-nav diary-centred-nav" aria-label="Diary date and page navigation">
+              <button className="diary-nav-arrow" aria-label="Previous diary day"
+                onClick={() => run(() => previous(-1))}>‹</button>
+              <div className="diary-nav-centre">
+                <label className="diary-date-selector">
+                  <span className="diary-date-visible">{new Date(date+"T12:00:00Z").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short",year:"numeric",timeZone:"UTC"})} ▾</span>
+                  <input lang="en-AU" aria-label="Diary date" type="date" value={date}
+                    onChange={e=>run(()=>goDate(e.currentTarget.value))}/>
+                </label>
+                <button className="diary-page-selector" aria-label="Jump to page" onClick={()=>{
+                  setBookId(page?.bookId || s.books.at(-1)?.id || "");
+                  setJumpNumber(page?.number || "");
+                  setJump(true);
+                }}>
+                  {page?"Page "+page.number:"Page —"} ▾ <span>· {pageProfile.base} base</span>
                 </button>
-                <span className="civil-input">
-                  <input
-                    lang="en-AU"
-                    aria-label="Diary date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => {
-                      const nextDate = e.currentTarget.value;
-                      run(() => goDate(nextDate));
-                    }}
-                  />
-                  <span aria-hidden="true">{new Date(date + "T12:00:00Z").toLocaleDateString("en-AU", {weekday:"short",timeZone:"UTC"})} {displayDate(date)}</span>
-                </span>
-                <button
-                  aria-label="Next diary day"
-                  onClick={() => run(() => previous(1))}
-                >
-                  ›
-                </button>
-                <Action onClick={() => goDate(today(s.profile.zone))}>
-                  Today
-                </Action>
               </div>
-              <div className="row">
-                <span className="small">
-                  {page
-                    ? `${s.books.find((b) => b.id === page.bookId)?.number} · Page ${page.number}`
-                    : `${pageProfile.base} · ${pageProfile.scheme}`}
-                </span>
-                {page && <span className="page-basis">{pageProfile.base} · {pageProfile.scheme}</span>}
-                <Action
-                  onClick={() => {
-                    setBookId(page?.bookId || s.books.at(-1)?.id || "");
-                    setJumpNumber("");
-                    setJump(true);
-                  }}
-                >
-                  Jump to page
-                </Action>
-              </div>
+              <button className="diary-nav-arrow" aria-label="Next diary day"
+                onClick={() => run(() => previous(1))}>›</button>
+              <button className="diary-today-link" onClick={() => goDate(today(s.profile.zone))}>Today</button>
             </section>
           )}
       </div>
@@ -377,11 +349,16 @@ export default function App() {
             ])}
             onChange={setBookId}
           />
-          <Field
-            label="Page number"
-            value={jumpNumber}
-            onChange={setJumpNumber}
-          />
+          <label className="field">
+            <span>Scroll to page number</span>
+            <select aria-label="Scroll to page number" value={jumpNumber}
+              onChange={e=>setJumpNumber(e.currentTarget.value)}>
+              <option value="">Choose page</option>
+              {Array.from({length: Math.max(101,1+Math.max(0,...s.pages.map(p=>Number(p.number)||0)))},(_,i)=>(
+                <option key={i} value={String(i)}>{String(i).padStart(3,"0")}</option>
+              ))}
+            </select>
+          </label>
           <Action
             primary
             disabled={!s.pages.length}
