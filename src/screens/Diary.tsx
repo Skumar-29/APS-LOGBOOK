@@ -549,11 +549,12 @@ export function Diary({
                     const kind=inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
                     const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
                     const reserve=kind==="rest"&&protection?.slots[slot]==="reserve";
+                    const projectedBreach=kind==="work"&&!reasons?.length&&protection?.slots[slot]==="conflict";
                     const future = !readOnly && (date > clock.date || date === clock.date && slot >= Math.ceil(clock.slot));
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future && kind === "work" ? "future-work" : ""} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length?"breach":""} ${reserve?"protected-rest":""}`}
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future && kind === "work" ? "future-work" : ""} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length||projectedBreach?"breach":""} ${reserve?"protected-rest":""}`}
                       disabled={readOnly || pastLocked} aria-pressed={kind==="work"}
-                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${future && kind === "work" ? ", planned" : ""}${reasons?.length?", detected rule breach":reserve?", suggested protected Rest":""}`}
-                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):reserve?" · Protected stationary Rest":""}`}
+                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${future && kind === "work" ? ", planned" : ""}${reasons?.length?", detected rule breach":projectedBreach?", projected breach of mandatory continuous Rest":reserve?", suggested protected Rest":""}`}
+                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projectedBreach?" · Projected breach: no continuous major Rest remains before deadline":reserve?" · Protected stationary Rest":""}`}
                       onClick={e=>{
                         // Keyboard Enter/Space are genuine single-block edits.
                         // Pointer taps are handled in onPointerUp, never twice.
