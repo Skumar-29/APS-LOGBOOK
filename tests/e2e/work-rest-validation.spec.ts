@@ -9,6 +9,10 @@ async function onboard(page: Page) {
   await page.getByLabel('Driver base', { exact: true }).selectOption('QLD');
   await page.getByRole('button', { name: 'Save driver settings', exact: true }).click();
 }
+async function unlockHistoric(page:Page) {
+  await page.getByRole('button',{name:'Unlock to edit'}).click();
+  await page.getByRole('button',{name:'Unlock for 15 minutes'}).click();
+}
 async function chooseDate(page: Page, value: string) {
   const field = page.getByLabel('Diary date', { exact: true });
   await field.fill(value);
@@ -256,11 +260,13 @@ test('backdated Work receives page 25 after 19 October already has page 26',asyn
   await expect(page.getByRole('dialog',{name:'Paper page'})).toContainText('Suggested page for 2026-10-18: 25');
   await page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true}).click();
   await expect(page.locator('.date-nav')).toContainText('Page 25');
+  await unlockHistoric(page);
   await page.locator('.swipe-block[data-slot="0"]').click();
   await expect(page.locator('.swipe-block[data-slot="0"]')).toHaveAttribute('aria-pressed','true');
   await chooseDate(page,'2026-10-19');
   await expect(page.locator('.date-nav')).toContainText('Page 26');
   await chooseDate(page,'2026-10-17');
+  await unlockHistoric(page);
   await page.locator('.swipe-block[data-slot="0"]').click();
   await expect(page.locator('.date-nav')).toContainText('Page 24');
   await chooseDate(page,'2026-10-20');
@@ -285,6 +291,7 @@ test('a page-numbering conflict does not discard Work blocks or trap the diary',
   );
   await seed(page,s);
   await chooseDate(page,'2026-10-18');
+  await unlockHistoric(page);
   const slot=page.locator('.swipe-block[data-slot="0"]');
   await slot.click();
   await expect(slot).toHaveAttribute('aria-pressed','true');
@@ -307,6 +314,7 @@ test('Undo restores prior Rest and releases only the new automatic page',async (
   s.pages.push({id:'p26',bookId:'book',number:'26',date:'2026-10-19',status:'Active',reason:''});
   await seed(page,s);
   await chooseDate(page,'2026-10-18');
+  await unlockHistoric(page);
   const slot=page.locator('.swipe-block[data-slot="0"]');
   await slot.click();
   await expect(slot).toHaveAttribute('aria-pressed','true');
@@ -317,6 +325,7 @@ test('Undo restores prior Rest and releases only the new automatic page',async (
   await chooseDate(page,'2026-10-19');
   await expect(page.locator('.date-nav')).toContainText('Page 26');
   await chooseDate(page,'2026-10-18');
+  await unlockHistoric(page);
   await slot.click();
   await expect(page.locator('.date-nav')).toContainText('Page 25');
 });
@@ -337,7 +346,7 @@ test('Statistics matches Diary for a saved full day even when some Work is after
   await expect(page.getByRole('heading',{name:'Statistics'})).toBeVisible();
   await page.getByText("Calendar history & night Rest",{exact:true}).click();
   await expect(page.locator('.stat-day').last()).toContainText('W 18h 00m · R 6h 00m');
-  await expect(page.getByLabel('Active 24-hour window')).toBeVisible();
+  await expect(page.getByLabel('Quick driving availability and rest deadlines')).toBeVisible();
 });
 
 
