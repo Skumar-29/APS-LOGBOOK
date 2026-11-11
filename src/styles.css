@@ -1565,3 +1565,6 @@ html { scroll-padding-top:120px; }
 .major-trip-details summary{cursor:pointer;font-size:11px;color:var(--muted)}
 .major-trip-details p{margin:4px 0}
 @media(max-width:350px){.major-trip-result-summary{grid-template-columns:1fr}}
+
+/* Planned breaches remain red with subtle stripes, not an unmarked solid tile. */
+.swipe-block.work.future-work.breach{background-color:#d23c3c;background-image:repeating-linear-gradient(135deg,transparent 0 5px,rgba(255,255,255,.30) 5px 7px)}
