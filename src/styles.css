@@ -1542,3 +1542,26 @@ html { scroll-padding-top:120px; }
   .swipe-blocks{gap:1.5px}
   .swipe-block.hour-end{margin-right:2px}
 }
+
+/* Reusable major trip presets: concise until the driver expands the panel. */
+.major-trip-planner .major-trip-fields{gap:5px 10px;margin:8px 0}
+.major-trip-planner .major-trip-fields>.field{margin:3px 0 5px}
+.major-trip-save{justify-content:flex-start;gap:6px;margin:6px 0 9px}
+.major-trip-save button{min-height:34px;padding:6px 10px}
+.major-trip-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.major-trip-mode button{min-height:38px}
+.major-trip-mode button[aria-pressed="true"]{background:var(--wash);border-color:var(--primary);color:var(--primary)}
+.major-trip-estimates{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:7px 0}
+.major-trip-estimates span{display:grid;gap:2px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--card)}
+.major-trip-estimates small{font-size:10px}
+.major-trip-estimates strong{font-size:15px}
+.major-trip-result{border:1px solid var(--line);padding:10px;border-radius:9px;margin-top:10px}
+.major-trip-result>strong{font-size:13px}
+.major-trip-ok{color:var(--primary)}
+.major-trip-review{color:var(--danger)}
+.major-trip-result-summary{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;margin:8px 0}
+.major-trip-result-summary span{font-size:11px;color:var(--muted)}
+.major-trip-result-summary b{display:block;color:var(--text);margin-top:2px;font-size:12px}
+.major-trip-details summary{cursor:pointer;font-size:11px;color:var(--muted)}
+.major-trip-details p{margin:4px 0}
+@media(max-width:350px){.major-trip-result-summary{grid-template-columns:1fr}}
