@@ -4,6 +4,7 @@ import { restExtensionOpportunity } from "../domain/rest-advisor";
 import { protectedRest } from "../domain/protected-rest";
 import { fatigueGuidance } from "../domain/fatigue-guidance";
 import { SmartPlanner } from "./SmartPlanner";
+import { MajorTripPlanner } from "./MajorTripPlanner";
 import { classifyDiaryGesture, isDeliberateDiaryTap } from "../domain/diary-gesture";
 import {warningLines,zoneLabel} from '../domain/warnings';
 import { assessedDay, boundary, atBase } from "../domain/timeline";
@@ -590,6 +591,7 @@ export function Diary({
               <span><strong>Night rests</strong> {fatigue.nightRests}/4 · {fatigue.pairMet ? "pair completed" : "pair still needed"}</span>
               {fatigue.review && <small>Review history before relying on remaining hours</small>}
             </div>}
+          {!graph&&!readOnly&&<MajorTripPlanner key={"trip"+date} date={date}/>}
           {!graph&&!readOnly&&<SmartPlanner key={date} date={date}/>}
           <section className="card">
             <div className="row">
