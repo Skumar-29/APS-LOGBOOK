@@ -10,8 +10,8 @@ describe("Driving GPS map isolation and build contract", () => {
     expect(driving).toContain("<TruckMap />");
     expect(wrapper).toContain('srcDoc={html}');
     expect(wrapper).toContain('allow="geolocation"');
-    expect(wrapper).not.toContain("mutate(");
-    expect(wrapper).not.toContain("switchTimer(");
+    expect(wrapper).not.toContain('from "../context"');
+    expect(wrapper).not.toContain('from "../domain/diary"');
     expect(wrapper).not.toContain("editRange(");
   });
 
