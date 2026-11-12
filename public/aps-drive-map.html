@@ -155,7 +155,7 @@ async function getFuel(b){
  const query='[out:json][timeout:18];(node["amenity"="fuel"]('+bounds+');way["amenity"="fuel"]('+bounds+'););out center 120;';
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),22000);
  try{
- const resp=await fetch('https://overpass.kumi.systems/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:new URLSearchParams({data:query}),signal:controller.signal});
+ const resp=await fetch('https://overpass.private.coffee/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:new URLSearchParams({data:query}),signal:controller.signal});
  if(!resp.ok)throw Error('fuel data '+resp.status);
  const json=await resp.json();if(!Array.isArray(json.elements))throw Error('invalid fuel response');
  fuelLayer.clearLayers();const ul=$('fuelList');ul.replaceChildren();let count=0;
