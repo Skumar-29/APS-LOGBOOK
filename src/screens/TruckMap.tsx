@@ -19,14 +19,14 @@ export function TruckMap() {
     if (!visible || html) return;
     const abort = new AbortController();
     setLoadError("");
-    void fetch(new URL("./aps-drive-map.html", document.baseURI), {
+    void fetch(new URL("./aps-drive-map-v2.html", document.baseURI), {
       cache: "no-store",
       signal: abort.signal,
     })
       .then(async (response) => {
         if (!response.ok) throw Error("Map page unavailable (" + response.status + ")");
         const source = await response.text();
-        if (!source.includes('id="map"') || !source.includes("Find your journey")) {
+        if (!source.includes('id="map"') || !source.includes("APS · DRIVING MAP")) {
           throw Error("Map resource missing or the web app returned its main page.");
         }
         setHtml(source);
@@ -53,7 +53,7 @@ export function TruckMap() {
       <div className="row" style={{ justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div>
           <h2 style={{ margin: "0 0 4px" }}>GPS map & truck stops</h2>
-          <p className="small" style={{ margin: 0 }}>Start/destination search · GPS · rest areas · fuel</p>
+          <p className="small" style={{ margin: 0 }}>Smooth vector map · GPS follow · address search · rest & fuel</p>
         </div>
         <button className={visible ? "" : "primary"} onClick={() => setVisible(!visible)}>
           {visible ? "Hide map" : "Open GPS map"}
@@ -121,7 +121,7 @@ export function TruckMap() {
               }}
             />
           ) : (
-            !loadError && <p className="small">Loading road map and stop finder…</p>
+            !loadError && <p className="small">Opening improved vector road map…</p>
           )}
         </div>
       )}
