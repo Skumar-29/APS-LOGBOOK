@@ -120,7 +120,7 @@ $("routeFile").onchange=async e=>{const f=e.target.files?.[0];if(!f)return;if(f.
 window.addEventListener("pagehide",()=>{if(state.watch!==null)navigator.geolocation.clearWatch(state.watch)});
 try{
  const lib=await import("https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs");state.lib=lib;
- if(!lib.supported())throw Error("WebGL2 is unavailable on this browser.");
+ if(typeof lib.Map!=="function")throw Error("Map library unavailable.");
  state.style=Math.max(0,Math.min(3,Number(storage("style"))||0));
  const m=new lib.Map({container:"map",style:"https://tiles.openfreemap.org/styles/"+styles[state.style],center:[150,-29.5],zoom:5.5,dragRotate:false,pitchWithRotate:false,maxPitch:0});state.map=m;
  m.touchZoomRotate.disableRotation();
