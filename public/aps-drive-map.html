@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#115b55">
+<title>APS Logbook — GPS map and stops</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyo1Yhd0Q+npXo=" crossorigin="">
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f3f6f8;color:#183044}button,input{font:inherit}button{cursor:pointer;touch-action:manipulation}button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #7ab6f8;outline-offset:2px}
+.container{max-width:1200px;margin:0 auto;padding:10px;display:grid;gap:10px}.notice{background:#fff2d9;border:1px solid #eac789;border-radius:10px;padding:10px;color:#6a4510;font-size:12px;line-height:1.45}.notice strong{display:block;font-size:13px;margin-bottom:3px}.panel{background:#fff;border:1px solid #dce5ed;border-radius:12px;overflow:hidden}.section{padding:11px}.headerline{display:flex;justify-content:space-between;align-items:center;gap:9px;flex-wrap:wrap}.title{font-size:17px;font-weight:800}.sub{font-size:11px;color:#63798b;line-height:1.5}.tag{border:1px solid #a4b6c1;background:#edf2f6;border-radius:18px;padding:5px 9px;font-size:11px;font-weight:800}.btn{padding:10px 12px;min-height:40px;background:white;color:#244b61;border:1px solid #bfced9;border-radius:9px;font-weight:750;font-size:12px}.primary{background:#16745f;color:#fff;border-color:#16745f}.navbtn{background:#145b9a;color:#fff;border-color:#145b9a}.tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.tools .btn{flex:1;min-width:112px}.searchgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}.fieldlabel{display:block;font-size:11px;font-weight:750;margin-bottom:4px;color:#425c6f}.searchrow{display:flex;gap:5px}.searchrow input{min-width:0;width:100%;border:1px solid #cfdae4;border-radius:8px;padding:10px;font-size:12px}.results{max-height:145px;overflow:auto;border-radius:8px}.results button{display:block;width:100%;border:0;border-bottom:1px solid #e8eef3;background:#f6f9fb;text-align:left;padding:9px;color:#204b65;font-size:12px;line-height:1.35}.results button:hover{background:#e7f0f7}.mapwrap{position:relative}.map{height:390px;background:#e6edf2;z-index:0}.mapoverlay{position:absolute;bottom:7px;left:7px;right:7px;background:#183b54e8;color:#fff;border-radius:8px;padding:7px 9px;z-index:420;pointer-events:none;font-size:11px;line-height:1.45}.mapoverlay b{color:#ffe4a5}.chips{display:flex;align-items:center;flex-wrap:wrap;gap:7px}.chip{border-radius:22px;padding:7px 10px;border:1px solid #cbd9e2;background:#f3f7fa;color:#345a73;font-size:11px;font-weight:750}.chip.active{border-color:#25745d;background:#e5f5ec;color:#175d46}.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.row>*{flex-shrink:0}.small{color:#5b7083;font-size:11px;line-height:1.45}.status{background:#ebf3f9;border-radius:8px;padding:8px 10px;color:#294d66;font-size:12px;line-height:1.45;min-height:34px}.status.err{background:#fff0eb;color:#8d3521}.legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px}.legend span{display:flex;gap:5px;align-items:center}.dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#2f81d6}.dot.fuel{background:#e49a24}.dot.rest{background:#188567}.dot.route{background:#7657d5}.bottom{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bottom .panel{padding:11px}.bottom h3{margin:0 0 8px;font-size:14px}.bottom p{margin:5px 0;font-size:11px;line-height:1.5;color:#5a7082}a{color:#145c9a}.list{margin:5px 0 0;padding:0;list-style:none;max-height:170px;overflow:auto}.list li{padding:7px 0;border-bottom:1px solid #e6ecf2;font-size:12px}.list button{border:0;background:none;color:#145c9a;padding:0;text-align:left;font-weight:750}.footer{font-size:10px;color:#758391;line-height:1.55;padding:5px 3px 8px}.acc{font-variant-numeric:tabular-nums}
+@media(max-width:610px){.container{padding:7px;gap:7px}.section{padding:10px}.map{height:310px}.searchgrid{grid-template-columns:1fr}.bottom{grid-template-columns:1fr}.title{font-size:16px}.mapoverlay{font-size:10px}.btn{font-size:11px}}
+</style>
+</head>
+<body>
+<div class="container">
+ <div class="notice" role="note"><strong>26 m B-double: do not use yellow roads as access approval.</strong>Yellow/orange roads on this map are ordinary OpenStreetMap road classes, NOT a truck-approved network or live traffic. This is a GPS and stop-finder companion, not certified truck navigation. Verify the complete route, ramps, bridge limits, permits and temporary restrictions with the NHVR and road managers while safely parked.</div>
+ <section class="panel section">
+  <div class="headerline"><span class="title">Find your journey</span><span class="tag">26 m B-double · map beta</span></div>
+  <div class="searchgrid">
+   <div><label class="fieldlabel" for="origin">Start location</label><div class="searchrow"><input id="origin" autocomplete="off" placeholder="Search town, road or depot" value="Gilgandra, NSW"><button class="btn" id="searchOrigin" type="button">Search</button></div><div class="results" id="originResults" role="listbox" aria-label="Start search results"></div><div style="margin-top:5px"><button class="btn primary" id="gpsOrigin" type="button">◎ Use my GPS as start</button></div></div>
+   <div><label class="fieldlabel" for="destination">Destination</label><div class="searchrow"><input id="destination" autocomplete="off" placeholder="Search address or company" value="25 Goulburn Road, Willawong QLD"><button class="btn" id="searchDest" type="button">Search</button></div><div class="results" id="destinationResults" role="listbox" aria-label="Destination search results"></div><div style="margin-top:5px"><button class="btn" id="fitPoints" type="button">View start + destination</button></div></div>
+  </div>
+  <div class="tools" style="margin-top:9px"><button class="btn" id="liveGPS" type="button">◎ Track GPS</button><button class="btn" id="locate" type="button">⌖ Centre GPS</button><button class="btn" id="reset" type="button">↗ View corridor</button><a class="btn navbtn" target="_blank" rel="noopener noreferrer" href="https://maps.nhvr.gov.au/">Open NHVR official route planner ↗</a></div>
+  <p class="sub">Searches are performed only when you tap Search. GPS requires location permission and a secure HTTPS connection. The app does not send your live location to the diary engine.</p>
+ </section>
+ <section class="panel">
+  <div class="mapwrap"><div id="map" class="map" aria-label="Interactive map"><p style="padding:50px;color:#6b8090;text-align:center">Loading road map…</p></div><div class="mapoverlay"><b>No road-following navigation or approved route calculated.</b> Select places, find stops and open NHVR to confirm permitted roads. Imported GPX/GeoJSON route lines are not automatically certified.</div></div>
+  <div class="section">
+    <div class="headerline"><div class="legend"><span><i class="dot"></i>GPS/place</span><span><i class="dot rest"></i>Rest area</span><span><i class="dot fuel"></i>Fuel</span><span><i class="dot route"></i>Imported route</span></div><span id="gpsStatus" class="small acc" role="status">GPS off</span></div>
+    <div class="chips" style="margin:10px 0"><button class="chip active" id="restToggle" aria-pressed="true" type="button">🚛 Truck rest areas: ON</button><button class="chip" id="fuelToggle" aria-pressed="false" type="button">⛽ Fuel: OFF</button><button class="btn" id="findStops" type="button">Find stops in map area</button></div>
+    <div id="status" class="status" role="status">Move or zoom the map to a town, then tap “Find stops in map area”. Zoom in for accurate results.</div>
+    <div class="tools" style="margin-top:9px">
+     <label class="btn" for="routeFile" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center">＋ Overlay GPX / GeoJSON route</label><input type="file" accept=".gpx,.geojson,.json,application/geo+json" id="routeFile" style="position:absolute;width:1px;height:1px;opacity:0">
+     <button class="btn" id="clearLine" type="button">Clear route line</button>
+     <button class="btn" id="copyJourney" type="button">Copy start and destination</button>
+    </div>
+    <p class="small">The route line is displayed only after you import a file; we do not invent a truck-safe route from car navigation. A loaded file still needs independent NHVR and road-manager checks. Fuel station access, hours, payment, diesel availability and B-double parking must be verified directly.</p>
+  </div>
+ </section>
+ <div class="bottom">
+  <section class="panel"><h3>Nearby stopping places</h3><p>Official national rest-area dataset; only sites specifically flagged for heavy vehicles appear. Even these may not fit your configuration.</p><ul class="list" id="restList"><li>Zoom to a town, then Find stops.</li></ul><p><a target="_blank" rel="noopener noreferrer" href="https://opendata.transport.nsw.gov.au/dataset/nsw-rest-areas">NSW rest-area details ↗</a> · <a target="_blank" rel="noopener noreferrer" href="https://www.nhvr.gov.au/road-access/route-planner">NHVR planner information ↗</a></p></section>
+  <section class="panel"><h3>Fuel & truck stops</h3><p>Fuel stations come from OpenStreetMap community data. An icon does not imply truck suitability or 24-hour opening.</p><ul class="list" id="fuelList"><li>Turn fuel ON and tap Find stops.</li></ul><p><a target="_blank" rel="noopener noreferrer" href="https://www.openstreetmap.org/">OpenStreetMap ↗</a> · <a target="_blank" rel="noopener noreferrer" href="https://qldtraffic.qld.gov.au/">Queensland traffic ↗</a></p></section>
+ </div>
+ <div class="footer">APS Logbook GPS companion · On-device trip inputs only; map tiles, searches, rest-area and fuel requests use third-party public services and require internet. OpenStreetMap contributors © OSM. National rest-area points: National Freight Data Hub/participating road agencies. Data can be incomplete or stale. Stop safely before interacting with map or route planner. No audio navigation, routing engine, traffic congestion data or NHVR access authorisation is provided.</div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const corridor=[[-31.71,148.66],[-31.27,149.27],[-30.33,149.78],[-29.46,149.84],[-28.55,150.31],[-27.88,151.27],[-27.59,151.77],[-27.54,152.14],[-27.62,152.76],[-27.6,152.99]];
+const API='https://spatial.infrastructure.gov.au/server/rest/services/Hosted/RADAR_Curated_Prod_restareas/FeatureServer/1/query';
+const state={origin:null,dest:null,gps:null,watch:null,lastSearch:0,restOn:true,fuelOn:false,busy:false,route:null};
+let map=null,restLayer=null,fuelLayer=null,routeLayer=null,originMarker=null,destMarker=null,gpsMarker=null,accuracyCircle=null;
+function say(msg,bad=false){$('status').textContent=msg;$('status').className=bad?'status err':'status'}
+function sanitize(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function goodCoord(lat,lon){return Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180}
+function around(lat,lon){return 'https://www.openstreetmap.org/?mlat='+encodeURIComponent(lat)+'&mlon='+encodeURIComponent(lon)+'#map=14/'+lat+'/'+lon}
+function getStored(name){try{return localStorage.getItem('aps-map-'+name)}catch(e){return null}}
+function setStored(name,v){try{localStorage.setItem('aps-map-'+name,v)}catch(e){}}
+function coordsFor(where){return where&&Array.isArray(where.coords)&&goodCoord(...where.coords)?where.coords:null}
+function setPlace(which,coords,label){if(!goodCoord(...coords))return;const place={coords,label:String(label).slice(0,260)};
+state[which]=place;$(which==='origin'?'origin':'destination').value=place.label;
+setStored(which,JSON.stringify(place));
+const old=which==='origin'?originMarker:destMarker;if(map&&old)map.removeLayer(old);
+if(map){const marker=L.marker(coords,{title:place.label}).addTo(map).bindPopup('<b>'+sanitize(which==='origin'?'Start':'Destination')+'</b><br>'+sanitize(place.label));if(which==='origin')originMarker=marker;else destMarker=marker;map.setView(coords,Math.max(11,map.getZoom()));}
+$(which==='origin'?'originResults':'destinationResults').replaceChildren();
+say((which==='origin'?'Start':'Destination')+' selected. Check approved roads in the NHVR planner before driving.');
+}
+function savePlace(which){const value=getStored(which);if(!value)return;try{const p=JSON.parse(value);if(coordsFor(p)){state[which]=p;$(which).value=p.label}}catch(e){}}
+function initialise(){
+ if(typeof L==='undefined'){say('Map library unavailable. Check internet connection. NHVR official planner can still be opened.',true);$('map').textContent='Map could not load (online connection required).';return}
+ map=L.map('map',{scrollWheelZoom:false,zoomControl:true}).setView([-30.3,150],6);
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
+ restLayer=L.layerGroup().addTo(map);fuelLayer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);
+ map.fitBounds(corridor);
+ if(state.origin&&coordsFor(state.origin)){const p=state.origin;originMarker=L.marker(p.coords,{title:'Start'}).addTo(map).bindPopup('Start: '+sanitize(p.label));}
+ if(state.dest&&coordsFor(state.dest)){const p=state.dest;destMarker=L.marker(p.coords,{title:'Destination'}).addTo(map).bindPopup('Destination: '+sanitize(p.label));}
+ // The mapped corridor is NOT drawn as a road line, because it isn't certified vehicle routing.
+}
+savePlace('origin');savePlace('dest');initialise();
+function fitPoints(){const p=[coordsFor(state.origin),coordsFor(state.dest)].filter(Boolean);if(map&&p.length>1)map.fitBounds(p,{padding:[35,35],maxZoom:12});else if(map&&p.length)map.setView(p[0],12);else say('Search for start and destination first.',true)}
+$('fitPoints').addEventListener('click',fitPoints);
+$('reset').addEventListener('click',()=>{if(map)map.fitBounds(corridor)});
+async function search(which){
+ let query=$(which).value.trim();
+ const results=$(which==='origin'?'originResults':'destinationResults');results.replaceChildren();
+ if(query.length<3){say('Enter at least 3 characters to search.',true);return}
+ if(Date.now()-state.lastSearch<1100){say('Please wait a second between place searches.',true);return}
+ state.lastSearch=Date.now();say('Searching '+query+'…');
+ try{
+ const url='https://nominatim.openstreetmap.org/search?'+new URLSearchParams({q:query,format:'jsonv2',countrycodes:'au',limit:'5',addressdetails:'0'}).toString();
+ const resp=await fetch(url,{headers:{Accept:'application/json'}});if(!resp.ok)throw Error('Search service unavailable ('+resp.status+')');
+ const places=await resp.json();if(!Array.isArray(places)||!places.length){say('No Australian locations found; try a suburb, road and state.');return}
+ places.slice(0,5).forEach(p=>{const lat=Number(p.lat),lon=Number(p.lon);if(!goodCoord(lat,lon))return;const btn=document.createElement('button');btn.type='button';btn.setAttribute('role','option');btn.textContent=p.display_name;btn.onclick=()=>setPlace(which,[lat,lon],p.display_name);results.appendChild(btn)});
+ say('Choose the matching location from the search results.');
+ }catch(e){say('Search did not load: '+(e&&e.message?e.message:'network error')+'. Please retry while online.',true)}
+}
+$('searchOrigin').addEventListener('click',()=>search('origin'));$('searchDest').addEventListener('click',()=>search('destination'));
+['origin','destination'].forEach(which=>{$(which).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();search(which)}})});
+function setGPS(position){
+ const c=position.coords,lat=c.latitude,lon=c.longitude;if(!goodCoord(lat,lon))return;
+ state.gps=[lat,lon];const accuracy=Math.round(c.accuracy||0),speed=Number.isFinite(c.speed)?' · '+Math.round(Math.max(0,c.speed)*3.6)+' km/h':'';
+ $('gpsStatus').textContent='GPS live · ±'+accuracy+' m'+speed;
+ if(map){if(!gpsMarker){gpsMarker=L.circleMarker([lat,lon],{radius:9,fillColor:'#277bd8',fillOpacity:1,color:'#fff',weight:3}).addTo(map).bindPopup('Your current GPS location');accuracyCircle=L.circle([lat,lon],{radius:accuracy,color:'#277bd8',weight:1,fillOpacity:.08}).addTo(map)}else{gpsMarker.setLatLng([lat,lon]);accuracyCircle.setLatLng([lat,lon]).setRadius(accuracy)}}
+}
+function gpsError(err){$('gpsStatus').textContent='GPS not available';say('GPS unavailable: '+(err&&err.message?err.message:'check location access and connection'),true)}
+function getLocation(start){
+ if(!navigator.geolocation||!window.isSecureContext){gpsError({message:'requires HTTPS and browser location permission'});return}
+ $('gpsStatus').textContent='Finding GPS…';navigator.geolocation.getCurrentPosition(p=>{setGPS(p);if(map)map.setView(state.gps,13);if(start)setPlace('origin',state.gps,'Current GPS location');},gpsError,{enableHighAccuracy:true,timeout:18000,maximumAge:5000});
+}
+$('gpsOrigin').addEventListener('click',()=>getLocation(true));$('locate').addEventListener('click',()=>{if(state.gps&&map)map.setView(state.gps,14);else getLocation(false)});
+$('liveGPS').addEventListener('click',()=>{
+ if(!navigator.geolocation||!window.isSecureContext){gpsError({message:'requires HTTPS'});return}
+ if(state.watch!==null){navigator.geolocation.clearWatch(state.watch);state.watch=null;$('gpsStatus').textContent='GPS tracking stopped';$('liveGPS').textContent='◎ Track GPS';return}
+ state.watch=navigator.geolocation.watchPosition(setGPS,gpsError,{enableHighAccuracy:true,timeout:18000,maximumAge:5000});
+ $('liveGPS').textContent='■ Stop GPS';
+});
+window.addEventListener('pagehide',()=>{if(state.watch!==null)navigator.geolocation.clearWatch(state.watch)});
+const restColours={rest:'#128364',fuel:'#df9725'};
+function pin(layer,lat,lon,color,html){return L.circleMarker([lat,lon],{radius:7,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(layer).bindPopup(html,{maxWidth:270})}
+function mapBox(){if(!map)return null;const b=map.getBounds(),c=map.getCenter();const pad=.15;const south=Math.max(-44,b.getSouth()-pad),north=Math.min(-9,b.getNorth()+pad),west=Math.max(112,b.getWest()-pad),east=Math.min(154,b.getEast()+pad);return {south,north,west,east,center:c}}
+function listClick(id,lat,lon){const li=document.createElement('li');const btn=document.createElement('button');btn.type='button';btn.textContent=id;btn.addEventListener('click',()=>{if(map)map.setView([lat,lon],15)});li.appendChild(btn);return li}
+function setToggle(kind,on){state[kind+'On']=on;const btn=$(kind+'Toggle');btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on));btn.textContent=kind==='rest'?'🚛 Truck rest areas: '+(on?'ON':'OFF'):'⛽ Fuel: '+(on?'ON':'OFF');if(!on){const layer=kind==='rest'?restLayer:fuelLayer;if(layer)layer.clearLayers();$(kind+'List').replaceChildren()}}
+$('restToggle').addEventListener('click',()=>setToggle('rest',!state.restOn));
+$('fuelToggle').addEventListener('click',()=>setToggle('fuel',!state.fuelOn));
+async function getRest(b){
+ if(!state.restOn||!restLayer)return 0;
+ const params=new URLSearchParams({f:'json',where:'1=1',outFields:'name,type,state,road_name,heavy_vehicle_area,direction_of_travel,toilet,water',returnGeometry:'true',geometryType:'esriGeometryEnvelope',spatialRel:'esriSpatialRelIntersects',geometry:JSON.stringify({xmin:b.west,ymin:b.south,xmax:b.east,ymax:b.north,spatialReference:{wkid:4326}}),inSR:'4326',outSR:'4326',resultRecordCount:'400'});
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),16000);
+ try{
+ const resp=await fetch(API+'?'+params,{signal:controller.signal});if(!resp.ok)throw Error('rest-area data '+resp.status);
+ const body=await resp.json();if(body.error)throw Error(body.error.message||'rest-area query rejected');
+ if(!Array.isArray(body.features))throw Error('invalid rest-area response');
+ restLayer.clearLayers();const ul=$('restList');ul.replaceChildren();let count=0;let skipped=0;
+ for(const f of body.features){
+ const a=f.attributes||{},lat=Number(f.geometry?.y),lon=Number(f.geometry?.x),hv=String(a.heavy_vehicle_area||'').toUpperCase(),type=String(a.type||'');
+ if(!goodCoord(lat,lon))continue;
+ // No assumption of truck suitability for points lacking positive source classification.
+ if(!['Y','YES','TRUE','1'].includes(hv)&&!/truck|heavy/i.test(type)){skipped++;continue}
+ if(count>=90)break;
+ const name=String(a.name||'Rest area'),road=String(a.road_name||''),direction=String(a.direction_of_travel||''),extras=[road,direction,a.toilet==='Y'?'Toilet reported':null,a.water==='Y'?'Water reported':null].filter(Boolean).join(' · ');
+ pin(restLayer,lat,lon,restColours.rest,'<b>'+sanitize(name)+'</b><br>'+sanitize(extras)+'<br>Heavy-vehicle area flagged; 26 m space not verified.<br><a target="_blank" rel="noopener noreferrer" href="'+around(lat,lon)+'">See location ↗</a>');
+ ul.appendChild(listClick(name+(road?' · '+road:''),lat,lon));count++;
+ }
+ if(!count){const li=document.createElement('li');li.textContent='No positively truck-classified rest areas found here. Try another nearby map area or official rest-area map.';ul.appendChild(li)}
+ return {count,skipped};
+ }finally{clearTimeout(timer)}
+}
+async function getFuel(b){
+ if(!state.fuelOn||!fuelLayer)return 0;
+ // Limit a public Overpass request to the visible extent at regional zoom.
+ const bounds=[b.south,b.west,b.north,b.east].map(x=>Number(x.toFixed(5))).join(',');
+ const query='[out:json][timeout:18];(node["amenity"="fuel"]('+bounds+');way["amenity"="fuel"]('+bounds+'););out center 120;';
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),22000);
+ try{
+ const resp=await fetch('https://overpass.kumi.systems/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:new URLSearchParams({data:query}),signal:controller.signal});
+ if(!resp.ok)throw Error('fuel data '+resp.status);
+ const json=await resp.json();if(!Array.isArray(json.elements))throw Error('invalid fuel response');
+ fuelLayer.clearLayers();const ul=$('fuelList');ul.replaceChildren();let count=0;
+ for(const e of json.elements){
+ const lat=Number(e.lat??e.center?.lat),lon=Number(e.lon??e.center?.lon);if(!goodCoord(lat,lon))continue;
+ const tags=e.tags||{},brand=String(tags.name||tags.brand||'Fuel station'),hrs=tags.opening_hours==='24/7'?'OSM tag: 24/7':tags.opening_hours?'Hours: '+tags.opening_hours:'Hours not verified';
+ const truck=(tags.hgv==='yes'||tags.truck==='yes')?'OSM indicates HGV service (unverified)':'26 m B-double access unverified';
+ pin(fuelLayer,lat,lon,restColours.fuel,'<b>'+sanitize(brand)+'</b><br>'+sanitize(hrs)+'<br>'+sanitize(truck)+'<br><a target="_blank" rel="noopener noreferrer" href="'+around(lat,lon)+'">See location ↗</a>');
+ ul.appendChild(listClick(brand+' · '+hrs,lat,lon));count++;
+ }
+ if(!count){const li=document.createElement('li');li.textContent='No tagged fuel stations found in this map area.';ul.appendChild(li)}return count;
+ }finally{clearTimeout(timer)}
+}
+$('findStops').addEventListener('click',async()=>{
+ if(state.busy)return;if(!map){say('Map is not loaded.',true);return}
+ if(!state.restOn&&!state.fuelOn){say('Switch on rest areas or fuel stations first.',true);return}
+ if(map.getZoom()<8){say('Zoom in to level 8 or more before searching nearby stops. This limits incomplete or overloaded public-data requests.',true);return}
+ const b=mapBox();if(!b){return}
+ if(b.north-b.south>2.4||b.east-b.west>3.1){say('Zoom further into a town or highway section to locate stops.',true);return}
+ state.busy=true;$('findStops').disabled=true;say('Checking official rest areas and community fuel data…');
+ const outputs=await Promise.allSettled([getRest(b),getFuel(b)]);state.busy=false;$('findStops').disabled=false;
+ const good=outputs.filter(o=>o.status==='fulfilled'),bad=outputs.filter(o=>o.status==='rejected');
+ const rr=outputs[0].status==='fulfilled'?outputs[0].value:0,ff=outputs[1].status==='fulfilled'?outputs[1].value:0;
+ const rcount=typeof rr==='object'?rr.count:0;
+ const fcount=typeof ff==='number'?ff:0;
+ let msg=(state.restOn?rcount+' truck-tagged rest areas':'Rest layer off')+' · '+(state.fuelOn?fcount+' fuel stations':'Fuel layer off')+'.';
+ if(bad.length)msg+=' Some public services failed: '+bad.map(o=>o.reason?.message||'unavailable').join('; ');
+ msg+=' Site suitability and road access must be confirmed.';
+ say(msg,bad.length>0);
+});
+function readRouteGeometry(json){
+ const out=[];const collect=coords=>{if(!Array.isArray(coords))return;const points=coords.map(p=>[Number(p?.[1]),Number(p?.[0])]).filter(p=>goodCoord(...p));if(points.length>1)out.push(points)};
+ function visit(g){if(!g||typeof g!=='object')return;if(g.type==='FeatureCollection'){(g.features||[]).forEach(x=>visit(x))}else if(g.type==='Feature')visit(g.geometry);else if(g.type==='LineString')collect(g.coordinates);else if(g.type==='MultiLineString')(g.coordinates||[]).forEach(collect)}
+ visit(json);return out;
+}
+$('routeFile').addEventListener('change',async e=>{
+ const file=e.target.files?.[0];if(!file||!routeLayer||!map)return;
+ if(file.size>5*1024*1024){say('Route file is too large (max 5 MB).',true);return}
+ try{
+ const text=await file.text();let lines=[];
+ if(file.name.toLowerCase().endsWith('.gpx')){
+ const xml=new DOMParser().parseFromString(text,'application/xml');if(xml.getElementsByTagName('parsererror').length)throw Error('GPX XML is invalid');
+ const segments=Array.from(xml.getElementsByTagName('trkseg'));for(const seg of segments){const pts=Array.from(seg.getElementsByTagName('trkpt')).map(p=>[Number(p.getAttribute('lat')),Number(p.getAttribute('lon'))]).filter(p=>goodCoord(...p));if(pts.length>1)lines.push(pts)}
+ if(!lines.length){const pts=Array.from(xml.getElementsByTagName('rtept')).map(p=>[Number(p.getAttribute('lat')),Number(p.getAttribute('lon'))]).filter(p=>goodCoord(...p));if(pts.length>1)lines.push(pts)}
+ }else{lines=readRouteGeometry(JSON.parse(text))}
+ if(!lines.length)throw Error('No GPX track or GeoJSON LineString found');
+ if(lines.reduce((a,x)=>a+x.length,0)>40000)throw Error('Too many route points (limit 40,000)');
+ routeLayer.clearLayers();let bb=L.latLngBounds([]);
+ for(const coords of lines){const line=L.polyline(coords,{color:'#7657d5',weight:5,opacity:.85}).addTo(routeLayer);bb.extend(line.getBounds())}
+ map.fitBounds(bb,{padding:[25,25]});
+ say('Imported route line displayed: '+file.name+'. Not automatically checked against NHVR or restrictions.');
+ }catch(err){say('Could not load route file: '+(err?.message||err),true)}
+ finally{e.target.value=''}
+});
+$('clearLine').addEventListener('click',()=>{if(routeLayer)routeLayer.clearLayers();say('Imported route line cleared.')});
+$('copyJourney').addEventListener('click',async()=>{
+ const text='Start: '+$('origin').value+'\nDestination: '+$('destination').value+'\nTruck: 26 m B-double\nVerify route on https://maps.nhvr.gov.au/';
+ try{if(!navigator.clipboard)throw Error('clipboard not supported');await navigator.clipboard.writeText(text);say('Start and destination copied for checking in NHVR.')}catch(e){say('Could not access clipboard. Copy the two fields manually.',true)}
+});
+})();
+</script>
+</body></html>
