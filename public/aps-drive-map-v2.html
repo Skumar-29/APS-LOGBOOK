@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>APS · Driving map</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#163246}button,input{font:inherit}button{cursor:pointer;touch-action:manipulation}button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #6db7ff;outline-offset:2px}.shell{height:100dvh;min-height:480px;position:relative;overflow:hidden}#map{position:absolute;inset:0;background:#c9e2e7}.top{position:absolute;z-index:3;top:7px;left:7px;right:7px;max-width:620px;filter:drop-shadow(0 3px 9px #163e502b)}.brand{display:flex;justify-content:space-between;align-items:center;background:#0b394a;color:#fff;border-radius:12px 12px 0 0;padding:10px 12px;font-weight:900}.brand small{color:#a9e5d2;font-size:10px}.plan{background:#fff;border-radius:0 0 12px 12px;padding:8px}.field{display:flex;gap:6px;align-items:center;margin-bottom:6px;position:relative}.pin{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;color:white;font-size:11px;font-weight:bold;background:#187dcb}.pin.b{background:#e07a2e}.field input{width:100%;min-width:0;flex:1;border:1px solid #d1dfe8;border-radius:9px;height:40px;padding:8px 10px;background:#f8fbfd}.btn{height:40px;border-radius:9px;border:1px solid #c9d9e5;background:#f1f7f9;color:#124c6a;font-weight:800;padding:0 9px;font-size:11px}.btn.find{background:#13795f;border-color:#13795f;color:#fff}.bar{display:flex;flex-wrap:wrap;gap:6px}.bar a{text-decoration:none;display:grid;place-items:center}.bar .btn{height:34px}.bar .nhvr{background:#1266a8;border-color:#1266a8;color:white}.searchlist{position:absolute;left:28px;right:0;top:calc(100% + 1px);max-height:150px;overflow:auto;background:#fff;border-radius:8px;border:1px solid #c5d9e5;z-index:9;box-shadow:0 5px 12px #183c5029}.searchlist:empty{display:none}.searchlist button{display:block;text-align:left;padding:10px;background:#fff;border:0;border-bottom:1px solid #eaf0f4;width:100%;font-size:12px;color:#214e63}.hint{padding:5px 2px 0;color:#627a88;font-size:10px;line-height:1.4}.controls{position:absolute;z-index:2;right:9px;top:225px;display:grid;gap:9px}.controls button{width:44px;height:44px;background:#fff;color:#16587a;border:1px solid #d4e5ea;border-radius:13px;box-shadow:0 3px 12px #15374b30;font-size:19px}.bottom{position:absolute;z-index:3;bottom:6px;left:6px;right:6px;max-width:680px;background:#fffffff2;border-radius:13px;box-shadow:0 4px 16px #15374b35;backdrop-filter:blur(8px)}.warn{padding:8px 10px 4px;font-size:11px;font-weight:850;color:#895317}.filters{display:flex;gap:5px;padding:5px 9px;overflow-x:auto}.chip{border-radius:18px;border:1px solid #d1e0e8;color:#375f72;background:#f2f7f9;padding:9px 10px;white-space:nowrap;font-size:11px;font-weight:800}.chip.sel{background:#125d79;color:#fff;border-color:#125d79}.near{display:flex;gap:9px;padding:4px 9px 8px;align-items:center}.near #stopStatus{flex:1;font-size:11px;color:#5e7886}.near button{background:#16765b;border:0;color:white;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:850}.cards{display:flex;gap:8px;overflow-x:auto;padding:0 9px 9px}.cards:empty{display:none}.stopcard{min-width:155px;max-width:175px;background:#fff;border:1px solid #dbe5eb;border-radius:9px;text-align:left;padding:9px;color:#224c61}.stopcard strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}.stopcard span{display:block;color:#728795;font-size:10px;margin-top:5px}.safety{border-top:1px solid #f0d59f;padding:6px 9px;background:#fff7e7;color:#79551d;font-size:10px;line-height:1.4}.loading{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;box-shadow:0 3px 13px #193c4b2b;border-radius:10px;padding:16px;text-align:center;color:#396376;font-size:12px}.marker{height:27px;width:27px;background:#147ed3;border:3px solid #fff;border-radius:50%;color:white;display:grid;place-items:center;box-shadow:0 2px 5px #102d4570;font-size:11px;font-weight:900}.marker.b{background:#e07a2e}.gpsmark{height:22px;width:22px;background:#1385e4;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 9px #1385e438,0 2px 7px #183e6570}.maplibregl-ctrl-top-right{top:270px}.maplibregl-ctrl-bottom-right{bottom:208px}
+@media(max-width:580px){.brand{font-size:12px;padding:8px 10px}.plan{padding:7px}.field{gap:4px;margin-bottom:4px}.field input,.btn{height:37px}.bar .btn{height:32px;padding:0 7px}.controls{top:225px}.maplibregl-ctrl-top-right{top:275px}.maplibregl-ctrl-bottom-right{bottom:220px}}
+</style></head>
+<body><div class="shell">
+<div id="map" aria-label="Smooth Australian road map"></div><div id="loading" class="loading" role="status">Opening smooth road map…</div>
+<section class="top" aria-label="Route search"><div class="brand"><b>APS · DRIVING MAP</b><small>26 m B-DOUBLE · BETA</small></div><div class="plan">
+<div class="field"><span class="pin">A</span><input id="origin" aria-label="Starting location" placeholder="Starting location" value="Gilgandra, NSW"><button id="gpsStart" class="btn" title="Use GPS as start" type="button">◎</button><button id="originFind" class="btn find" type="button">Find</button><div id="originResults" class="searchlist" role="listbox"></div></div>
+<div class="field"><span class="pin b">B</span><input id="destination" aria-label="Destination" placeholder="Search destination" value="Willawong QLD"><button id="swap" class="btn" type="button">⇅</button><button id="destinationFind" class="btn find" type="button">Find</button><div id="destinationResults" class="searchlist" role="listbox"></div></div>
+<div class="bar"><button id="follow" class="btn" type="button">◎ Follow GPS</button><button id="showTrip" class="btn" type="button">↗ Show trip</button><button id="mapStyle" class="btn" type="button">◈ Map style</button><a class="btn nhvr" href="https://maps.nhvr.gov.au/" target="_blank" rel="noopener noreferrer">NHVR verify ↗</a></div>
+<div id="status" class="hint" role="status">Search and select locations. GPS and map styling do not verify truck road access.</div>
+</div></section>
+<div class="controls"><button id="recentre" type="button" title="Centre GPS">⌖</button><button id="north" type="button" title="North up">↑</button></div>
+<section class="bottom" aria-label="Truck rest and fuel"><div class="warn">⚠ Yellow major roads ≠ approved 26 m B-double roads. No live traffic.</div>
+<div class="filters"><button id="allFilter" class="chip sel" type="button">All stops</button><button id="restFilter" class="chip" type="button">🚛 Rest areas</button><button id="fuelFilter" class="chip" type="button">⛽ Fuel stations</button><button id="iorFilter" class="chip" type="button">IOR only</button><label class="chip" for="routeFile">+ Route file</label><input type="file" accept=".gpx,.geojson,.json" id="routeFile" style="display:none"></div>
+<div class="near"><span id="stopStatus" role="status">Zoom to a town and find nearby stops.</span><button id="findStops" type="button">Find stops</button></div><div id="stopCards" class="cards"></div>
+<div class="safety">Fuel/rest locations use community map tags and may be incomplete. Check site access, overhead clearances, NHVR conditions, permits and temporary restrictions before driving. Stop safely to interact.</div>
+</section></div>
+<script>
+(async()=>{
+"use strict";
+const $=id=>document.getElementById(id), styles=["bright","liberty","positron","dark"];
+const state={lib:null,map:null,origin:null,destination:null,markers:{},gps:null,watch:null,follow:false,filter:"all",stops:[],route:null,style:0,busy:false,lastSearch:0};
+function msg(s){$("status").textContent=s}function stopMsg(s){$("stopStatus").textContent=s}
+function ok(lat,lon){return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180}
+function storage(k,value){try{if(value===undefined)return localStorage.getItem("aps-map2-"+k);localStorage.setItem("aps-map2-"+k,value)}catch{return null}}
+function savePlace(k,p){storage(k,JSON.stringify(p))}
+function getPlace(k,def){try{const p=JSON.parse(storage(k)||"null");return p&&ok(p.lat,p.lon)?p:def}catch{return def}}
+function spot(name,lat,lon){return {name:String(name).slice(0,200),lat:Number(lat),lon:Number(lon)}}
+function popup(title,desc){const root=document.createElement("div"),h=document.createElement("b"),p=document.createElement("p");h.textContent=title;p.textContent=desc;p.style.fontSize="11px";root.append(h,p);return root}
+function addPlace(k,p,fly=true){
+ if(!p||!ok(p.lat,p.lon)||!state.map)return;
+ state[k]=p;$(k).value=p.name;savePlace(k,p);
+ if(state.markers[k])state.markers[k].remove();
+ const el=document.createElement("div");el.className="marker"+(k==="destination"?" b":"");el.textContent=k==="origin"?"A":"B";
+ state.markers[k]=new state.lib.Marker({element:el}).setLngLat([p.lon,p.lat]).setPopup(new state.lib.Popup({offset:18}).setDOMContent(popup(k==="origin"?"Start":"Destination",p.name))).addTo(state.map);
+ $(k+"Results").replaceChildren();if(fly)state.map.flyTo({center:[p.lon,p.lat],zoom:Math.max(11,state.map.getZoom()),essential:true,duration:750});msg((k==="origin"?"Start":"Destination")+" selected · check NHVR for legal routing.");
+}
+async function search(k){
+ const q=$(k).value.trim(),area=$(k+"Results");area.replaceChildren();
+ if(q.length<3){msg("Enter at least three characters.");return}
+ if(Date.now()-state.lastSearch<1100){msg("Please wait between searches.");return}
+ state.lastSearch=Date.now();msg("Searching "+q+"…");
+ try{const url="https://nominatim.openstreetmap.org/search?"+new URLSearchParams({q,format:"jsonv2",limit:"5",countrycodes:"au"}).toString();
+ const r=await fetch(url,{headers:{Accept:"application/json"}});if(!r.ok)throw Error("Search service "+r.status);
+ const data=await r.json();if(!data.length){msg("No matches. Include suburb and state.");return}
+ for(const p of data){const lat=Number(p.lat),lon=Number(p.lon);if(!ok(lat,lon))continue;const b=document.createElement("button");b.textContent=p.display_name;b.type="button";b.setAttribute("role","option");b.onclick=()=>addPlace(k,spot(p.display_name,lat,lon));area.appendChild(b)}
+ msg("Choose a search result. Remote search runs only when Find is pressed.");
+ }catch(e){msg("Search unavailable. Try again while online ("+String(e.message).slice(0,80)+").")}
+}
+for(const k of ["origin","destination"]){$(k+"Find").onclick=()=>search(k);$(k).onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();search(k)}}}
+function fit(){const p=[state.origin,state.destination].filter(Boolean);if(p.length<2)return;if(p[0].lat===p[1].lat&&p[0].lon===p[1].lon){state.map.flyTo({center:[p[0].lon,p[0].lat],zoom:12});return}state.map.fitBounds([[Math.min(p[0].lon,p[1].lon),Math.min(p[0].lat,p[1].lat)],[Math.max(p[0].lon,p[1].lon),Math.max(p[0].lat,p[1].lat)]],{padding:{top:190,bottom:190,left:35,right:35},maxZoom:12,duration:800})}
+$("showTrip").onclick=fit;
+$("swap").onclick=()=>{const a=state.origin,b=state.destination;if(!a||!b){msg("Choose both locations first.");return}addPlace("origin",b,false);addPlace("destination",a,false);fit()};
+function onLocation(p,asStart=false){
+ const c=p.coords;if(!ok(c.latitude,c.longitude))return;
+ state.gps=[c.longitude,c.latitude];
+ if(!state.markers.gps){const el=document.createElement("div");el.className="gpsmark";state.markers.gps=new state.lib.Marker({element:el}).setLngLat(state.gps).addTo(state.map)}else state.markers.gps.setLngLat(state.gps);
+ if(state.follow)state.map.easeTo({center:state.gps,zoom:Math.max(state.map.getZoom(),14),duration:600});
+ const sp=Number.isFinite(c.speed)?Math.max(0,Math.round(c.speed*3.6))+" km/h":"GPS live";
+ $("follow").textContent=(state.follow?"● Following · ":"◎ Resume · ")+sp;
+ if(asStart)addPlace("origin",spot("Current GPS location",c.latitude,c.longitude),false);
+}
+function startGPS(asStart=false){
+ if(!navigator.geolocation||!window.isSecureContext){msg("GPS requires HTTPS and browser location permission.");return}
+ state.follow=true;
+ if(asStart){navigator.geolocation.getCurrentPosition(p=>onLocation(p,true),e=>msg("GPS unavailable: "+e.message),{enableHighAccuracy:true,timeout:16000});}
+ if(state.watch===null){state.watch=navigator.geolocation.watchPosition(p=>onLocation(p),e=>msg("GPS unavailable: "+e.message),{enableHighAccuracy:true,maximumAge:3000,timeout:16000})}
+ if(state.gps)state.map.flyTo({center:state.gps,zoom:14});
+}
+$("follow").onclick=()=>{if(state.watch!==null&&state.follow){state.follow=false;$("follow").textContent="◎ Resume GPS";msg("Follow paused; you can explore the map.")}else startGPS()};
+$("gpsStart").onclick=()=>startGPS(true);
+$("recentre").onclick=()=>{if(state.gps){state.follow=true;state.map.flyTo({center:state.gps,zoom:14})}else startGPS()};
+$("north").onclick=()=>state.map.easeTo({bearing:0,duration:600});
+$("mapStyle").onclick=()=>{state.style=(state.style+1)%styles.length;storage("style",String(state.style));state.map.setStyle("https://tiles.openfreemap.org/styles/"+styles[state.style]);msg("Using "+styles[state.style]+" road style. Colours do NOT show B-double road approval.")};
+function shown(){return state.stops.filter(x=>state.filter==="all"||x.kind===state.filter||(state.filter==="ior"&&x.kind==="fuel"&&/\bior\b/i.test(x.name+" "+x.brand)))}
+function geo(){return {type:"FeatureCollection",features:shown().map(x=>({type:"Feature",geometry:{type:"Point",coordinates:[x.lon,x.lat]},properties:{kind:x.kind,name:x.name,detail:x.detail}}))}}
+function layer(){
+ const m=state.map;if(!m.isStyleLoaded())return;
+ if(!m.getSource("aps-stops"))m.addSource("aps-stops",{type:"geojson",data:geo(),cluster:true,clusterRadius:55,clusterMaxZoom:13});
+ if(!m.getLayer("aps-groups"))m.addLayer({id:"aps-groups",type:"circle",source:"aps-stops",filter:["has","point_count"],paint:{"circle-radius":19,"circle-color":"#265d7b","circle-stroke-color":"#fff","circle-stroke-width":3}});
+ if(!m.getLayer("aps-count"))m.addLayer({id:"aps-count",type:"symbol",source:"aps-stops",filter:["has","point_count"],layout:{"text-field":["get","point_count_abbreviated"],"text-size":12},"paint":{"text-color":"#fff"}});
+ if(!m.getLayer("aps-stoppoint"))m.addLayer({id:"aps-stoppoint",type:"circle",source:"aps-stops",filter:["!",["has","point_count"]],paint:{"circle-radius":8,"circle-color":["match",["get","kind"],"rest","#148b67","fuel","#e39c27","#6f5bb5"],"circle-stroke-color":"#fff","circle-stroke-width":2}});
+ if(state.route){if(!m.getSource("aps-route"))m.addSource("aps-route",{type:"geojson",data:state.route});if(!m.getLayer("aps-route-line"))m.addLayer({id:"aps-route-line",type:"line",source:"aps-route",paint:{"line-color":"#785acf","line-width":5}})}
+}
+function draw(){
+ const m=state.map;if(m.getSource("aps-stops"))m.getSource("aps-stops").setData(geo());else layer();
+ const list=$("stopCards");list.replaceChildren();
+ const arr=shown();for(const x of arr.slice(0,15)){const b=document.createElement("button");b.className="stopcard";b.type="button";const strong=document.createElement("strong"),desc=document.createElement("span");strong.textContent=(x.kind==="rest"?"🛌 ":"⛽ ")+x.name;desc.textContent=x.detail;b.append(strong,desc);b.onclick=()=>{m.flyTo({center:[x.lon,x.lat],zoom:14});new state.lib.Popup({offset:13}).setLngLat([x.lon,x.lat]).setDOMContent(popup(x.name,x.detail+" · Truck access not verified")).addTo(m)};list.appendChild(b)}
+ stopMsg(arr.length+" places shown. Confirm suitability before arrival.");
+}
+for(const f of ["all","rest","fuel","ior"]){$(f+"Filter").onclick=()=>{state.filter=f;for(const n of ["all","rest","fuel","ior"])$(n+"Filter").classList.toggle("sel",n===f);draw()}}
+async function scan(){
+ if(state.busy)return;const m=state.map,b=m.getBounds();if(m.getZoom()<9||b.getNorth()-b.getSouth()>1.6||b.getEast()-b.getWest()>1.6){stopMsg("Zoom in further (level 9+) to find stops.");return}
+ state.busy=true;$("findStops").disabled=true;stopMsg("Finding nearby stops…");
+ const bbox=[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()].map(x=>x.toFixed(5)).join(",");
+ const q='[out:json][timeout:20];(nwr["amenity"="fuel"]('+bbox+');nwr["highway"="rest_area"]('+bbox+');nwr["highway"="services"]('+bbox+');nwr["amenity"="parking"]["hgv"="yes"]('+bbox+'););out center 180;';
+ let data=null,err=null;
+ for(const service of ["https://overpass.private.coffee/api/interpreter","https://overpass.kumi.systems/api/interpreter"]){const c=new AbortController(),timer=setTimeout(()=>c.abort(),25000);try{const r=await fetch(service,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({data:q}),signal:c.signal});if(!r.ok)throw Error("HTTP "+r.status);data=await r.json();break}catch(e){err=e}finally{clearTimeout(timer)}}
+ state.busy=false;$("findStops").disabled=false;
+ if(!Array.isArray(data?.elements)){stopMsg("Stop data unavailable ("+String(err?.message||"network error").slice(0,80)+"). Try again later.");return}
+ const seen=new Set();state.stops=[];
+ for(const x of data.elements){const lat=Number(x.lat??x.center?.lat),lon=Number(x.lon??x.center?.lon);if(!ok(lat,lon)||seen.has(x.type+":"+x.id))continue;seen.add(x.type+":"+x.id);const t=x.tags||{},kind=t.amenity==="fuel"?"fuel":"rest";state.stops.push({...spot(t.name||t.brand||(kind==="fuel"?"Fuel station":"Rest area"),lat,lon),kind,brand:String(t.brand||""),detail:kind==="fuel"?(t.opening_hours?"Tagged hours: "+t.opening_hours:"Hours not verified"):(t.hgv==="yes"?"HGV parking tagged":"Parking capacity not verified")})}
+ draw();
+}
+$("findStops").onclick=scan;
+$("routeFile").onchange=async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>5000000){stopMsg("Maximum route file: 5 MB.");return}
+ try{const txt=await f.text();let lines=[];
+ if(/\.gpx$/i.test(f.name)){const xml=new DOMParser().parseFromString(txt,"application/xml");if(xml.getElementsByTagName("parsererror").length)throw Error("Invalid GPX");for(const s of xml.getElementsByTagName("trkseg")){const a=Array.from(s.getElementsByTagName("trkpt")).map(p=>[Number(p.getAttribute("lon")),Number(p.getAttribute("lat"))]);if(a.length>1)lines.push(a)}}
+ else{const g=JSON.parse(txt);function walk(v){if(v?.type==="FeatureCollection")v.features?.forEach(walk);else if(v?.type==="Feature")walk(v.geometry);else if(v?.type==="LineString")lines.push(v.coordinates);else if(v?.type==="MultiLineString")v.coordinates?.forEach(x=>lines.push(x))}walk(g)}
+ lines=lines.map(x=>x.filter(p=>ok(Number(p[1]),Number(p[0])))).filter(x=>x.length>1);
+ if(!lines.length||lines.reduce((n,x)=>n+x.length,0)>40000)throw Error("No valid route points or too many points");
+ state.route={type:"FeatureCollection",features:lines.map(coordinates=>({type:"Feature",geometry:{type:"LineString",coordinates},properties:{}}))};layer();
+ const points=lines.flat(),lngs=points.map(p=>p[0]),lats=points.map(p=>p[1]);state.map.fitBounds([[Math.min(...lngs),Math.min(...lats)],[Math.max(...lngs),Math.max(...lats)]],{padding:55,maxZoom:13,duration:800});stopMsg("Route line imported · NOT automatically NHVR-approved.");
+ }catch(err){stopMsg("Invalid route file: "+String(err.message).slice(0,95))}finally{e.target.value=""}
+};
+window.addEventListener("pagehide",()=>{if(state.watch!==null)navigator.geolocation.clearWatch(state.watch)});
+try{
+ const lib=await import("https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs");state.lib=lib;
+ if(!lib.supported())throw Error("WebGL2 is unavailable on this browser.");
+ state.style=Math.max(0,Math.min(3,Number(storage("style"))||0));
+ const m=new lib.Map({container:"map",style:"https://tiles.openfreemap.org/styles/"+styles[state.style],center:[150,-29.5],zoom:5.5,dragRotate:false,pitchWithRotate:false,maxPitch:0});state.map=m;
+ m.touchZoomRotate.disableRotation();
+ m.on("load",()=>{$("loading").style.display="none";m.addControl(new lib.NavigationControl({showCompass:false}),"bottom-right");addPlace("origin",getPlace("origin",spot("Gilgandra, NSW",-31.711,148.661)),false);addPlace("destination",getPlace("destination",spot("Willawong QLD",-27.594,152.987)),false);fit();layer()});
+ m.on("style.load",()=>layer());m.on("dragstart",()=>{state.follow=false});
+ m.on("click","aps-stoppoint",e=>{const f=e.features?.[0];if(!f)return;new lib.Popup({offset:14}).setLngLat(e.lngLat).setDOMContent(popup(String(f.properties.name),String(f.properties.detail)+" · 26 m B-double access unverified")).addTo(m)});
+ m.on("click","aps-groups",async e=>{const f=e.features?.[0],src=m.getSource("aps-stops");if(!f||!src)return;try{const z=await src.getClusterExpansionZoom(f.properties.cluster_id);m.easeTo({center:f.geometry.coordinates,zoom:z})}catch{}});
+ m.on("error",()=>{if($("loading").style.display!=="none")$("loading").textContent="Map tiles unavailable. Check your connection and reload."});
+}catch(e){$("loading").textContent="Map unavailable: "+String(e.message).slice(0,120)+". Use NHVR verify link above.";msg("Try again online. The map must not be used to confirm road access.")}
+})();
+</script></body></html>
