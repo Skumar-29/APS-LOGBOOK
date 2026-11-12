@@ -55,8 +55,8 @@ export function TruckMap() {
           <h2 style={{ margin: "0 0 4px" }}>GPS map & truck stops</h2>
           <p className="small" style={{ margin: 0 }}>Smooth vector map · GPS follow · address search · rest & fuel</p>
         </div>
-        <button className={visible ? "" : "primary"} onClick={() => setVisible(!visible)}>
-          {visible ? "Hide map" : "Open GPS map"}
+        <button className={visible ? "" : "primary"} onClick={() => { if (visible) { setVisible(false); setFullScreen(false); } else { setVisible(true); setFullScreen(true); } }}>
+          {visible ? "Close map" : "Open GPS map · full screen"}
         </button>
       </div>
       <p className="small" style={{ marginBottom: visible ? 10 : 0 }}>
