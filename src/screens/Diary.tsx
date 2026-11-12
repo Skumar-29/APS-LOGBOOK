@@ -4,6 +4,7 @@ import { restExtensionOpportunity } from "../domain/rest-advisor";
 import { protectedRest } from "../domain/protected-rest";
 import { fatigueGuidance } from "../domain/fatigue-guidance";
 import { SmartPlanner } from "./SmartPlanner";
+import { MajorTripPlanner } from "./MajorTripPlanner";
 import { classifyDiaryGesture, isDeliberateDiaryTap } from "../domain/diary-gesture";
 import {warningLines,zoneLabel} from '../domain/warnings';
 import { assessedDay, boundary, atBase } from "../domain/timeline";
@@ -11,7 +12,7 @@ import { operatingRules } from "../domain/catalogue";
 import { useReport } from "../components/useReport";
 import { selectWorkWindow, windowTotals } from "../domain/rules";
 import { displayCivil, civil } from "../domain/time";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../context";
 import {
   audit,
@@ -72,7 +73,11 @@ export function Diary({
     } | null>(null),
     [dragRange, setDragRange] = useState<number[] | null>(null),
     [swipeKind,setSwipeKind] = useState<"work"|"rest"|null>(null),
-    [breach, setBreach] = useState<string[] | null>(null);
+    [breach, setBreach] = useState<string[] | null>(null),
+    [unlockPrompt,setUnlockPrompt] = useState(false),
+    [editUntil,setEditUntil] = useState(0),
+    [editDate,setEditDate] = useState(""),
+    [clockTick,setClockTick] = useState(Date.now());
   const drag = useRef<{
       slot: number;
       kind: Activity;
@@ -82,8 +87,16 @@ export function Diary({
       pointerId: number;
       axis: "pending" | "horizontal" | "vertical";
     } | null>(null);
+  useEffect(()=>{
+    const timer=window.setInterval(()=>setClockTick(Date.now()),5000);
+    const lockOnHide=()=>{if(document.visibilityState==="hidden")setEditUntil(0);};
+    document.addEventListener("visibilitychange",lockOnHide);
+    return ()=>{window.clearInterval(timer);document.removeEventListener("visibilitychange",lockOnHide);};
+  },[]);
   const timeFormat = s.settings.timeFormat || "12h";
-  const clock = civil(Date.now(), d.profile.zone);
+  const clock = civil(clockTick, d.profile.zone);
+  const historic=date<clock.date;
+  const pastLocked=historic && (editDate!==date || clockTick>=editUntil);
   const full = s.settings.fullDay,
     visible = full ? [0, 1, 2, 3] : [period],
     allChanges = changes(d);
@@ -99,7 +112,7 @@ export function Diary({
   const dayBreaches = Object.entries(redSlots).filter(([key]) => key.startsWith(date + ":"));
   const warnings = readOnly || !report ? [] : warningLines(report,date);
   const opportunity = readOnly ? null : restExtensionOpportunity(s,date);
-  const protection = !readOnly && report ? protectedRest(s,date,report.workWindows) : null;
+  const protection = !readOnly && report ? protectedRest(s,date,report.workWindows,Date.now(),report.checks) : null;
   const fatigue = !readOnly && report ? fatigueGuidance(report,d.profile) : null;
   const extra=(minutes:number)=>minutes<60?`${minutes}m`:`${Math.floor(minutes/60)}h${minutes%60?` ${minutes%60}m`:""}`;
   const pageNeedsReview=!readOnly && s.settings.autoPages && d.slots.includes("work") && !page;
@@ -111,8 +124,8 @@ export function Diary({
   }
   async function updateDay(fn: (d: Day) => void, label = "Edit diary") {
     setUndo(null);
-    if (readOnly)
-      throw Error("This paper page is retained as a historical copy.");
+    if (readOnly) throw Error("This paper page is retained as a historical copy.");
+    if (pastLocked || historic && (editDate!==date || Date.now()>=editUntil)) throw Error("Unlock this historical page before editing.");
     await mutate((w) => {
       const day = ensureDay(w, date),
         before = clone(day);
@@ -129,6 +142,7 @@ export function Diary({
     stationary = false,
   ) {
     if (readOnly) throw Error("This page is read only.");
+    if (pastLocked || historic && (editDate!==date || Date.now()>=editUntil)) throw Error("Unlock this historical page before changing Work/Rest.");
     const snapshot: Record<string, Day> = {},
       revisions: Record<string, number> = {},
       automaticPages: string[] = [];
@@ -162,6 +176,7 @@ export function Diary({
   }
   async function undoBlocks() {
     if (!undo) return;
+    if (pastLocked) throw Error("Unlock this historical page before undoing edits.");
     await mutate((w) => {
       for (const [key, before] of Object.entries(undo.before)) {
         if (w.days[key]?.revision !== undo.revisions[key])
@@ -316,6 +331,13 @@ export function Diary({
   return (
     <>
       {graph && summary}
+      {unlockPrompt && <Modal title="Unlock historical diary page" onClose={()=>setUnlockPrompt(false)}>
+        <p>Unlock Work/Rest edits for 15 minutes on this page. One confirmation allows multiple deliberate corrections. Changes are saved with an audit history.</p>
+        <div className="row wrap">
+          <Action onClick={()=>setUnlockPrompt(false)}>Cancel</Action>
+          <Action primary onClick={()=>{setEditDate(date);setEditUntil(Date.now()+15*60*1000);setUnlockPrompt(false);}}>Unlock for 15 minutes</Action>
+        </div>
+      </Modal>}
       {breach && (
         <Modal
           title="Hours warning"
@@ -391,6 +413,26 @@ export function Diary({
         </>
       ) : (
         <>
+          <div className="diary-active-window" aria-label="Active 24-hour window">
+            <strong>ACTIVE 24-HOUR WINDOW</strong>
+            {countedWindow && windowSummary ? <>
+              <div className="diary-active-dates">{displayCivil(countedWindow.start)} – {displayCivil(countedWindow.end)}</div>
+              <div className="row wrap diary-active-data">
+                <span>Work <b>{minutesLabel(windowSummary.work)} / {countedWindow.limit!==null?minutesLabel(countedWindow.limit):"Review"}</b></span>
+                <span>{countedWindow.requiredRest?minutesLabel(countedWindow.requiredRest)+" continuous Rest required":"Rest per current hours option"}</span>
+              </div>
+              <div className="diary-active-progress"><span style={{width:countedWindow.limit?Math.min(100,100*windowSummary.work/countedWindow.limit)+"%":"0%"}}/></div>
+              <details className="diary-active-details"><summary>Overlapping windows &amp; remaining allowances</summary>
+                {report?.workWindows.filter(w=>w.start.slice(0,10)<=date&&w.end>date+" 00:00").map(w=><p key={w.start} className="small">{displayCivil(w.start)}–{displayCivil(w.end)} · Work {minutesLabel(w.work)} · {w.status}</p>)}
+                <Action onClick={onGuide}>NHVR counting guide</Action>
+              </details>
+            </> : <p className="small">Counting history needs review</p>}
+            {error && <div className="row"><span>{error}</span><Action onClick={retry}>Retry</Action></div>}
+            {pageNeedsReview && <p role="status" className="warning-review small">
+              Work saved · {hasEligibleBook?"paper page needs numbering review.":"add an open diary book in Records."}
+            </p>}
+            {warnings.length>0 && <div className="short-warnings" role="status">{warnings.slice(0,3).map(w=><p key={w} className={w.startsWith("Review:")?"warning-review":"bad"}>{w}</p>)}{warnings.length>3 && <details className="diary-active-details"><summary>{warnings.length-3} more warnings</summary>{warnings.slice(3).map(w=><p key={w} className={w.startsWith("Review:")?"warning-review":"bad"}>{w}</p>)}</details>}</div>}
+          </div>
           <section className="card block-card">
             <div className="row wrap block-toolbar">
               <div className="row">
@@ -398,7 +440,7 @@ export function Diary({
 
               </div>
               <div className="row">
-                <Action disabled={!undo || readOnly} onClick={undoBlocks}>
+                <Action disabled={!undo || readOnly || pastLocked} onClick={undoBlocks}>
                   Undo
                 </Action>
               <Action
@@ -413,15 +455,12 @@ export function Diary({
 
               </div>
             </div>
-          <div className="diary-balance-strip" aria-label="Diary hours and remaining allowances">
-            <div><small>Work / Rest</small><strong>{t?minutesLabel(t.work)+" / "+minutesLabel(t.rest):"…"}</strong></div>
-            <div><small>24h Work left</small><strong>{countedWindow&&!countedWindow.review&&!fatigue?.review&&countedWindow.limit!==null?
-              minutesLabel(Math.max(0,countedWindow.limit-countedWindow.work)):"Review"}</strong></div>
-            <div><small>Long/night left</small><strong>{(!fatigue?.review||fatigue?.longNightRemaining===0)&&fatigue?.longNightRemaining!==null&&fatigue?.longNightRemaining!==undefined?
-              minutesLabel(fatigue.longNightRemaining):"—"}</strong></div>
-            <div><small>Next break</small><strong>{!fatigue?.review&&report?.nextBreak!==null&&report?.nextBreak!==undefined?
-              minutesLabel(report.nextBreak):"Review"}</strong></div>
-          </div>
+            {historic && !readOnly && <div className="diary-edit-guard" role="status">
+              <span>{pastLocked?"🔒 Past page locked": "🔓 Editing enabled · auto-lock after 15 min"}</span>
+              <Action onClick={()=>pastLocked?setUnlockPrompt(true):setEditUntil(0)}>
+                {pastLocked?"Unlock to edit":"Lock now"}
+              </Action>
+            </div>}
             <div className="periods">
               {[0, 1, 2, 3].map((p) => (
                 <button
@@ -440,12 +479,6 @@ export function Diary({
               ))}
 
             </div>
-            <div className="diary-colour-key" aria-label="Work and rest block colours">
-              <span><i className="key-reserve"/> Yellow: protect Rest</span>
-              <span><i className="key-project"/> Red ?: Rest conflict</span>
-              <span><i className="key-breach"/> Red !: breach</span>
-              <span><i className="key-future"/> Stripes: planned Work</span>
-            </div>
             {visible.map((p) => (
               <div key={p} className="six-hours diary-grid-section swipe-grid">
                 <div className="swipe-hour-labels">
@@ -453,7 +486,7 @@ export function Diary({
                 </div>
                 <div className="swipe-blocks" role="group" aria-label={`Work and rest, hours ${p*6} to ${(p+1)*6}`}
                   onPointerDown={e=>{
-                    if(readOnly||drag.current||(e.pointerType==="mouse"&&e.button!==0)||!e.isPrimary)return;
+                    if(readOnly||pastLocked||drag.current||(e.pointerType==="mouse"&&e.button!==0)||!e.isPrimary)return;
                     const origin=e.target instanceof Element ? e.target.closest("[data-slot]") : null;
                     if(!origin||!e.currentTarget.contains(origin))return;
                     const start=Number(origin.getAttribute("data-slot"));
@@ -520,16 +553,16 @@ export function Diary({
                     const kind=inDrag&&swipeKind?swipeKind:activity==="work"?"work":"rest";
                     const reasons=kind==="work"?redSlots[date+":"+slot]:undefined;
                     const reserve=kind==="rest"&&protection?.slots[slot]==="reserve";
+                    const projectedBreach=kind==="work"&&!reasons?.length&&protection?.slots[slot]==="conflict";
                     const future = !readOnly && (date > clock.date || date === clock.date && slot >= Math.ceil(clock.slot));
-                    const projected=kind==="work"&&!reasons?.length&&protection?.slots[slot]==="conflict";
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future && kind === "work" ? "future-work" : ""} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length?"breach":""} ${reserve?"protected-rest":""} ${projected?"rest-risk":""}`}
-                      disabled={readOnly} aria-pressed={kind==="work"}
-                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${future && kind === "work" ? ", planned" : ""}${reasons?.length?", detected rule breach":projected?", projected protected Rest conflict":reserve?", suggested protected Rest":""}`}
-                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future && kind === "work" ? "future-work" : ""} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length||projectedBreach?"breach":""} ${reserve?"protected-rest":""}`}
+                      disabled={readOnly || pastLocked} aria-pressed={kind==="work"}
+                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${future && kind === "work" ? ", planned" : ""}${reasons?.length?", detected rule breach":projectedBreach?", projected breach of mandatory continuous Rest":reserve?", suggested protected Rest":""}`}
+                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projectedBreach?" · Projected breach: no continuous major Rest remains before deadline":reserve?" · Protected stationary Rest":""}`}
                       onClick={e=>{
                         // Keyboard Enter/Space are genuine single-block edits.
                         // Pointer taps are handled in onPointerUp, never twice.
-                        if(e.detail===0&&!readOnly)
+                        if(e.detail===0&&!readOnly&&!pastLocked)
                           void blocks(slot,slot+1,activity==="work"?"rest":"work").catch(()=>{});
                       }}
                     />;
@@ -537,6 +570,16 @@ export function Diary({
                 </div>
               </div>
             ))}
+            <div className="diary-colour-key" aria-label="Work and rest block colours">
+              <span><i className="key-work"/> Work</span>
+              <span><i className="key-rest"/> Rest</span>
+              <span><i className="key-reserve"/> Major Rest reserved</span>
+              <span><i className="key-breach"/> Breach</span>
+            </div>
+            <div className="diary-page-totals" aria-label="Page totals">
+              <span>Work <b>{t?minutesLabel(t.work):"…"}</b></span>
+              <span>Rest <b>{t?minutesLabel(t.rest):"…"}</b></span>
+            </div>
           </section>
           {!readOnly && report && <CumulativeLimits report={report} profile={d.profile}/>}
           {(opportunity && (opportunity.majorExtraMinutes>0 || opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0) || protection) &&
@@ -544,7 +587,6 @@ export function Diary({
               {opportunity && opportunity.majorExtraMinutes>0 && <p><strong>Rest opportunity:</strong> {extra(opportunity.majorExtraMinutes)} more stationary Rest completes 7h.</p>}
               {opportunity && opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0 &&
                 <p><strong>Night rest:</strong> Continue for {extra(opportunity.nightExtraMinutes)} more to qualify.</p>}
-              {protection && <p><strong>{date>civil(Date.now(),d.profile.zone).date?"Planned 7h Rest:":"Protect 7h Rest:"}</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest, red = future Work conflict.</p>}
               {fatigue?.guidance.slice(0,2).map((tip,i)=><p key={i} className="small">{tip}</p>)}
               <small>Advisory only · other counting periods and actual stationary Rest still matter.</small>
             </div>}
@@ -554,8 +596,8 @@ export function Diary({
               <span><strong>Night rests</strong> {fatigue.nightRests}/4 · {fatigue.pairMet ? "pair completed" : "pair still needed"}</span>
               {fatigue.review && <small>Review history before relying on remaining hours</small>}
             </div>}
+          {!graph&&!readOnly&&<MajorTripPlanner key={"trip"+date} date={date}/>}
           {!graph&&!readOnly&&<SmartPlanner key={date} date={date}/>}
-          {summary}
           <section className="card">
             <div className="row">
               <h2>Work / rest changes</h2>
@@ -572,7 +614,7 @@ export function Diary({
                     };
                   })
                 }
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
               >
                 + Finish
               </Action>
@@ -596,7 +638,7 @@ export function Diary({
                           <Field
                             label="Odometer"
                             value={c.odometer}
-                            disabled={readOnly}
+                            disabled={readOnly || pastLocked}
                             type="number"
                             min="0"
                             onChange={(v) => {
@@ -607,7 +649,7 @@ export function Diary({
                         <td>
                           <Location
                             value={c.location}
-                            disabled={readOnly}
+                            disabled={readOnly || pastLocked}
                             onChange={(v) => {
                               void change(c, "location", v).catch(() => {});
                             }}
@@ -622,7 +664,7 @@ export function Diary({
                               <Field
                                 label="Rest setting"
                                 value={restTypeAt(restWorkspace, date, c.slot)}
-                                disabled={readOnly}
+                                disabled={readOnly || pastLocked}
                                 options={[
                                   ["unknown", "Rest · type not set"],
                                   ["stationary", "Stationary rest"],
@@ -656,7 +698,7 @@ export function Diary({
             <Field
               label="Rest setting for this page"
               value={d.restDefault==="sleeper-moving" ? "unknown" : d.restDefault || "unknown"}
-              disabled={readOnly}
+              disabled={readOnly || pastLocked}
               options={[
                 ["unknown", "Confirm each break"],
                 ["stationary", "Stationary unless specified"],
@@ -671,7 +713,7 @@ export function Diary({
             <Check
               label="Fit for duty confirmed for this day"
               value={!!d.fitForDuty}
-              disabled={readOnly}
+              disabled={readOnly || pastLocked}
               onChange={(v) => {
                 void updateDay((day) => {
                   day.fitForDuty = v;
@@ -688,7 +730,7 @@ export function Diary({
                     day.vehicle = v;
                   }).catch(() => {});
                 }}
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
               />
               <Field
                 label="Daily check time"
@@ -699,7 +741,7 @@ export function Diary({
                     day.dailyCheckTime = v;
                   }).catch(() => {});
                 }}
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
               />
               <Field
                 label="Comments"
@@ -711,14 +753,14 @@ export function Diary({
                     day.comments = v;
                   }).catch(() => {});
                 }}
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
               />
             </div>
             <p className="small">
               {d.profile.name || "Driver not set"} · {d.profile.scheme} ·{" "}
               {d.profile.twoUp ? "Two-up" : "Solo"} · {d.profile.base}
             </p>
-            <Action onClick={() => setEditingProfile(true)} disabled={readOnly}>
+            <Action onClick={() => setEditingProfile(true)} disabled={readOnly || pastLocked}>
               Edit this day’s driver / rules
             </Action>
           </Fold>
@@ -757,7 +799,7 @@ export function Diary({
                 label="Submitted to record keeper"
                 type="date"
                 value={d.submittedAt}
-                disabled={readOnly}
+                disabled={readOnly || pastLocked}
                 onChange={(v) => {
                   void updateDay((day) => {
                     day.submittedAt = v;

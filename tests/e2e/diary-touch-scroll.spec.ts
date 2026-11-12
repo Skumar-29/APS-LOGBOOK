@@ -40,13 +40,13 @@ async function slotsAndRevision(page:Page){
  }));
 }
 const block=(page:Page,i:number)=>page.locator(`.swipe-block[data-slot="${i}"]`);
-test("all controls fit on phone and balances remain beside the grid",async({page},info)=>{
+test("all controls fit on phone and active window plus page totals remain readable",async({page},info)=>{
  await page.clock.setFixedTime(new Date("2026-11-05T05:00:00Z"));
  await onboard(page);await seed(page);
  const card=page.locator(".block-card");
- await expect(card.getByLabel("Diary hours and remaining allowances")).toBeVisible();
- await expect(card.getByLabel("Diary hours and remaining allowances")).toContainText("Work / Rest");
- await expect(card.getByLabel("Work and rest block colours")).toContainText("Red ?");
+ await expect(page.getByLabel("Active 24-hour window")).toBeVisible();
+ await expect(card.getByLabel("Page totals")).toContainText("Work");
+ await expect(card.getByLabel("Work and rest block colours")).toContainText("Breach");
  const choices=card.locator(".periods button");
  await expect(choices).toHaveCount(4);
  for(let i=0;i<4;i++){

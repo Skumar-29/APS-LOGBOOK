@@ -277,7 +277,7 @@ describe("remaining table requirements", () => {
     expect(r.breachSlots["2026-10-09:46"]).toContain("15m break overdue");
     expect(r.findings.find(f=>f.code==="work-720")?.at).toBe("2026-10-09 11:30");
   });
-  it("requires review of a possible BFM split rest instead of declaring its eligibility", () => {
+  it("does not pre-approve planned BFM split rest as an alternative to 7h", () => {
     const s = fixture();
     for (const [a, b] of [
       [0, 24],
@@ -289,9 +289,9 @@ describe("remaining table requirements", () => {
     const c = r.checks.find(
       (c) => c.label === "1 day" && c.start === "2026-10-09 00:00",
     );
-    expect(c?.status).toBe("Needs review");
-    expect(c?.reason).toContain("split rest");
-    expect(r.nextBreak).toBeNull();
+    expect(c?.status).toBe("Rest due");
+    expect(c?.reason).toContain("7h continuous stationary rest needed");
+    expect(r.breachSlots["2026-10-09:80"]).toContain("7h continuous stationary rest needed");
   });
   it("recognizes a five-hour moving sleeper break only for Standard two-up", () => {
     const s = fixture("Standard", 0);
