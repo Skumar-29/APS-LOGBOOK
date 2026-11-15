@@ -1,6 +1,7 @@
 import { displayCivil, displayDate, civil } from "../domain/time";
 import {profileOn} from "../domain/model";
 import { DrivingStatsDashboard } from "./DrivingStatsDashboard";
+import { accumulatedHoursTable } from "../domain/accumulated-hours";
 import { QuickStats } from "./QuickStats";
 import {statusClass,warningLines,zoneLabel} from '../domain/warnings';
 import { useState } from "react";
@@ -47,8 +48,46 @@ export function Stats({
   );
   const currentProfile=s.days[date]?.profile||s.profile;
   const fatigue=fatigueGuidance(report,currentProfile);
+  const accumulation=accumulatedHoursTable(s,report,currentProfile);
   return (
     <>
+      <section className="card accumulated-hours-card" aria-label="Driver Statistics accumulated hours">
+        <h2>Driver Statistics</h2>
+        <div className="accumulation-table-frame">
+          <div className="accumulation-heading">
+            <strong>14-day accumulated hours</strong>
+            <span>{accumulation.mode}</span>
+          </div>
+          <table className={"accumulation-table"+(accumulation.isBfmSolo?" bfm":"")}>
+            <thead><tr>
+              <th scope="col">Date</th>
+              <th scope="col">Work</th>
+              <th scope="col">Acc</th>
+              <th scope="col">Left</th>
+              {accumulation.isBfmSolo&&<>
+                <th scope="col" title="Seven-day long/night Work">L/N 7d</th>
+                <th scope="col" title="Seven-day long/night Work remaining">L/N left</th>
+              </>}
+            </tr></thead>
+            <tbody>{accumulation.rows.map(row=><tr key={row.date} className={row.date===date?"accumulation-active":""}>
+              <th scope="row"><button className="accumulation-day" onClick={()=>onDate(row.date)} aria-label={"Open diary "+row.date}>{displayDate(row.date).slice(0,5)}</button></th>
+              <td>{s.days[row.date]?minutesLabel(row.work):"—"}</td>
+              <td>{row.hasHistory?minutesLabel(row.accumulated):"≥ "+minutesLabel(row.accumulated)}</td>
+              <td className={row.remaining===0?"accumulation-low":""}>{row.remaining===null?"Review":minutesLabel(row.remaining)}</td>
+              {accumulation.isBfmSolo&&<>
+                <td>{row.longNightUsed===null?"—":minutesLabel(row.longNightUsed)}</td>
+                <td className={row.longNightLeft===0?"accumulation-low":""}>{row.longNightLeft===null?"—":minutesLabel(row.longNightLeft)}</td>
+              </>}
+            </tr>)}</tbody>
+          </table>
+          <p className="accumulation-footnote">
+            Work and Acc show the recorded trailing 14 calendar days. “≥” means the figure is a known minimum;
+            Left shows Review where earlier history is incomplete.
+            {accumulation.isBfmSolo?" L/N is shown only for the currently assessed seven-day rule window.":""}
+          </p>
+        </div>
+        <p className="small accumulation-disclaimer">Calendar totals help planning; NHVR counting periods, major Rest and other limits are assessed separately. This is not clearance to drive.</p>
+      </section>
 
       {liveReport ? <QuickStats s={s} report={liveReport} p={profileOn(s,liveClock.date)} date={liveClock.date}
         onNow={()=>{
