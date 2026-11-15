@@ -1687,3 +1687,60 @@ html { scroll-padding-top:120px; }
   .diary-screen .swipe-blocks {padding-left:35px}
   .diary-screen .swipe-blocks::before,.diary-screen .swipe-blocks::after {font-size:10px;width:33px}
 }
+
+
+/* Compact Driver Statistics 14-day cumulative hours table (phone-first).
+   Real table, no horizontal scrolling at 320px or with larger system text. */
+.accumulated-hours-card {min-width:0;padding:10px 10px 9px}
+.accumulated-hours-card > h2 {font-size:clamp(16px,4vw,19px);margin:0 0 9px}
+.accumulation-table-frame {
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  width:100%;min-width:0;box-sizing:border-box;
+}
+.accumulation-heading {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:3px 10px;padding:10px 8px;
+  background:var(--card);border-bottom:1px solid var(--line);
+  font-size:clamp(11px,2.8vw,13px);line-height:1.35;
+}
+.accumulation-heading > span {font-size:11px;color:var(--muted);font-weight:600}
+.accumulation-table {
+  border-collapse:collapse;table-layout:fixed;width:100%;max-width:100%;
+  font-size:clamp(10px,2.7vw,12px);font-variant-numeric:tabular-nums;
+  line-height:1.25;-webkit-text-size-adjust:100%;text-size-adjust:100%;
+}
+.accumulation-table thead {background:var(--surface,#f5f7f8)}
+.accumulation-table th,.accumulation-table td {
+  padding:7px 3px;text-align:right;border-bottom:1px solid var(--line);
+  white-space:nowrap;min-width:0;overflow:hidden;
+}
+.accumulation-table tr > :first-child {width:24%;text-align:left;padding-left:7px}
+.accumulation-table:not(.bfm) tr > :nth-child(2) {width:24%}
+.accumulation-table:not(.bfm) tr > :nth-child(3) {width:25%}
+.accumulation-table:not(.bfm) tr > :nth-child(4) {width:27%}
+.accumulation-table.bfm {font-size:clamp(9px,2.35vw,11px)}
+.accumulation-table.bfm tr > :first-child {width:19%}
+.accumulation-table.bfm tr > :nth-child(2) {width:15%}
+.accumulation-table.bfm tr > :nth-child(3) {width:15%}
+.accumulation-table.bfm tr > :nth-child(4) {width:16%}
+.accumulation-table.bfm tr > :nth-child(5) {width:17%}
+.accumulation-table.bfm tr > :nth-child(6) {width:18%}
+.accumulation-day {
+  padding:2px 0;border:0;background:transparent;color:var(--text);
+  font:inherit;font-weight:600;text-align:left;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;
+}
+.accumulation-day:focus-visible {outline:2px solid var(--primary);outline-offset:2px}
+.accumulation-active {background:rgba(43,133,193,.085)}
+.accumulation-low {color:#c62828;font-weight:700}
+.accumulation-footnote {
+  padding:8px 9px;margin:0;font-size:10px;line-height:1.45;color:var(--muted);
+  overflow-wrap:anywhere;
+}
+.accumulation-disclaimer {margin:7px 0 0}
+@media(max-width:370px){
+  .accumulated-hours-card {padding:7px 5px}
+  .accumulation-table th,.accumulation-table td {padding:7px 1px}
+  .accumulation-table tr > :first-child {padding-left:4px}
+  .accumulation-table.bfm {font-size:9px}
+}
