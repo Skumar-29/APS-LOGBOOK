@@ -274,11 +274,13 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
           reason=restWarning(rule,p,value);
           addFinding(`rest-${rule.minutes}`,reason,"breach",a,deadline,deadline-1,p);
           mark(Math.max(a,deadline-QUARTER),deadline,reason,p,true);
-          // In addition to the Rest-due finding, colour the actual Work occupying
-          // the final qualifying-rest opportunity. Rest and Work are distinct layers:
-          // a selected Work block that prevents the required 7h is a red breach.
-          if(rule.minutes===1440 && rule.rest===420 && rule.type==="stationary")
-            mark(Math.max(a,deadline-420*MINUTE),deadline,reason,p);
+          // A completed minimum-Rest violation must also identify the selected
+          // Work occupying the final qualifying continuous-rest opportunity.
+          // Applies to each mode's actual table: 7h Solo, 5h Two-up,
+          // 10h at 52h/82h, and mandatory 24h stationary Rest. This is
+          // separate from the yellow future prevention overlay.
+          if(rule.rest>0 && ["stationary","stationary-or-sleeper","weekly"].includes(rule.type))
+            mark(Math.max(a,deadline-rule.rest*MINUTE),deadline,reason,p);
         }
       }
       if(complete && !restMet(runs,a,b,rule,p) && !missing) {
