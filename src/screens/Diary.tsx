@@ -437,9 +437,6 @@ export function Diary({
               </div>
             </div>
           <div className="diary-balance-strip" aria-label="Diary hours and remaining allowances">
-            <div><small>Work / Rest</small><strong>{t?minutesLabel(t.work)+" / "+minutesLabel(t.rest):"…"}</strong></div>
-            <div><small>24h Work left</small><strong>{countedWindow&&!countedWindow.review&&!fatigue?.review&&countedWindow.limit!==null?
-              minutesLabel(Math.max(0,countedWindow.limit-countedWindow.work)):"Review"}</strong></div>
             <div><small>Long/night left</small><strong>{(!fatigue?.review||fatigue?.longNightRemaining===0)&&fatigue?.longNightRemaining!==null&&fatigue?.longNightRemaining!==undefined?
               minutesLabel(fatigue.longNightRemaining):"—"}</strong></div>
             <div><small>Next break</small><strong>{!fatigue?.review&&report?.nextBreak!==null&&report?.nextBreak!==undefined?
