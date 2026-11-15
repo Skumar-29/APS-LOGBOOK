@@ -116,9 +116,13 @@ export function Diary({
     catch { /* Date/book numbering may require manual review. */ }
   }
   async function updateDay(fn: (d: Day) => void, label = "Edit diary") {
-    setUndo(null);
     if (readOnly)
       throw Error("This paper page is retained as a historical copy.");
+    if (!canEditThisPage()) {
+      setPastEditConfirm(true);
+      return;
+    }
+    setUndo(null);
     await mutate((w) => {
       const day = ensureDay(w, date),
         before = clone(day);
