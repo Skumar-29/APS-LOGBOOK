@@ -1484,3 +1484,26 @@ html { scroll-padding-top:120px; }
 .cumulative-limit.bad{border-color:#c62828;background:rgba(198,40,40,.08)}
 .cumulative-range{color:var(--muted);font-size:9px!important}
 @media(max-width:360px){.cumulative-limit{padding:4px}.cumulative-limit>strong{font-size:11px}}
+
+/* Compact centred diary navigation, with page number as the native picker trigger. */
+.workspace-header .diary-day-navigation {
+  display:grid;grid-template-columns:64px minmax(0,1fr) 64px;
+  align-items:center;gap:4px;
+}
+.workspace-header .diary-day-navigation .date-centre {width:100%;min-width:0;text-align:center;}
+.workspace-header .diary-day-navigation .date-centre > span {
+  left:50%;transform:translate(-50%,-50%);font-size:15px;font-weight:750;
+}
+.workspace-header .diary-day-navigation > button {width:100%;min-width:0;min-height:36px;}
+.workspace-header .diary-page-navigation {justify-content:space-between;gap:5px;}
+.workspace-header .diary-page-navigation .page-number-jump {
+  font-weight:750;border:1px solid var(--line);border-radius:8px;
+  background:var(--card);min-width:72px;min-height:30px;
+}
+.workspace-header .diary-page-navigation .page-basis {
+  flex:1;min-width:0;text-align:center;overflow:hidden;text-overflow:ellipsis;
+}
+@media(max-width:360px){
+ .workspace-header .diary-day-navigation {grid-template-columns:52px minmax(0,1fr) 52px;}
+ .workspace-header .diary-page-navigation .page-basis {font-size:9px;}
+}
