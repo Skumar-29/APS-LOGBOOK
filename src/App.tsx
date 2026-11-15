@@ -157,52 +157,24 @@ export default function App() {
         </header>
           {["Diary", "Graph", "Stats"].includes(screen) && (
             <section className="date-nav">
-              <div className="row">
-                <button
-                  aria-label="Previous diary day"
-                  onClick={() => run(() => previous(-1))}
-                >
-                  ‹
-                </button>
-                <span className="civil-input">
-                  <input
-                    lang="en-AU"
-                    aria-label="Diary date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => {
-                      const nextDate = e.currentTarget.value;
-                      run(() => goDate(nextDate));
-                    }}
-                  />
-                  <span aria-hidden="true">{new Date(date + "T12:00:00Z").toLocaleDateString("en-AU", {weekday:"short",timeZone:"UTC"})} {displayDate(date)}</span>
+              <div className="row diary-day-navigation">
+                <button aria-label="Previous diary day" onClick={() => run(() => previous(-1))}>‹</button>
+                <span className="civil-input date-centre">
+                  <input lang="en-AU" aria-label="Diary date" type="date" value={date}
+                    onChange={e=>{const nextDate=e.currentTarget.value;run(()=>goDate(nextDate));}} />
+                  <span aria-hidden="true">{new Date(date+"T12:00:00Z").toLocaleDateString("en-AU",{weekday:"short",timeZone:"UTC"})} {displayDate(date)}</span>
                 </span>
-                <button
-                  aria-label="Next diary day"
-                  onClick={() => run(() => previous(1))}
-                >
-                  ›
-                </button>
-                <Action onClick={() => goDate(today(s.profile.zone))}>
-                  Today
-                </Action>
+                <button aria-label="Next diary day" onClick={() => run(() => previous(1))}>›</button>
               </div>
-              <div className="row">
-                <span className="small">
-                  {page
-                    ? `${s.books.find((b) => b.id === page.bookId)?.number} · Page ${page.number}`
-                    : `${pageProfile.base} · ${pageProfile.scheme}`}
-                </span>
-                {page && <span className="page-basis">{pageProfile.base} · {pageProfile.scheme}</span>}
-                <Action
-                  onClick={() => {
-                    setBookId(page?.bookId || s.books.at(-1)?.id || "");
-                    setJumpNumber("");
+              <div className="row diary-page-navigation">
+                <button className="page-number-jump" type="button" aria-label="Jump to page"
+                  onClick={()=>{
+                    setBookId(page?.bookId||s.books.at(-1)?.id||"");
+                    setJumpNumber(page?.number||"");
                     setJump(true);
-                  }}
-                >
-                  Jump to page
-                </Action>
+                  }}>{page?`Page ${page.number}`:"Page —"}</button>
+                <span className="page-basis">{pageProfile.base} · {pageProfile.scheme}{pageProfile.twoUp?" Two-up":" Solo"}</span>
+                <Action onClick={() => goDate(today(s.profile.zone))}>Today</Action>
               </div>
             </section>
           )}
@@ -380,6 +352,7 @@ export default function App() {
           <Field
             label="Page number"
             value={jumpNumber}
+            options={[["","Select page"],...Array.from({length:101},(_,i)=>[String(i),String(i).padStart(2,"0")])]}
             onChange={setJumpNumber}
           />
           <Action
