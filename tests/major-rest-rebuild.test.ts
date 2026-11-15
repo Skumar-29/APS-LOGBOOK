@@ -36,7 +36,7 @@ describe('NHVR BFM 7h continuous-rest enforcement',()=>{
  it('allows a genuine seven-hour stationary rest and does not raise the same finding',()=>{
   const s=fixture();
   // Stationary rest from 14:00 to 21:00, then Work after the window completes.
-  editRange(s,'2026-11-21',56,62,'rest');
+  editRange(s,'2026-11-21',48,62,'rest');
   const r=analyse(s,'2026-11-21T24:00',3,{now:at('2026-11-22')});
   const w=r.workWindows.find(w=>w.start==='2026-11-20 21:00');
   expect(w?.status).not.toBe('Rest due');
