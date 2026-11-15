@@ -14,6 +14,11 @@ async function chooseDate(page: Page, value: string) {
   await field.fill(value);
   await field.press('Tab');
 }
+async function unlockPast(page: Page) {
+  const button=page.getByRole('button',{name:'Unlock past page',exact:true});
+  await button.click();
+  await page.getByRole('button',{name:'Unlock for 15 minutes',exact:true}).click();
+}
 async function seed(page: Page, state: ReturnType<typeof emptyState>) {
   await page.evaluate(async (workspace) => {
     await new Promise<void>((resolve, reject) => {
@@ -250,17 +255,19 @@ test('backdated Work receives page 25 after 19 October already has page 26',asyn
   s.pages.push({id:'page-26',bookId:'book',number:'26',date:'2026-10-19',status:'Active',reason:''});
   await seed(page,s);
   await chooseDate(page,'2026-10-18');
-  await expect(page.locator('.date-nav')).not.toContainText('Page ');
+  await expect(page.locator('.date-nav')).toContainText('Page —');
   await page.getByText('Paper page & record copy').click();
   await page.getByRole('button',{name:'Allocate page',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Paper page'})).toContainText('Suggested page for 2026-10-18: 25');
   await page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true}).click();
   await expect(page.locator('.date-nav')).toContainText('Page 25');
+  await unlockPast(page);
   await page.locator('.swipe-block[data-slot="0"]').click();
   await expect(page.locator('.swipe-block[data-slot="0"]')).toHaveAttribute('aria-pressed','true');
   await chooseDate(page,'2026-10-19');
   await expect(page.locator('.date-nav')).toContainText('Page 26');
   await chooseDate(page,'2026-10-17');
+  await unlockPast(page);
   await page.locator('.swipe-block[data-slot="0"]').click();
   await expect(page.locator('.date-nav')).toContainText('Page 24');
   await chooseDate(page,'2026-10-20');
@@ -286,6 +293,7 @@ test('a page-numbering conflict does not discard Work blocks or trap the diary',
   await seed(page,s);
   await chooseDate(page,'2026-10-18');
   const slot=page.locator('.swipe-block[data-slot="0"]');
+  await unlockPast(page);
   await slot.click();
   await expect(slot).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('.date-nav')).not.toContainText('Page 26');
@@ -308,6 +316,7 @@ test('Undo restores prior Rest and releases only the new automatic page',async (
   await seed(page,s);
   await chooseDate(page,'2026-10-18');
   const slot=page.locator('.swipe-block[data-slot="0"]');
+  await unlockPast(page);
   await slot.click();
   await expect(slot).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('.date-nav')).toContainText('Page 25');
@@ -317,6 +326,7 @@ test('Undo restores prior Rest and releases only the new automatic page',async (
   await chooseDate(page,'2026-10-19');
   await expect(page.locator('.date-nav')).toContainText('Page 26');
   await chooseDate(page,'2026-10-18');
+  await unlockPast(page);
   await slot.click();
   await expect(page.locator('.date-nav')).toContainText('Page 25');
 });
