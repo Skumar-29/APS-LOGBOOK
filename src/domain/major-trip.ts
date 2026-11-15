@@ -1,6 +1,6 @@
 import type {Workspace} from './model';
 import {analyse,selectCheckSummaries,selectWorkWindow} from './rules';
-import {civil,instantFor,MINUTE} from './time';
+import {instantFor,MINUTE} from './time';
 import {operatingRules} from './catalogue';
 
 export interface MajorTripPreset {
@@ -22,7 +22,7 @@ export function estimateMajorTrip(
  mode:'one-way'|'return',date:string,time:string,liveNow=Date.now(),
 ):MajorTripEstimate {
  const p=s.days[date]?.profile||s.profile;
- if(!/^([01]\\d|2[0-3]):(00|15|30|45)$/.test(time))throw Error('Select a 15-minute departure time.');
+ if(!/^([01]\d|2[0-3]):(00|15|30|45)$/.test(time))throw Error('Select a 15-minute departure time.');
  if(!Number.isFinite(preset.workHours)||!Number.isFinite(preset.restHours)||
   preset.workHours<=0||preset.restHours<0||preset.workHours>168||preset.restHours>168||
   preset.workHours*4%1!==0||preset.restHours*4%1!==0)
