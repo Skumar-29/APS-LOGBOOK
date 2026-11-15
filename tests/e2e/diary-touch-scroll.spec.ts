@@ -139,3 +139,46 @@ test("cancelled horizontal gesture and diagonal movement save nothing",async({pa
  await diagonal.dispatchEvent("pointerup",{pointerId:92,pointerType:"touch",isPrimary:true,clientX:90,clientY:452});
  expect(await slotsAndRevision(page)).toEqual(before);
 });
+
+
+test("all controls fit in portrait and landscape with enlarged interface text",async({page},info)=>{
+ await page.clock.setFixedTime(new Date("2026-11-05T05:00:00Z"));
+ await page.setViewportSize({width:390,height:844});
+ await onboard(page);await seed(page);
+ await expect(page.locator(".swipe-grid")).toHaveCount(4);
+ await expect(page.locator(".swipe-block")).toHaveCount(96);
+ await page.evaluate(()=>{
+   document.documentElement.style.fontSize="24px";
+   document.body.style.fontSize="24px";
+ });
+ const portrait=await page.evaluate(()=>{
+   const grid=document.querySelector(".swipe-blocks")!,block=document.querySelector(".swipe-block")!;
+   const rect=block.getBoundingClientRect();
+   return {labels:[getComputedStyle(grid,"::before").content,getComputedStyle(grid,"::after").content],
+     height:rect.height,background:getComputedStyle(block).backgroundImage,
+     inner:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth};
+ });
+ expect(portrait.labels).toEqual(['"Work"','"Rest"']);
+ expect(portrait.height).toBeGreaterThanOrEqual(72);
+ expect(portrait.background).toContain("linear-gradient");
+ expect(portrait.scroll).toBeLessThanOrEqual(portrait.inner+3);
+ await page.screenshot({path:`test-results/responsive-portrait-${info.project.name}.png`,fullPage:true});
+ await page.setViewportSize({width:844,height:390});
+ const landscape=await page.evaluate(()=>{
+   const grid=document.querySelector(".swipe-blocks")!,block=document.querySelector(".swipe-block")!;
+   const rect=block.getBoundingClientRect();
+   return {label:getComputedStyle(grid,"::before").content,height:rect.height,
+     width:rect.width,columns:getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+     inner:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth};
+ });
+ expect(landscape.label).toBe("none");
+ expect(landscape.height).toBeLessThanOrEqual(45);
+ expect(landscape.columns).toBe(24);
+ expect(landscape.width).toBeGreaterThan(15);
+ expect(landscape.scroll).toBeLessThanOrEqual(landscape.inner+3);
+ await expect(page.locator(".swipe-block")).toHaveCount(96);
+ await page.screenshot({path:`test-results/responsive-landscape-${info.project.name}.png`,fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await expect(block(page,5)).toHaveAttribute("aria-pressed","true");
+ await expect(block(page,35)).toHaveAttribute("aria-pressed","true");
+});
