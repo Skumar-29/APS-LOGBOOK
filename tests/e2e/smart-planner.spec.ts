@@ -83,6 +83,7 @@ test("major trip estimates save and compare one-way vs return without editing Wo
  await page.clock.setFixedTime(new Date("2026-11-02T04:00:00Z"));
  await onboard(page);await seed(page,fixture());
  await page.getByRole("button",{name:"Diary",exact:true}).click();
+ await expect(page.locator("[aria-label='Page totals']")).toContainText("Work 7h 00m");
  const before=await page.locator("[aria-label='Page totals']").textContent();
  await page.getByText("Plan next job",{exact:true}).click();
  await page.getByText("Major trips",{exact:true}).click();
