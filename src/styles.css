@@ -1507,3 +1507,15 @@ html { scroll-padding-top:120px; }
  .workspace-header .diary-day-navigation {grid-template-columns:52px minmax(0,1fr) 52px;}
  .workspace-header .diary-page-navigation .page-basis {font-size:9px;}
 }
+
+/* Saved major-trip budget planner, compact and independently collapsible. */
+.major-trip-planner {margin:0 0 9px;border:1px solid var(--line);border-radius:9px;background:var(--card);}
+.major-trip-planner > summary {padding:8px 10px;cursor:pointer;font-size:12px;}
+.major-trip-body {padding:6px 10px 10px;display:flex;flex-direction:column;gap:6px;}
+.major-trip-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+.major-trip-fields > span,.major-trip-fields > small {min-width:0;overflow-wrap:anywhere;}
+.major-trip-actions {gap:5px;}
+.major-trip-actions button {min-height:34px;}
+.major-trip-result {border-top:1px solid var(--line);padding-top:8px;font-size:12px;line-height:1.4;}
+.major-trip-result p {margin:4px 0;}
+@media(max-width:350px){.major-trip-fields {grid-template-columns:1fr;}}
