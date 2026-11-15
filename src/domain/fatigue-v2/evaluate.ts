@@ -3,7 +3,8 @@ import {counted,incomplete,countWork, type TimelineRun} from "../timeline";
 import {operatingRules} from "../catalogue";
 import type {Profile} from "../model";
 import {policyFor} from "./registry";
-import {anchorsFor,continuousRest,restEpisodesV2,hasUncertainRest,nightEventsV2,restRequirementV2,stationaryTwentyFours} from "./rest-and-anchors";
+import {anchorsFor,continuousRest,restEpisodesV2,restRequirementV2} from "./rest-and-anchors";
+import {checkpointSegments} from "./checkpoint";
 import type {DriverRules,RuleDecision,WindowRule} from "./types";
 
 export interface V2Violation {
@@ -88,16 +89,16 @@ function ruleCheck(runs:TimelineRun[],rule:WindowRule,a:number,through:number,mo
  const durationCompleted=b>=deadline;
  let status:RuleDecision["status"]="open",reason="",breachAt:number|undefined;
  if(rule.maxWorkMinutes!==null && work>rule.maxWorkMinutes&&!incomplete(runs,a,b)){
-  status="breach";reason=`${format(rule.periodMinutes)} Work cap exceeded`;
+  status="breach";reason=rule.periodMinutes===1440?"24h work limit exceeded":rule.periodMinutes>=1440?`${rule.periodMinutes/1440} days work limit exceeded`:`${format(rule.minimumRestMinutes)} break overdue`;
   breachAt=firstExcess(runs,a,b,rule.maxWorkMinutes);
  } else if(durationCompleted&&!rest.satisfied){
   if(unknown){status="review";reason="Earlier records or Rest classification need checking";}
-  else{status="breach";reason=`${format(rule.minimumRestMinutes)} required Rest not met`;}
+  else{status="breach";reason=rule.rest==="stationary"?`${format(rule.minimumRestMinutes)} continuous stationary rest needed`:rule.rest==="stationary-or-approved-moving-sleeper"?`${format(rule.minimumRestMinutes)} continuous qualifying rest needed`:`${format(rule.minimumRestMinutes)} required Rest not met`;}
  } else if(!durationCompleted&&rule.minimumRestMinutes>0&&!rest.satisfied
    && (rule.rest==="stationary"||rule.rest==="stationary-or-approved-moving-sleeper")
    && possibleContinuousRest(runs,a,b,deadline,rule)<rule.minimumRestMinutes){
   if(unknown){status="review";reason="Confirm Rest before accepting further Work";}
-  else{status="breach";reason=`${format(rule.minimumRestMinutes)} continuous Rest is no longer possible`;}
+  else{status="breach";reason=rule.rest==="stationary"?`${format(rule.minimumRestMinutes)} continuous stationary rest needed`:`${format(rule.minimumRestMinutes)} continuous qualifying rest needed`;}
  } else if(unknown) {status="review";reason="Incomplete history or unconfirmed Rest type";}
  else if(durationCompleted) status="ok";
  return {ruleId:rule.id,start:a,end:deadline,assessedThrough:b,workMinutes:work,
@@ -173,32 +174,37 @@ export function evaluateNHVR(runs:TimelineRun[],through:number,profile:Profile):
   const fallback=phase.start;
   const relevantAnchors=anchorsFor(runs,{id:"ln7",periodMinutes:10080,maxWorkMinutes:2160,
     minimumRestMinutes:0,rest:"none",anchor:"fallback-any-rest"},phase.profile.zone);
-  for(const a of relevantAnchors.length?relevantAnchors:[fallback]){
+  for(const a of [...new Set([fallback,...relevantAnchors])]){
    if(a>=through || a+10080*MINUTE<phase.start)continue;
    const covered=[...selected].filter(x=>x>=a&&x<Math.min(through,a+10080*MINUTE)).sort((x,y)=>x-y);
    if(a<=through&&a+10080*MINUTE>through)longNightMinutes=Math.max(longNightMinutes,covered.length*15);
+   decisions.push({ruleId:"long-night-7",start:a,end:a+10080*MINUTE,assessedThrough:Math.min(through,a+10080*MINUTE),
+     workMinutes:covered.length*15,restMinutes:0,maxWorkMinutes:2160,minimumRestMinutes:0,
+     status:covered.length*15>2160?"breach":a+10080*MINUTE<=through?"ok":"open",
+     reason:covered.length*15>2160?"36h long/night work exceeded":"",uncertain:false});
    if(covered.length*15>2160){
     const excess=covered[144];
-    addViolation(violations,a,a+10080*MINUTE,excess,"36h long/night Work exceeded","long-night-7",
+    addViolation(violations,a,a+10080*MINUTE,excess,"36h long/night work exceeded","long-night-7",
       phase.mode!,"breach",excess,Math.min(through,a+10080*MINUTE));
    }
   }
  }
- // 84h Work checkpoint: the FIRST 24h stationary break must occur no later
- // than 84h Work, and the fortnight also needs a DISTINCT second 24h break.
+ // Preserve historical 84h breaches even after later 24h stationary Rest.
+ // An unknown stretch capable of containing 24h Rest bounds a possible reset
+ // but never becomes a confirmed qualifying stationary break.
  let checkpoint84:V2Evaluation["checkpoint84"]=null;
  if(profile.scheme==="BFM"&&!profile.twoUp){
-  const stationary=stationaryTwentyFours(runs,runs[0]?.start??through,through);
-  const since=stationary.at(-1)?.end??runs[0]?.start??through;
-  const work=workMinutes(runs,since,through);
-  const exact=!!stationary.length&&!incomplete(runs,since,through);
-  checkpoint84={since,work,exact};
-  if(work>5040){
-   const capAt=firstExcess(runs,since,through,5040);
-   addViolation(violations,since,through,capAt,"84h Work since qualifying 24h stationary Rest exceeded",
-      "bfm-84",policyFor(profile)!,"breach",capAt,through);
+  const segments=checkpointSegments(runs,through),current=segments.at(-1);
+  checkpoint84=current?{since:current.from,work:current.work,exact:current.exact}:
+    {since:through,work:0,exact:false};
+  for(const segment of segments){
+   if(segment.work<=5040)continue;
+   const capAt=firstExcess(runs,segment.from,segment.to,5040);
+   addViolation(violations,segment.from,segment.to,capAt,"84 hours work exceeded",
+     "work-84",policyFor(profile)!,"breach",capAt,segment.to);
   }
-  if(!exact)issues.push("BFM 84h checkpoint needs earlier verified 24h stationary Rest history");
+  if(!checkpoint84.exact)
+   issues.push("BFM 84h checkpoint needs earlier verified 24h stationary Rest history");
  }
  if(!runs.length||incomplete(runs,Math.max(through-20160*MINUTE,runs[0].start),through))
   issues.push("Earlier diary records incomplete");
