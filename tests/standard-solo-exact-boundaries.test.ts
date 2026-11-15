@@ -2,6 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {emptyState,ensureDay} from '../src/domain/model';
 import {editRange} from '../src/domain/diary';
 import {analyse} from '../src/domain/rules';
+import {buildTimeline,counted} from '../src/domain/timeline';
 import {instantFor} from '../src/domain/time';
 
 const zone='Australia/Sydney',day='2026-11-12';
@@ -39,10 +40,12 @@ describe('NHVR Standard Solo exact 15-minute rows and boundaries',()=>{
  });
  it('8h: 7h30m Work and exactly two separate 15m Rests pass',()=>{
   const s=setup();work(s,[24,36],[37,48],[49,56]);
-  const r=evaluate(s,'14:00'),c=row(r,'8h 00m');
-  expect(c?.work).toBe(450);
-  expect(c?.rest).toBe(30);
-  expect(c?.status).toBe('Within work cap');
+  const r=evaluate(s,'14:00');
+  const timeline=buildTimeline(s,day+'T14:00',instantFor(day,'14:00',zone)[0]);
+  const a=instantFor(day,'06:00',zone)[0],b=instantFor(day,'14:00',zone)[0];
+  expect(counted(timeline.runs,a,b,'work')).toBe(450);
+  expect(counted(timeline.runs,a,b,'rest')).toBe(30);
+  expect(r.findings.some(f=>f.code==='work-480'&&f.severity==='breach')).toBe(false);
  });
  it('8h: one 15m Rest and 7h45m Work breach both limits',()=>{
   const s=setup();work(s,[24,36],[37,56]);
@@ -53,10 +56,12 @@ describe('NHVR Standard Solo exact 15-minute rows and boundaries',()=>{
  });
  it('11h: 10h Work with four separate 15m Rests passes the exact boundary',()=>{
   const s=setup();work(s,[24,34],[35,45],[46,56],[57,67]);
-  const r=evaluate(s,'17:00'),c=row(r,'11h 00m');
-  expect(c?.work).toBe(600);
-  expect(c?.rest).toBe(60);
-  expect(c?.status).toBe('Within work cap');
+  const r=evaluate(s,'17:00');
+  const timeline=buildTimeline(s,day+'T17:00',instantFor(day,'17:00',zone)[0]);
+  const a=instantFor(day,'06:00',zone)[0],b=instantFor(day,'17:00',zone)[0];
+  expect(counted(timeline.runs,a,b,'work')).toBe(600);
+  expect(counted(timeline.runs,a,b,'rest')).toBe(60);
+  expect(r.findings.some(f=>f.code==='work-660'&&f.severity==='breach')).toBe(false);
  });
  it('11h: 10h15m Work and only 45m Rest breaches',()=>{
   const s=setup();work(s,[24,38],[40,54],[55,68]);
