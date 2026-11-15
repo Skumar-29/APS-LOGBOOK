@@ -52,7 +52,8 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
  const findings:Finding[]=[];
  for(const v of evaluation.violations){
   const p=profile,at=atBase(v.at,p.zone);
-  const finding={id:`${v.ruleId}:${v.start}:${v.end}:${v.mode}`,code:v.ruleId,message:v.message,
+  const findingCode=v.ruleId==="daily-24"?"rest-1440":v.ruleId==="fortnight-14"?"work-20160":v.ruleId;
+  const finding={id:`${v.ruleId}:${v.start}:${v.end}:${v.mode}`,code:findingCode,message:v.message,
    severity:v.certainty==="breach"?"breach":"review",start:atBase(v.start,p.zone),
    end:atBase(v.end,p.zone),at,date:at.slice(0,10),zone:p.zone,instant:v.at} satisfies Finding;
   findings.push(finding);
@@ -106,7 +107,7 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
    r.end-r.start>=majorLength*MINUTE).at(-1);
  const nights=nightEventsV2(runs,through-20160*MINUTE,through,profile.zone);
  const lastStationary24=episodes.filter(r=>r.known&&r.physical==="stationary"&&r.end-r.start>=1440*MINUTE).at(-1);
- const workSince24=counted(runs,lastStationary24?.end??runs[0]?.start??through,through,"work");
+ const workSince24=profile.scheme==="BFM"&&!profile.twoUp&&evaluation.checkpoint84?evaluation.checkpoint84.work:counted(runs,lastStationary24?.end??runs[0]?.start??through,through,"work");
  const currentBfm=profile.scheme==="BFM"&&!profile.twoUp;
  const issues=[...new Set([...evaluation.issues,...findings.filter(x=>x.severity!=="due").map(f=>f.message)])];
  // Unknown history, missing classifications and accreditation must never
