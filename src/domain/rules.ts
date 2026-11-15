@@ -376,8 +376,30 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
     synthetic.push({rule,p:profile,a:through,b:through,deadline:through+rule.minutes*MINUTE,established:true,review:false,row});
   }
   const budgets=[...active,...synthetic];
-  const unresolvedSplit=evaluations.some(e=>e.row.reason==="Check BFM split rest" && !runs.some(r=>r.kind==="rest"&&r.rest==="stationary"&&!r.review&&r.start>=e.b&&r.end-r.start>=420*MINUTE));
-  if(unresolvedSplit) issues.push("Check BFM split rest");
+  // R-03: diagnostic only. The 2026 diary instructs 24h counting forward
+  // from relevant major Rest; it is NOT established that every arbitrary
+  // sliding 24h period is a statutory counting period. A mismatch must withhold
+  // positive availability until the authoritative interpretation is resolved,
+  // but must not be displayed as a confirmed legal breach.
+  if(profile.scheme==="Standard"&&!profile.twoUp&&operatingRules(profile)==="HVNL") {
+    const candidates=workPackets(provenRuns,profile.zone)
+      .filter(packet=>packet.end>Math.max(displayFrom,through-7*1440*MINUTE)&&packet.end<=through);
+    for(const packet of candidates) {
+      const a=packet.end-1440*MINUTE,b=packet.end;
+      if(a<(runs[0]?.start??b)||incomplete(runs,a,b) ||
+        runs.some(r=>r.end>a&&r.start<b&&
+          (r.kind==="rest"&&r.rest==="unknown" || !sameRules(r.profile,profile)))) continue;
+      const countedWork=provenWork(a,b);
+      if(countedWork<=720)continue;
+      const anchoredExcess=evaluations.some(e=>e.rule.minutes===1440&&e.p.scheme==="Standard"&&!e.p.twoUp
+        &&e.row.status==="Exceeded"&&e.a<=packet.start&&packet.start<e.deadline);
+      if(anchoredExcess)continue;
+      const text="24h rolling cross-check exceeds 12h but major-rest counting differs · R-03 review required";
+      addFinding("cross-check-24",text,"review",a,b,packet.start,profile);
+      issues.push(text);
+      break;
+    }
+  }
   const importantReview=issues.length>0 || active.some(e=>e.review);
   const budgetFor=(e:Evaluation,duration:number)=>{
     const until=through+duration*MINUTE,workEnd=Math.min(until,e.deadline);
