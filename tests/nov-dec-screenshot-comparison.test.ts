@@ -40,6 +40,12 @@ describe('32-day November–December visual comparison reproduction',()=>{
   expect(w!.status).toBe('Rest due');
   expect(r.findings.some(f=>f.code==='rest-1440'&&f.severity==='breach'&&f.start===prior)).toBe(true);
  });
+ it('does not invent confirmed fatigue breaches across the reference schedule through 16 December',()=>{
+  const r=audit(prepare('reference'),'2026-12-16');
+  const breaches=r.findings.filter(f=>f.severity==='breach');
+  if(breaches.length)console.info('32-day reference discrepancies:',JSON.stringify(breaches.slice(0,30)));
+  expect(breaches).toEqual([]);
+ });
  it.each(['2026-11-21','2026-12-05'])('recognises qualifying seven-hour rest in the comparison schedule %s',date=>{
   const s=prepare('reference');
   const r=audit(s,date);
