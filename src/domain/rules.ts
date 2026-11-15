@@ -347,6 +347,18 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
   const cutoffDay=civil(through,profile.zone).date;
   const relevantFrom=Math.max(through-20160*MINUTE,currentReset);
   const missingHistory=incomplete(runs,relevantFrom,through) || !runs.length || runs[0].start>relevantFrom;
+  // R-01: exact short-Rest rounding at sub-quarter transitions is unresolved.
+  // Do not promote a completed <15-minute recorded Rest into qualifying time,
+  // silently assign its residual minutes to a different activity, or grant
+  // positive availability based on an ambiguous counted-work allocation.
+  // The original activity remains immutable; the counting question is reviewable.
+  const fractionalRest=episodes.find(e=>e.end<through && e.end>relevantFrom &&
+    (e.end-e.start)%QUARTER!==0 && runs.some(next=>next.kind==="work"&&next.start===e.end));
+  if(fractionalRest) {
+    const warning="R-01: completed Rest does not align to 15-minute counting · confirm counted Work";
+    issues.push(warning);
+    addFinding("rounding-rest-review",warning,"review",fractionalRest.start,fractionalRest.end,fractionalRest.end,profile);
+  }
   if(missingHistory) issues.push("Check earlier records · incomplete history");
   if(runs.some(r=>r.end>relevantFrom&&r.kind==="rest"&&r.rest==="unknown")) issues.push("Confirm rest type");
   if(runs.some(r=>r.end>relevantFrom&&(r.clock||r.review&&s.days[civil(r.start,r.profile.zone).date]?.clockReview)) || t.clockReview) issues.push("Check clock-change records");
