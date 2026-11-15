@@ -352,7 +352,7 @@ export default function App() {
           <Field
             label="Page number"
             value={jumpNumber}
-            options={[["","Select page"],...Array.from({length:101},(_,i)=>[String(i),String(i).padStart(2,"0")])]}
+            options={[["","Select page"],...Array.from({length:101},(_,i)=>[String(i),String(i).padStart(2,"0")] as [string,string])]}
             onChange={setJumpNumber}
           />
           <Action
