@@ -37,15 +37,15 @@ const raw = `
 `.trim();
 function decode(value:string) {
  const blocks=value.split(',').flatMap(part=>{
-  const match=/^([WR])(\\d+)$/.exec(part.trim());
+  const match=/^([WR])(\d+)$/.exec(part.trim());
   if(!match)throw Error('Bad screenshot fixture segment '+part);
   return Array(Number(match[2])).fill(match[1] as 'W'|'R');
  });
  if(blocks.length!==96) throw Error('Screenshot day is not 96 blocks: '+value+' -> '+blocks.length);
  return blocks;
 }
-export const screenshotComparison = raw.split('\\n').map(line=>{
- const match=/^(\\d{4}-\\d{2}-\\d{2}) (.+?) \\| (.+)$/.exec(line.trim());
+export const screenshotComparison = raw.split('\n').map(line=>{
+ const match=/^(\d{4}-\d{2}-\d{2}) (.+?) \| (.+)$/.exec(line.trim());
  if(!match)throw Error('Bad screenshot fixture line '+line);
  const reference=decode(match[2]),aps=decode(match[3]==='='?match[2]:match[3]);
  return {date:match[1],reference,aps,
