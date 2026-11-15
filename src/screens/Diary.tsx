@@ -466,8 +466,7 @@ export function Diary({
             </div>
             <div className="diary-colour-key" aria-label="Work and rest block colours">
               <span><i className="key-reserve"/> Yellow: protect Rest</span>
-              <span><i className="key-project"/> Red ?: Rest conflict</span>
-              <span><i className="key-breach"/> Red !: breach</span>
+              <span><i className="key-breach"/> Red: breach / planned breach</span>
               <span><i className="key-future"/> Stripes: planned Work</span>
             </div>
             {visible.map((p) => (
@@ -546,10 +545,10 @@ export function Diary({
                     const reserve=kind==="rest"&&protection?.slots[slot]==="reserve";
                     const future = !readOnly && (date > clock.date || date === clock.date && slot >= Math.ceil(clock.slot));
                     const projected=kind==="work"&&!reasons?.length&&protection?.slots[slot]==="conflict";
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future && kind === "work" ? "future-work" : ""} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length?"breach":""} ${reserve?"protected-rest":""} ${projected?"rest-risk":""}`}
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future && kind === "work" ? "future-work" : ""} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length||projected?"breach":""} ${reserve?"protected-rest":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
-                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${future && kind === "work" ? ", planned" : ""}${reasons?.length?", detected rule breach":projected?", projected protected Rest conflict":reserve?", suggested protected Rest":""}`}
-                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
+                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${future && kind === "work" ? ", planned" : ""}${reasons?.length?", detected rule breach":projected?", planned major-rest breach":reserve?", suggested protected Rest":""}`}
+                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Planned Work prevents required 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
                       onClick={e=>{
                         // Keyboard Enter/Space are genuine single-block edits.
                         // Pointer taps are handled in onPointerUp, never twice.
@@ -568,7 +567,7 @@ export function Diary({
               {opportunity && opportunity.majorExtraMinutes>0 && <p><strong>Rest opportunity:</strong> {extra(opportunity.majorExtraMinutes)} more stationary Rest completes 7h.</p>}
               {opportunity && opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0 &&
                 <p><strong>Night rest:</strong> Continue for {extra(opportunity.nightExtraMinutes)} more to qualify.</p>}
-              {protection && <p><strong>{date>civil(Date.now(),d.profile.zone).date?"Planned 7h Rest:":"Protect 7h Rest:"}</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest, red = future Work conflict.</p>}
+              {protection && <p><strong>{date>civil(Date.now(),d.profile.zone).date?"Planned 7h Rest:":"Protect 7h Rest:"}</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest; red Work is a planned major-rest breach.</p>}
               {fatigue?.guidance.slice(0,2).map((tip,i)=><p key={i} className="small">{tip}</p>)}
               <small>Advisory only · other counting periods and actual stationary Rest still matter.</small>
             </div>}
