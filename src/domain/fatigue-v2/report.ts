@@ -16,7 +16,7 @@ function legacyStatus(status:string,reason:string):Check["status"]{
  if(status==="review")return "Needs review";
  if(status==="open")return "Open period";
  if(status==="ok")return "Within work cap";
- return /work cap|hours work|84h|long\\/night/i.test(reason)?"Exceeded":"Rest due";
+ return ["work cap","hours work","84h","long/night"].some(term=>reason.toLowerCase().includes(term))?"Exceeded":"Rest due";
 }
 function pushSlot(target:Record<string,string[]>,key:string,reason:string){
  target[key]||=[];if(!target[key].includes(reason))target[key].push(reason);
