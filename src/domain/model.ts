@@ -202,6 +202,13 @@ export interface Audit {
   before?: unknown;
   after?: unknown;
 }
+/** Reusable manual trip estimates. Minutes are stored to preserve quarter-hour precision. */
+export interface TripTemplate {
+  id:string;
+  name:string;
+  workMinutes:number;
+  restMinutes:number;
+}
 export interface Workspace {
   app: "Truck Workspace";
   schema: 2;
@@ -217,6 +224,7 @@ export interface Workspace {
   timer: Timer | null;
   activities: Array<Timer & { end: number }>;
   registry: Registry[];
+  tripTemplates?: TripTemplate[];
   invoices: Invoice[];
   invoiceSettings: InvoiceSettings;
   forms: FormRecord[];
@@ -306,6 +314,7 @@ export function emptyState(): Workspace {
     timer: null,
     activities: [],
     registry: [],
+    tripTemplates: [],
     invoices: [],
     invoiceSettings: {
       profile: {},

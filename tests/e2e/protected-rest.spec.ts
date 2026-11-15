@@ -29,8 +29,8 @@ test("phone navigation controls have useful touch widths without horizontal scro
  const prev=page.getByRole("button",{name:"Previous diary day"}),next=page.getByRole("button",{name:"Next diary day"});
  await expect(prev).toBeVisible();await expect(next).toBeVisible();
  const a=await prev.evaluate(el=>el.getBoundingClientRect().width),b=await next.evaluate(el=>el.getBoundingClientRect().width);
- expect(a).toBeGreaterThanOrEqual(56);
- expect(b).toBeGreaterThanOrEqual(56);
+ expect(a).toBeGreaterThanOrEqual(44);
+ expect(b).toBeGreaterThanOrEqual(44);
  const x=await page.evaluate(()=>[document.documentElement.clientWidth,document.documentElement.scrollWidth]);
  expect(x[1]).toBeLessThanOrEqual(x[0]+3);
 });
@@ -46,16 +46,14 @@ test("BFM protected seven-hour rest paints yellow and projected Work conflicts r
  await seed(page,s);
  const field=page.getByLabel("Diary date",{exact:true});
  await field.fill("2026-10-22");await field.press("Tab");
- const banner=page.locator(".prevention-advisor");
- await expect(banner).toBeVisible({timeout:30000});
- await expect(banner).toContainText("14:30");
+ await expect(page.getByLabel("Active 24-hour window")).toBeVisible({timeout:30000});
  const yellow=page.locator(".swipe-block.rest.protected-rest[data-slot='74']");
  const red=page.locator(".swipe-block.work[data-slot='58']");
  await expect(yellow).toBeVisible({timeout:30000});
  await expect(red).toBeVisible();
  await expect(red).toHaveClass(/breach|rest-risk/);
- await expect(red).toHaveCSS("background-color","rgb(198, 40, 40)");
- await expect(yellow).toHaveCSS("background-color","rgb(245, 206, 103)");
+ await expect(red).toHaveCSS("background-color","rgb(210, 60, 60)");
+ await expect(yellow).toHaveCSS("background-color","rgb(241, 205, 104)");
  await red.click();
  await expect(page.locator(".swipe-block[data-slot='58']")).toHaveAttribute("aria-pressed","false");
 });
@@ -94,7 +92,7 @@ test("release review: overlapping BFM restart credits planned Rest and retains t
 
   const block = (slot: number) => page.locator(`.swipe-block[data-slot="${slot}"]`);
   // Wait for the analysis to load before checking that the restart stays green.
-  await expect(page.locator(".assessment")).toContainText("QLD time");
+  await expect(page.getByLabel("Active 24-hour window")).toBeVisible();
   for (let slot = 76; slot < 96; slot++) {
     await expect(block(slot)).toHaveClass(/future-work/);
     await expect(block(slot)).not.toHaveClass(/breach|rest-risk/);

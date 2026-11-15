@@ -51,7 +51,7 @@ test('release review: planned Work stays striped and red breaches survive mixed 
  ensureDay(s,'2026-11-05').restDefault='stationary';editRange(s,'2026-11-05',0,96,'work');await seed(page,s);
  const future=page.locator('.swipe-block[data-slot="80"]');
  await expect(future).toHaveClass(/future-work/);await expect(future).toHaveClass(/breach/);
- await expect(future).toHaveCSS('background-color','rgb(198, 40, 40)');
+ await expect(future).toHaveCSS('background-color','rgb(210, 60, 60)');
  await expect(future).not.toHaveCSS('background-image','none');
  await expect(page.locator('.swipe-block[data-slot="0"]')).not.toHaveClass(/future-work/);
  const earlier=await page.locator('.swipe-block.breach:not(.future-work)').count();expect(earlier).toBeGreaterThan(0);

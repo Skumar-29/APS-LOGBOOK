@@ -9,6 +9,10 @@ async function onboard(page: Page) {
   await page.getByLabel('Driver base', { exact: true }).selectOption('QLD');
   await page.getByRole('button', { name: 'Save driver settings', exact: true }).click();
 }
+async function unlockHistoric(page:Page) {
+  await page.getByRole('button',{name:'Unlock to edit'}).click();
+  await page.getByRole('button',{name:'Unlock for 15 minutes'}).click();
+}
 async function chooseDate(page: Page, value: string) {
   const field = page.getByLabel('Diary date', { exact: true });
   await field.fill(value);
@@ -68,13 +72,13 @@ test('work-rest validation: elapsed breaches appear solid red and no future fore
   await chooseDate(page, '2026-10-11');
   const breach = page.locator('.swipe-block.work.breach').first();
   await expect(breach).toBeVisible({timeout:30000});
-  await expect(breach).toHaveCSS('background-color', 'rgb(198, 40, 40)');
+  await expect(breach).toHaveCSS('background-color', 'rgb(210, 60, 60)');
   await expect(page.locator('[aria-label="Planned page totals"]')).toHaveCount(0);
-  await expect(page.locator('.window-summary > summary')).not.toContainText('Planned');
+  await expect(page.getByLabel('Active 24-hour window')).toBeVisible();
 });
 
 
-test('past, current and future blocks are editable without time locking', async ({ page }) => {
+test('current and future blocks remain editable; historical blocks require one timed unlock', async ({ page }) => {
   // 00:20 UTC = 10:20 in the driver's Queensland base on 11 October.
   await page.clock.setFixedTime(new Date('2026-10-11T00:20:00Z'));
   await onboard(page);
@@ -119,8 +123,12 @@ test('past, current and future blocks are editable without time locking', async 
   await slot(0).click();
   await expect(slot(0)).toHaveAttribute('aria-pressed', 'false');
 
-  // A historical entry is still editable.
+  // A historical page stays immutable until the deliberate 15-minute unlock.
   await chooseDate(page, '2026-10-10');
+  await expect(slot(90)).toBeDisabled();
+  await expect(slot(90)).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button',{name:'Unlock to edit'}).click();
+  await page.getByRole('button',{name:'Unlock for 15 minutes'}).click();
   await expect(slot(90)).toBeEnabled();
   await slot(90).click();
   await expect(slot(90)).toHaveAttribute('aria-pressed', 'true');
@@ -149,10 +157,10 @@ test('mixed earlier and later selections retain red breaches, without locking fu
   await expect(page.locator('.swipe-block[data-slot="80"]')).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('[aria-label="Page totals"]')).toContainText('22h 00m');
   await expect(page.locator('[aria-label="Page totals"]')).toContainText('2h 00m');
-  await expect(page.getByText('Counted through 20/10/2026 00:00')).toBeVisible();
+  await expect(page.getByLabel('Active 24-hour window')).toBeVisible();
   const breach=page.locator('.swipe-block.work.breach').first();
   await expect(breach).toBeVisible({timeout:30000});
-  await expect(breach).toHaveCSS('background-color','rgb(198, 40, 40)');
+  await expect(breach).toHaveCSS('background-color','rgb(210, 60, 60)');
   await expect(page.locator('.swipe-block[data-slot="80"]')).toBeEnabled();
 
   await page.reload();
@@ -176,7 +184,7 @@ test('settings effective date reapplies BFM to a previously saved Standard day w
   editRange(s,'2026-10-19',0,52,'work');
   await seed(page,s);
   await chooseDate(page,'2026-10-19');
-  await expect(page.locator('.date-nav')).toContainText('NSW · Standard');
+  await expect(page.locator('.date-nav')).toContainText('NSW base');
   await expect(page.locator('.swipe-block.work')).toHaveCount(52);
 
   await page.getByRole('button',{name:'More',exact:true}).click();
@@ -190,17 +198,17 @@ test('settings effective date reapplies BFM to a previously saved Standard day w
   await page.getByLabel('Certificate expiry',{exact:true}).fill('2027-12-31');
   await page.getByRole('button',{name:'Save driver settings',exact:true}).click();
 
-  await expect(page.locator('.date-nav')).toContainText('QLD · BFM');
+  await expect(page.locator('.date-nav')).toContainText('QLD base');
   await expect(page.locator('.base-clock time')).toHaveAttribute('aria-label','QLD base time');
   await expect(page.locator('.swipe-block.work')).toHaveCount(52);
-  await expect(page.locator('.assessment')).toContainText('QLD time');
+  await expect(page.locator('.diary-page-selector')).toContainText('QLD base');
 
   await page.reload();
   await chooseDate(page,'2026-10-19');
-  await expect(page.locator('.date-nav')).toContainText('QLD · BFM');
+  await expect(page.locator('.date-nav')).toContainText('QLD base');
   await expect(page.locator('.swipe-block.work')).toHaveCount(52);
   await chooseDate(page,'2026-10-18');
-  await expect(page.locator('.date-nav')).toContainText('NSW · Standard');
+  await expect(page.locator('.date-nav')).toContainText('NSW base');
   await expect(page.locator('.swipe-block.work')).toHaveCount(4);
 });
 
@@ -246,17 +254,19 @@ test('backdated Work receives page 25 after 19 October already has page 26',asyn
   s.pages.push({id:'page-26',bookId:'book',number:'26',date:'2026-10-19',status:'Active',reason:''});
   await seed(page,s);
   await chooseDate(page,'2026-10-18');
-  await expect(page.locator('.date-nav')).not.toContainText('Page ');
+  await expect(page.locator('.date-nav')).toContainText('Page —');
   await page.getByText('Paper page & record copy').click();
   await page.getByRole('button',{name:'Allocate page',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Paper page'})).toContainText('Suggested page for 2026-10-18: 25');
   await page.getByRole('dialog',{name:'Paper page'}).getByRole('button',{name:'Allocate',exact:true}).click();
   await expect(page.locator('.date-nav')).toContainText('Page 25');
+  await unlockHistoric(page);
   await page.locator('.swipe-block[data-slot="0"]').click();
   await expect(page.locator('.swipe-block[data-slot="0"]')).toHaveAttribute('aria-pressed','true');
   await chooseDate(page,'2026-10-19');
   await expect(page.locator('.date-nav')).toContainText('Page 26');
   await chooseDate(page,'2026-10-17');
+  await unlockHistoric(page);
   await page.locator('.swipe-block[data-slot="0"]').click();
   await expect(page.locator('.date-nav')).toContainText('Page 24');
   await chooseDate(page,'2026-10-20');
@@ -281,6 +291,7 @@ test('a page-numbering conflict does not discard Work blocks or trap the diary',
   );
   await seed(page,s);
   await chooseDate(page,'2026-10-18');
+  await unlockHistoric(page);
   const slot=page.locator('.swipe-block[data-slot="0"]');
   await slot.click();
   await expect(slot).toHaveAttribute('aria-pressed','true');
@@ -303,6 +314,7 @@ test('Undo restores prior Rest and releases only the new automatic page',async (
   s.pages.push({id:'p26',bookId:'book',number:'26',date:'2026-10-19',status:'Active',reason:''});
   await seed(page,s);
   await chooseDate(page,'2026-10-18');
+  await unlockHistoric(page);
   const slot=page.locator('.swipe-block[data-slot="0"]');
   await slot.click();
   await expect(slot).toHaveAttribute('aria-pressed','true');
@@ -313,6 +325,7 @@ test('Undo restores prior Rest and releases only the new automatic page',async (
   await chooseDate(page,'2026-10-19');
   await expect(page.locator('.date-nav')).toContainText('Page 26');
   await chooseDate(page,'2026-10-18');
+  await unlockHistoric(page);
   await slot.click();
   await expect(page.locator('.date-nav')).toContainText('Page 25');
 });
@@ -333,7 +346,7 @@ test('Statistics matches Diary for a saved full day even when some Work is after
   await expect(page.getByRole('heading',{name:'Statistics'})).toBeVisible();
   await page.getByText("Calendar history & night Rest",{exact:true}).click();
   await expect(page.locator('.stat-day').last()).toContainText('W 18h 00m · R 6h 00m');
-  await expect(page.getByText('Counted through 20/10/2026 00:00')).toBeVisible();
+  await expect(page.getByLabel('Quick driving availability and rest deadlines')).toBeVisible();
 });
 
 
@@ -350,22 +363,22 @@ test('Next and Previous always navigate calendar days even when physical pages a
   );
   await seed(page,s);
   await chooseDate(page,'2026-10-19');
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-19');
   await page.getByRole('button',{name:'Next diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-20');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-20');
   await page.getByRole('button',{name:'Next diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-21');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-21');
   await page.getByRole('button',{name:'Next diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-22');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-22');
   await page.getByRole('button',{name:'Previous diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-21');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-21');
   await chooseDate(page,'2026-10-19');
   await page.getByRole('button',{name:'Previous diary day'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-18');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-18');
   await page.getByRole('button',{name:'Jump to page'}).click();
-  await page.getByRole('dialog',{name:'Jump to paper page'}).getByLabel('Page number').fill('26');
+  await page.getByRole('dialog',{name:'Jump to paper page'}).getByLabel('Scroll to page number').selectOption('26');
   await page.getByRole('dialog',{name:'Jump to paper page'}).getByRole('button',{name:'Go to page'}).click();
-  await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
+  await expect(page.getByLabel('Diary date',{exact:true})).toHaveValue('2026-10-19');
 });
 
 test('time format can switch 12-hour / 24-hour labels and survives a refresh', async ({ page }) => {

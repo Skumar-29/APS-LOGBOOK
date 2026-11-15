@@ -21,7 +21,7 @@ test('release review: cumulative 84h excess starts at 06:45 without a prior 24h 
  const s=novemberCumulative();for(let n=0;n<6;n++)fourteenHours(s,dateAdd('2026-11-06',n));editRange(s,'2026-11-12',27,28,'work');
  await seed(page,s);await date(page,'2026-11-12');
  await expect(cell(page,27)).toHaveClass(/breach/);await expect(cell(page,27)).toHaveAttribute('title',/84 hours work exceeded/);
- await expect(cell(page,27)).toHaveCSS('background-color','rgb(198, 40, 40)');
+ await expect(cell(page,27)).toHaveCSS('background-color','rgb(210, 60, 60)');
  const totals=page.getByLabel('Cumulative work and breach totals');
  await expect(totals).toContainText('84h 15m');await expect(totals).toContainText('Exceeded');
  await expect(page.locator('.short-warnings')).toContainText('84 hours work exceeded');
@@ -48,7 +48,7 @@ test('release review: cumulative 7d night breach and zero remaining cannot be hi
  // At midnight the earliest 7-day window expires. Its red breach remains;
  // the next active window contains 36h, rather than resetting to zero.
  await expect(row).toContainText('36h 00m / 36h');await expect(row).toContainText('At limit');
- await expect(page.locator('.diary-balance-strip')).toContainText('0h 00m');
+ await expect(page.getByLabel('Active 24-hour window')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(()=>document.documentElement.clientWidth)+2);
  await page.screenshot({path:info.outputPath('7-day-night-excess.png'),fullPage:true});
 });
@@ -57,5 +57,5 @@ test('release review: cumulative recorded 14d excess remains visible when period
  await seed(page,s);await date(page,'2026-11-17');
  await expect(page.locator('.cumulative-limit').filter({hasText:'14d Work'})).toContainText('Recorded excess · review period');
  await expect(page.locator('.short-warnings')).toContainText('14 days recorded work exceeds limit');
- await expect(page.locator('.diary-balance-strip')).toContainText('Review');
+ await expect(page.locator('.short-warnings')).toContainText('Review:');
 });

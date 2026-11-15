@@ -232,8 +232,9 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
       const w=work(a,b),value=requiredValue(runs,a,b,rule),complete=deadline<=b;
       const missing=incomplete(runs,a,b),typesUnknown=rule.minutes>=1440&&rule.rest>0&&runs.some(r=>r.end>a&&r.start<b&&r.kind==="rest"&&r.rest==="unknown");
       const mixed=runs.some(r=>r.end>a&&r.start<b&&r.kind!==null&&!sameRules(r.profile,p)&&!compatibleOptions(r.profile,p));
-      const split=p.scheme==="BFM"&&!p.twoUp&&rule.minutes===1440&&value>=360&&value<420&&rest(a,b)>=480;
-      const uncertain=!established || missing || mixed || typesUnknown || split;
+      // BFM split rest is only a defence for an unplanned event; it cannot
+      // replace the mandatory 7h continuous stationary Rest in a planned diary.
+      const uncertain=!established || missing || mixed || typesUnknown;
       let status:Check["status"]="Open period",reason="",at=b;
       if(rule.limit!==null && provenWork(a,b)>rule.limit && established && !mixed) {
         status="Exceeded";
@@ -266,14 +267,18 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
         }
         addFinding(`work-review-${rule.minutes}`,reason,"review",a,deadline,at,p);
       } else if(uncertain) {
-        status="Needs review";reason=split?"Check BFM split rest":mixed?"Check rule change":!established||missing?"Check earlier records":"Confirm rest type";
-        if(complete && split) addFinding("split-rest",reason,"review",a,deadline,b,p);
+        status="Needs review";reason=mixed?"Check rule change":!established||missing?"Check earlier records":"Confirm rest type";
       } else if(complete) {
         status=restMet(runs,a,b,rule,p)?"Within work cap":"Rest due";
         if(status==="Rest due") {
           reason=restWarning(rule,p,value);
           addFinding(`rest-${rule.minutes}`,reason,"breach",a,deadline,deadline-1,p);
-          mark(Math.max(a,deadline-QUARTER),deadline,reason,p,true);
+          // A rest shortfall must be visible on the Work that prevents the
+          // last possible continuous major break, never on Rest cells.
+          // The last opportunity is conservative: additional earlier Work
+          // might also need changing in order to satisfy every overlap.
+          if((rule.type==="stationary"||rule.type==="stationary-or-sleeper") && rule.rest>0)
+            mark(Math.max(a,deadline-rule.rest*MINUTE,phase.start),deadline,reason,p);
         }
       }
       if(complete && !restMet(runs,a,b,rule,p) && !missing) {
