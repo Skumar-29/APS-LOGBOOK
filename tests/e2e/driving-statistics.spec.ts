@@ -33,6 +33,14 @@ test("Driving statistics dashboard renders requested fields on desktop and phone
  editRange(s,"2026-11-01",0,16,"work");
  await seed(page,s);
  await page.getByRole("button",{name:"Stats",exact:true}).click();
+ const cumulative=page.getByLabel("Driver Statistics accumulated hours");
+ await expect(cumulative).toBeVisible();
+ await expect(cumulative).toContainText("14-day accumulated hours");
+ await expect(cumulative.getByRole("columnheader",{name:"Work",exact:true})).toBeVisible();
+ await expect(cumulative.getByRole("columnheader",{name:"Acc",exact:true})).toBeVisible();
+ await expect(cumulative.getByRole("columnheader",{name:"Left",exact:true})).toBeVisible();
+ await expect(cumulative.locator("tbody tr")).toHaveCount(14);
+ await expect(cumulative.getByRole("columnheader",{name:"L/N 7d"})).toBeVisible();
  const quick=page.getByLabel("Quick driving availability and rest deadlines");
  await expect(quick).toBeVisible();
  await expect(quick.getByText("Next required breaks")).toBeVisible();
@@ -61,4 +69,25 @@ test("Driving statistics dashboard renders requested fields on desktop and phone
  const checked=await PDFDocument.load(await readFile(file));
  expect(checked.getPageCount()).toBe(1);
   await page.screenshot({path:`test-results/driving-statistics-${info.project.name}.png`,fullPage:true});
+});
+
+test("GPS map and truck stop finder are absent from Driving; cumulative Stats table fits a narrow phone",async({page})=>{
+ await page.clock.setFixedTime(new Date("2026-11-15T08:00:00Z"));
+ await page.setViewportSize({width:345,height:800});
+ await onboard(page);
+ await page.getByRole("button",{name:"Driving",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Start work",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Hours review"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:/GPS map|truck stops/i})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Open GPS map/i})).toHaveCount(0);
+ await page.getByRole("button",{name:"Stats",exact:true}).click();
+ const card=page.getByLabel("Driver Statistics accumulated hours");
+ await expect(card).toBeVisible();
+ await expect(card.locator("tbody tr")).toHaveCount(14);
+ const widths=await page.evaluate(()=>{
+  const table=document.querySelector(".accumulation-table")!.getBoundingClientRect();
+  return {tableRight:table.right,viewport:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth};
+ });
+ expect(widths.tableRight).toBeLessThanOrEqual(widths.viewport+2);
+ expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+3);
 });
