@@ -418,8 +418,7 @@ export function Diary({
                 {!readOnly && date<clock.date &&
                   <Action onClick={()=>setPastEditConfirm(true)}>
                     {canEditThisPage()?"Editing unlocked":"Unlock past page"}
-                  </Action>
-
+                  </Action>}
               </div>
               <div className="row">
                 <Action disabled={!undo || readOnly} onClick={undoBlocks}>
