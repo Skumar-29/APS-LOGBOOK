@@ -26,7 +26,7 @@ describe('Major Work/Rest trip estimate',()=>{
  });
  it('does not approve a multiday Solo trip with fewer than 7h total Rest',()=>{
   const s=fixture(),now=instantFor('2026-11-15','08:00',zone)[0];
-  const result=estimateMajorTrip(s,{name:'Short rest',workHours:20,restHours:3},'one-way','2026-11-15','20:00',now);
+  const result=estimateMajorTrip(s,{name:'Short rest',workHours:22,restHours:3},'one-way','2026-11-15','20:00',now);
   expect(result.status).toBe('Not enough estimated rest');
  });
  it('rejects invalid quarter-hour estimates and departure times',()=>{
