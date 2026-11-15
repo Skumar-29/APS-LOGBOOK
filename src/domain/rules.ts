@@ -232,8 +232,9 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
       const w=work(a,b),value=requiredValue(runs,a,b,rule),complete=deadline<=b;
       const missing=incomplete(runs,a,b),typesUnknown=rule.minutes>=1440&&rule.rest>0&&runs.some(r=>r.end>a&&r.start<b&&r.kind==="rest"&&r.rest==="unknown");
       const mixed=runs.some(r=>r.end>a&&r.start<b&&r.kind!==null&&!sameRules(r.profile,p)&&!compatibleOptions(r.profile,p));
-      const split=p.scheme==="BFM"&&!p.twoUp&&rule.minutes===1440&&value>=360&&value<420&&rest(a,b)>=480;
-      const uncertain=!established || missing || mixed || typesUnknown || split;
+      // An unplanned BFM split-rest defence cannot be presumed from a diary entry or future plan.
+      // The ordinary 7h continuous stationary-rest requirement remains enforceable.
+      const uncertain=!established || missing || mixed || typesUnknown;
       let status:Check["status"]="Open period",reason="",at=b;
       if(rule.limit!==null && provenWork(a,b)>rule.limit && established && !mixed) {
         status="Exceeded";
@@ -266,14 +267,20 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
         }
         addFinding(`work-review-${rule.minutes}`,reason,"review",a,deadline,at,p);
       } else if(uncertain) {
-        status="Needs review";reason=split?"Check BFM split rest":mixed?"Check rule change":!established||missing?"Check earlier records":"Confirm rest type";
-        if(complete && split) addFinding("split-rest",reason,"review",a,deadline,b,p);
+        status="Needs review";reason=mixed?"Check rule change":!established||missing?"Check earlier records":"Confirm rest type";
       } else if(complete) {
         status=restMet(runs,a,b,rule,p)?"Within work cap":"Rest due";
         if(status==="Rest due") {
           reason=restWarning(rule,p,value);
           addFinding(`rest-${rule.minutes}`,reason,"breach",a,deadline,deadline-1,p);
           mark(Math.max(a,deadline-QUARTER),deadline,reason,p,true);
+          // A completed minimum-Rest violation must also identify the selected
+          // Work occupying the final qualifying continuous-rest opportunity.
+          // Applies to each mode's actual table: 7h Solo, 5h Two-up,
+          // 10h at 52h/82h, and mandatory 24h stationary Rest. This is
+          // separate from the yellow future prevention overlay.
+          if(rule.rest>0 && ["stationary","stationary-or-sleeper","weekly"].includes(rule.type))
+            mark(Math.max(a,deadline-rule.rest*MINUTE),deadline,reason,p);
         }
       }
       if(complete && !restMet(runs,a,b,rule,p) && !missing) {
@@ -340,6 +347,18 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
   const cutoffDay=civil(through,profile.zone).date;
   const relevantFrom=Math.max(through-20160*MINUTE,currentReset);
   const missingHistory=incomplete(runs,relevantFrom,through) || !runs.length || runs[0].start>relevantFrom;
+  // R-01: exact short-Rest rounding at sub-quarter transitions is unresolved.
+  // Do not promote a completed <15-minute recorded Rest into qualifying time,
+  // silently assign its residual minutes to a different activity, or grant
+  // positive availability based on an ambiguous counted-work allocation.
+  // The original activity remains immutable; the counting question is reviewable.
+  const fractionalRest=episodes.find(e=>e.end<through && e.end>relevantFrom &&
+    (e.end-e.start)%QUARTER!==0 && runs.some(next=>next.kind==="work"&&next.start===e.end));
+  if(fractionalRest) {
+    const warning="R-01: completed Rest does not align to 15-minute counting · confirm counted Work";
+    issues.push(warning);
+    addFinding("rounding-rest-review",warning,"review",fractionalRest.start,fractionalRest.end,fractionalRest.end,profile);
+  }
   if(missingHistory) issues.push("Check earlier records · incomplete history");
   if(runs.some(r=>r.end>relevantFrom&&r.kind==="rest"&&r.rest==="unknown")) issues.push("Confirm rest type");
   if(runs.some(r=>r.end>relevantFrom&&(r.clock||r.review&&s.days[civil(r.start,r.profile.zone).date]?.clockReview)) || t.clockReview) issues.push("Check clock-change records");
@@ -371,8 +390,30 @@ export function analyse(s:Workspace,asOf:string,range=14,options:{now?:number;li
     synthetic.push({rule,p:profile,a:through,b:through,deadline:through+rule.minutes*MINUTE,established:true,review:false,row});
   }
   const budgets=[...active,...synthetic];
-  const unresolvedSplit=evaluations.some(e=>e.row.reason==="Check BFM split rest" && !runs.some(r=>r.kind==="rest"&&r.rest==="stationary"&&!r.review&&r.start>=e.b&&r.end-r.start>=420*MINUTE));
-  if(unresolvedSplit) issues.push("Check BFM split rest");
+  // R-03: diagnostic only. The 2026 diary instructs 24h counting forward
+  // from relevant major Rest; it is NOT established that every arbitrary
+  // sliding 24h period is a statutory counting period. A mismatch must withhold
+  // positive availability until the authoritative interpretation is resolved,
+  // but must not be displayed as a confirmed legal breach.
+  if(profile.scheme==="Standard"&&!profile.twoUp&&operatingRules(profile)==="HVNL") {
+    const candidates=workPackets(provenRuns,profile.zone)
+      .filter(packet=>packet.end>Math.max(displayFrom,through-7*1440*MINUTE)&&packet.end<=through);
+    for(const packet of candidates) {
+      const a=packet.end-1440*MINUTE,b=packet.end;
+      if(a<(runs[0]?.start??b)||incomplete(runs,a,b) ||
+        runs.some(r=>r.end>a&&r.start<b&&
+          (r.kind==="rest"&&r.rest==="unknown" || !sameRules(r.profile,profile)))) continue;
+      const countedWork=provenWork(a,b);
+      if(countedWork<=720)continue;
+      const anchoredExcess=evaluations.some(e=>e.rule.minutes===1440&&e.p.scheme==="Standard"&&!e.p.twoUp
+        &&e.row.status==="Exceeded"&&e.a<=packet.start&&packet.start<e.deadline);
+      if(anchoredExcess)continue;
+      const text="24h rolling cross-check exceeds 12h but major-rest counting differs · R-03 review required";
+      addFinding("cross-check-24",text,"review",a,b,packet.start,profile);
+      issues.push(text);
+      break;
+    }
+  }
   const importantReview=issues.length>0 || active.some(e=>e.review);
   const budgetFor=(e:Evaluation,duration:number)=>{
     const until=through+duration*MINUTE,workEnd=Math.min(until,e.deadline);

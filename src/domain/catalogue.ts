@@ -1,7 +1,10 @@
 import type { Profile } from "./model";
+import { modeTable } from "./modes";
+import type { PeriodRule } from "./modes/types";
+export type { PeriodRule } from "./modes/types";
 
-export const RULE_VERSION = "NHVR-2026-11-06-v7";
-export const REVIEW_DATE = "6 November 2026";
+export const RULE_VERSION = "NHVR-2026-11-15-v8";
+export const REVIEW_DATE = "15 November 2026";
 export const RULE_SOURCE = "https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/counting-time";
 export const HOURS_SOURCE = "https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/work-and-rest-hours";
 export const DIARY_SOURCE = "https://www.nhvr.gov.au/safety-accreditation-compliance/fatigue-management/work-diary";
@@ -9,29 +12,9 @@ export const LAW_SOURCE = "https://www.legislation.qld.gov.au/view/whole/html/in
 export const LONG_NIGHT_LIMIT=36*60;
 export const BFM_84_LIMIT=84*60;
 
-export interface PeriodRule {
-  minutes: number;
-  limit: number | null;
-  rest: number;
-  type: "breaks" | "stationary" | "stationary-or-sleeper" | "weekly" | "nights";
-  label: string;
-}
-const rule = (minutes: number, limit: number | null, rest: number, type: PeriodRule["type"]): PeriodRule => ({
-  minutes, limit, rest, type,
-  label: minutes % 1440 === 0 ? `${minutes / 1440} day${minutes === 1440 ? "" : "s"}` : `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2,"0")}m`,
-});
-/** Truck tables only. AFM/ACH and exemptions depend on the actual certificate. */
+/** Source-derived rules are defined independently per driving mode. */
 export function tableFor(p: Pick<Profile, "scheme" | "twoUp">): PeriodRule[] {
-  if (p.scheme === "AFM" || p.scheme === "ACH") return [];
-  const bfm = p.scheme === "BFM", two = p.twoUp;
-  return [
-    ...(bfm ? two ? [] : [rule(375,360,15,"breaks"),rule(540,510,30,"breaks"),rule(720,660,60,"breaks")]
-      : [rule(330,315,15,"breaks"),rule(480,450,30,"breaks"),rule(660,600,60,"breaks")]),
-    rule(1440,bfm ? 840 : 720,two ? bfm ? 0 : 300 : 420,two && !bfm ? "stationary-or-sleeper" : "stationary"),
-    ...(two ? [rule(bfm ? 4920 : 3120,null,600,"stationary")] : []),
-    ...(!bfm || two ? [rule(10080,two ? bfm ? 4200 : 3600 : 4320,1440,two ? "weekly" : "stationary")] : []),
-    rule(20160,two ? bfm ? 8400 : 7200 : 8640,0,"nights"),
-  ];
+  return modeTable(p);
 }
 
 export function operatingRules(p: Profile) {

@@ -163,13 +163,13 @@ test("restores legacy diary, jumps to exact page, imports a trip and downloads P
   await expect(page.getByText("Backup imported successfully.")).toBeVisible();
   await page.getByRole("button", { name: "Diary", exact: true }).click();
   await page.getByRole("button", { name: "Jump to page", exact: true }).click();
-  await fill(page, "Page number", "87");
+  await page.getByLabel("Page number",{exact:true}).selectOption("87");
   await page.getByRole("button", { name: "Go to page", exact: true }).click();
   await expect(page.getByLabel("Diary date", { exact: true })).toHaveValue(
     "2026-09-03",
   );
   await page.getByRole("button", { name: "Jump to page", exact: true }).click();
-  await fill(page, "Page number", "56");
+  await page.getByLabel("Page number",{exact:true}).selectOption("56");
   await page.getByRole("button", { name: "Go to page", exact: true }).click();
   await expect(page.getByLabel("Diary date", { exact: true })).toHaveValue(
     "2026-09-01",

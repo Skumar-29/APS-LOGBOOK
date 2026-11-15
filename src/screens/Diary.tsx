@@ -82,6 +82,12 @@ export function Diary({
       pointerId: number;
       axis: "pending" | "horizontal" | "vertical";
     } | null>(null);
+  // A previous diary page requires an explicit, page-scoped 15-minute editing permit.
+  // Future planning and the current diary page continue to support direct gestures.
+  const [pastEditPermit,setPastEditPermit] = useState<{date:string;expires:number}|null>(null);
+  const [pastEditConfirm,setPastEditConfirm] = useState(false);
+  const canEditThisPage = () => date>=civil(Date.now(),d.profile.zone).date ||
+    (pastEditPermit?.date===date && Date.now()<pastEditPermit.expires);
   const timeFormat = s.settings.timeFormat || "12h";
   const clock = civil(Date.now(), d.profile.zone);
   const full = s.settings.fullDay,
@@ -110,9 +116,13 @@ export function Diary({
     catch { /* Date/book numbering may require manual review. */ }
   }
   async function updateDay(fn: (d: Day) => void, label = "Edit diary") {
-    setUndo(null);
     if (readOnly)
       throw Error("This paper page is retained as a historical copy.");
+    if (!canEditThisPage()) {
+      setPastEditConfirm(true);
+      return;
+    }
+    setUndo(null);
     await mutate((w) => {
       const day = ensureDay(w, date),
         before = clone(day);
@@ -129,6 +139,10 @@ export function Diary({
     stationary = false,
   ) {
     if (readOnly) throw Error("This page is read only.");
+    if (!canEditThisPage()) {
+      setPastEditConfirm(true);
+      return;
+    }
     const snapshot: Record<string, Day> = {},
       revisions: Record<string, number> = {},
       automaticPages: string[] = [];
@@ -316,6 +330,16 @@ export function Diary({
   return (
     <>
       {graph && summary}
+      {pastEditConfirm && <Modal title="Unlock previous diary page" onClose={()=>setPastEditConfirm(false)}>
+        <p>Allow changes to this past page for 15 minutes? Accidental taps will remain blocked until you confirm.</p>
+        <div className="row wrap">
+          <Action onClick={()=>setPastEditConfirm(false)}>Cancel</Action>
+          <Action onClick={()=>{
+            setPastEditPermit({date,expires:Date.now()+15*60*1000});
+            setPastEditConfirm(false);
+          }}>Unlock for 15 minutes</Action>
+        </div>
+      </Modal>}
       {breach && (
         <Modal
           title="Hours warning"
@@ -395,7 +419,10 @@ export function Diary({
             <div className="row wrap block-toolbar">
               <div className="row">
                 <strong>Work / Rest</strong>
-
+                {!readOnly && date<clock.date &&
+                  <Action onClick={()=>setPastEditConfirm(true)}>
+                    {canEditThisPage()?"Editing unlocked":"Unlock past page"}
+                  </Action>}
               </div>
               <div className="row">
                 <Action disabled={!undo || readOnly} onClick={undoBlocks}>
@@ -414,9 +441,6 @@ export function Diary({
               </div>
             </div>
           <div className="diary-balance-strip" aria-label="Diary hours and remaining allowances">
-            <div><small>Work / Rest</small><strong>{t?minutesLabel(t.work)+" / "+minutesLabel(t.rest):"…"}</strong></div>
-            <div><small>24h Work left</small><strong>{countedWindow&&!countedWindow.review&&!fatigue?.review&&countedWindow.limit!==null?
-              minutesLabel(Math.max(0,countedWindow.limit-countedWindow.work)):"Review"}</strong></div>
             <div><small>Long/night left</small><strong>{(!fatigue?.review||fatigue?.longNightRemaining===0)&&fatigue?.longNightRemaining!==null&&fatigue?.longNightRemaining!==undefined?
               minutesLabel(fatigue.longNightRemaining):"—"}</strong></div>
             <div><small>Next break</small><strong>{!fatigue?.review&&report?.nextBreak!==null&&report?.nextBreak!==undefined?
@@ -442,8 +466,7 @@ export function Diary({
             </div>
             <div className="diary-colour-key" aria-label="Work and rest block colours">
               <span><i className="key-reserve"/> Yellow: protect Rest</span>
-              <span><i className="key-project"/> Red ?: Rest conflict</span>
-              <span><i className="key-breach"/> Red !: breach</span>
+              <span><i className="key-breach"/> Red: breach / planned breach</span>
               <span><i className="key-future"/> Stripes: planned Work</span>
             </div>
             {visible.map((p) => (
@@ -522,10 +545,10 @@ export function Diary({
                     const reserve=kind==="rest"&&protection?.slots[slot]==="reserve";
                     const future = !readOnly && (date > clock.date || date === clock.date && slot >= Math.ceil(clock.slot));
                     const projected=kind==="work"&&!reasons?.length&&protection?.slots[slot]==="conflict";
-                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future && kind === "work" ? "future-work" : ""} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length?"breach":""} ${reserve?"protected-rest":""} ${projected?"rest-risk":""}`}
+                    return <button key={slot} type="button" data-slot={slot} className={`swipe-block ${kind} ${future && kind === "work" ? "future-work" : ""} ${i%4===3?"hour-end":""} ${slot<32||slot>=88?"night-band":""} ${reasons?.length||projected?"breach":""} ${reserve?"protected-rest":""}`}
                       disabled={readOnly} aria-pressed={kind==="work"}
-                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${future && kind === "work" ? ", planned" : ""}${reasons?.length?", detected rule breach":projected?", projected protected Rest conflict":reserve?", suggested protected Rest":""}`}
-                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Projected conflict with 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
+                      aria-label={`${displaySlot(slot,timeFormat)} to ${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""}, ${kind}${future && kind === "work" ? ", planned" : ""}${reasons?.length?", detected rule breach":projected?", planned major-rest breach":reserve?", suggested protected Rest":""}`}
+                      title={`${displaySlot(slot,timeFormat)}–${displaySlot(slot+1,timeFormat)}${slot===95&&timeFormat==="12h"?" next day":""} ${kind}${reasons?.length?" · "+reasons.join(" · "):projected?" · Planned Work prevents required 7h Rest":reserve?" · Protect time for 7h Rest":""}`}
                       onClick={e=>{
                         // Keyboard Enter/Space are genuine single-block edits.
                         // Pointer taps are handled in onPointerUp, never twice.
@@ -544,7 +567,7 @@ export function Diary({
               {opportunity && opportunity.majorExtraMinutes>0 && <p><strong>Rest opportunity:</strong> {extra(opportunity.majorExtraMinutes)} more stationary Rest completes 7h.</p>}
               {opportunity && opportunity.nightExtraMinutes!==null && opportunity.nightExtraMinutes>0 &&
                 <p><strong>Night rest:</strong> Continue for {extra(opportunity.nightExtraMinutes)} more to qualify.</p>}
-              {protection && <p><strong>{date>civil(Date.now(),d.profile.zone).date?"Planned 7h Rest:":"Protect 7h Rest:"}</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest, red = future Work conflict.</p>}
+              {protection && <p><strong>{date>civil(Date.now(),d.profile.zone).date?"Planned 7h Rest:":"Protect 7h Rest:"}</strong> Start by {displayCivil(atBase(protection.latestStart,d.profile.zone))}, finish by {displayCivil(atBase(protection.deadline,d.profile.zone))}. Yellow = suggested Rest; red Work is a planned major-rest breach.</p>}
               {fatigue?.guidance.slice(0,2).map((tip,i)=><p key={i} className="small">{tip}</p>)}
               <small>Advisory only · other counting periods and actual stationary Rest still matter.</small>
             </div>}
