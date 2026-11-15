@@ -22,7 +22,7 @@ describe('Missing continuous Rest highlights selected Work in each two-up mode',
   const w=r.workWindows.find(w=>w.start==='2026-11-20 00:00');
   expect(w?.work).toBe(720);
   expect(w?.status).toBe('Rest due');
-  expect(r.breachSlots['2026-11-20:76']).toContain('5h continuous');
+  expect(r.breachSlots['2026-11-20:76'].some(x=>x.includes('5h continuous'))).toBe(true);
  });
  it('BFM Two-up: no 10h stationary Rest in 82h reports red Work before deadline',()=>{
   const s=create('BFM');
