@@ -74,7 +74,7 @@ test('work-rest validation: elapsed breaches appear solid red and no future fore
 });
 
 
-test('past, current and future blocks are editable without time locking', async ({ page }) => {
+test('past pages require a 15-minute unlock; current and future pages remain editable', async ({ page }) => {
   // 00:20 UTC = 10:20 in the driver's Queensland base on 11 October.
   await page.clock.setFixedTime(new Date('2026-10-11T00:20:00Z'));
   await onboard(page);
@@ -119,9 +119,13 @@ test('past, current and future blocks are editable without time locking', async 
   await slot(0).click();
   await expect(slot(0)).toHaveAttribute('aria-pressed', 'false');
 
-  // A historical entry is still editable.
+  // The first attempted historical change must not alter a recorded page.
   await chooseDate(page, '2026-10-10');
   await expect(slot(90)).toBeEnabled();
+  await slot(90).click();
+  await expect(slot(90)).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByText('Unlock previous diary page',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Unlock for 15 minutes',exact:true}).click();
   await slot(90).click();
   await expect(slot(90)).toHaveAttribute('aria-pressed', 'true');
 });
