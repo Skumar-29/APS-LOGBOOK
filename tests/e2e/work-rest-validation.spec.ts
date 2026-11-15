@@ -377,7 +377,7 @@ test('Next and Previous always navigate calendar days even when physical pages a
   await page.getByRole('button',{name:'Previous diary day'}).click();
   await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-18');
   await page.getByRole('button',{name:'Jump to page'}).click();
-  await page.getByRole('dialog',{name:'Jump to paper page'}).getByLabel('Page number').fill('26');
+  await page.getByRole('dialog',{name:'Jump to paper page'}).getByLabel('Page number').selectOption('26');
   await page.getByRole('dialog',{name:'Jump to paper page'}).getByRole('button',{name:'Go to page'}).click();
   await expect(page.getByLabel('Diary date')).toHaveValue('2026-10-19');
 });
