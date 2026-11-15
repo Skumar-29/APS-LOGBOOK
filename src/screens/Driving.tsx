@@ -9,7 +9,6 @@ export { useReport } from "../components/useReport";
 import { type RestType, ruleProfileAt, profileOn } from "../domain/model";
 import { suggestedRestType } from "../domain/ruleChanges";
 import { Action, Empty, Field, Fold, Modal } from "../components/UI";
-import { TruckMap } from "./TruckMap";
 export function Driving({ onDiary }: { onDiary: () => void }) {
   const { s, mutate } = useStore(),
     [now, setNow] = useState(Date.now()),
@@ -124,7 +123,6 @@ export function Driving({ onDiary }: { onDiary: () => void }) {
           {effective.scheme} · {effective.twoUp ? "Two-up" : "Solo"}
         </span>
       </div>
-      <TruckMap />
       <section className="card">
         <h2>Hours review</h2>
         {error ? (
