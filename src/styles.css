@@ -1641,8 +1641,8 @@ html { scroll-padding-top:120px; }
     background-image:linear-gradient(to bottom,#20c980 0 49.25%,var(--line) 49.25% 50.75%,#e7ebf0 50.75% 100%);
   }
   .diary-screen .swipe-block.rest.protected-rest {
-    background-color:#318beb;
-    background-image:linear-gradient(to bottom,#e7ebf0 0 49.25%,var(--line) 49.25% 50.75%,#f3c657 50.75% 100%);
+    background-color:#f5ce67;
+    background-image:linear-gradient(to bottom,#e7ebf0 0 49.25%,var(--line) 49.25% 50.75%,#f5ce67 50.75% 100%);
   }
   .diary-screen .swipe-block.work.breach,
   .diary-screen .swipe-block.breach {
