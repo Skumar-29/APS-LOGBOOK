@@ -28,7 +28,7 @@ export function protectedRest(s: Workspace, date: string, windows: WorkWindow[],
   // On a future page the baseline is midnight, so only windows already open
   // at the start of that page are considered for protection.
   if(p.twoUp || !["Standard","BFM"].includes(p.scheme) || operatingRules(p)!=="HVNL" ||
-    date<today || date>dateAdd(today,28) || !s.days[date]) return null;
+    date<today || !s.days[date]) return null;
   const baseline=date===today?now:boundary(date,0,p.zone);
   const startOfDay=boundary(date,0,p.zone),endOfDay=boundary(date,96,p.zone);
   if(!Number.isFinite(startOfDay)||!Number.isFinite(endOfDay)) return null;
