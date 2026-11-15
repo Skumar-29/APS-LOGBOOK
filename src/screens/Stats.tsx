@@ -52,7 +52,7 @@ export function Stats({
   return (
     <>
       <section className="card accumulated-hours-card" aria-label="Driver Statistics accumulated hours">
-        <h2>Driver Statistics</h2>
+        <h2 aria-label="14-day driver cumulative hours">Driver Statistics</h2>
         <div className="accumulation-table-frame">
           <div className="accumulation-heading">
             <strong>14-day accumulated hours</strong>
