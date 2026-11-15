@@ -46,7 +46,7 @@ test("all controls fit on phone and balances remain beside the grid",async({page
  const card=page.locator(".block-card");
  await expect(card.getByLabel("Diary hours and remaining allowances")).toBeVisible();
  await expect(card.getByLabel("Diary hours and remaining allowances")).toContainText("Work / Rest");
- await expect(card.getByLabel("Work and rest block colours")).toContainText("Red ?");
+ await expect(card.getByLabel("Work and rest block colours")).toContainText("Red: breach / planned breach");
  const choices=card.locator(".periods button");
  await expect(choices).toHaveCount(4);
  for(let i=0;i<4;i++){
