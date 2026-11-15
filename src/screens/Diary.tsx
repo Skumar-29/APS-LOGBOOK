@@ -82,6 +82,12 @@ export function Diary({
       pointerId: number;
       axis: "pending" | "horizontal" | "vertical";
     } | null>(null);
+  // A previous diary page requires an explicit, page-scoped 15-minute editing permit.
+  // Future planning and the current diary page continue to support direct gestures.
+  const [pastEditPermit,setPastEditPermit] = useState<{date:string;expires:number}|null>(null);
+  const [pastEditConfirm,setPastEditConfirm] = useState(false);
+  const canEditThisPage = () => date>=civil(Date.now(),d.profile.zone).date ||
+    (pastEditPermit?.date===date && Date.now()<pastEditPermit.expires);
   const timeFormat = s.settings.timeFormat || "12h";
   const clock = civil(Date.now(), d.profile.zone);
   const full = s.settings.fullDay,
@@ -129,6 +135,10 @@ export function Diary({
     stationary = false,
   ) {
     if (readOnly) throw Error("This page is read only.");
+    if (!canEditThisPage()) {
+      setPastEditConfirm(true);
+      return;
+    }
     const snapshot: Record<string, Day> = {},
       revisions: Record<string, number> = {},
       automaticPages: string[] = [];
@@ -316,6 +326,16 @@ export function Diary({
   return (
     <>
       {graph && summary}
+      {pastEditConfirm && <Modal title="Unlock previous diary page" onClose={()=>setPastEditConfirm(false)}>
+        <p>Allow changes to this past page for 15 minutes? Accidental taps will remain blocked until you confirm.</p>
+        <div className="row wrap">
+          <Action onClick={()=>setPastEditConfirm(false)}>Cancel</Action>
+          <Action onClick={()=>{
+            setPastEditPermit({date,expires:Date.now()+15*60*1000});
+            setPastEditConfirm(false);
+          }}>Unlock for 15 minutes</Action>
+        </div>
+      </Modal>}
       {breach && (
         <Modal
           title="Hours warning"
@@ -395,6 +415,10 @@ export function Diary({
             <div className="row wrap block-toolbar">
               <div className="row">
                 <strong>Work / Rest</strong>
+                {!readOnly && date<clock.date &&
+                  <Action onClick={()=>setPastEditConfirm(true)}>
+                    {canEditThisPage()?"Editing unlocked":"Unlock past page"}
+                  </Action>
 
               </div>
               <div className="row">
