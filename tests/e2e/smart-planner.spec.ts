@@ -78,3 +78,34 @@ test("compact Statistics and company PDF can be shared without changing diary en
  await expect(page.getByLabel("Driving eligibility and rolling fatigue statistics")).toBeVisible();
  await page.screenshot({path:`test-results/smart-stats-${info.project.name}.png`,fullPage:true});
 });
+
+test("major trip estimates save and compare one-way vs return without editing Work blocks",async({page})=>{
+ await page.clock.setFixedTime(new Date("2026-11-02T04:00:00Z"));
+ await onboard(page);await seed(page,fixture());
+ await page.getByRole("button",{name:"Diary",exact:true}).click();
+ const before=await page.locator("[aria-label='Page totals']").textContent();
+ await page.getByText("Plan next job",{exact:true}).click();
+ await page.getByText("Major trips",{exact:true}).click();
+ await page.getByLabel("Trip name",{exact:true}).fill("MEL to BNE");
+ await page.getByLabel("Work hours · one way",{exact:true}).fill("20");
+ await page.getByLabel("Rest hours · one way",{exact:true}).fill("12");
+ await page.getByLabel("Job date",{exact:true}).fill("2026-11-02");
+ await page.getByLabel("Earliest start",{exact:true}).fill("15:00");
+ await page.getByRole("button",{name:"Check trip budget",exact:true}).click();
+ const result=page.locator(".major-trip-result");
+ await expect(result).toContainText("Work 20h 00m");
+ await expect(result).toContainText("Rest 12h 00m");
+ await expect(result).toContainText("Elapsed 32h 00m");
+ await page.getByLabel("Trip type",{exact:true}).selectOption("return");
+ await page.getByRole("button",{name:"Check trip budget",exact:true}).click();
+ await expect(result).toContainText("Work 40h 00m");
+ await expect(result).toContainText("Rest 24h 00m");
+ await expect(result).toContainText("Elapsed 64h 00m");
+ expect(await page.locator("[aria-label='Page totals']").textContent()).toBe(before);
+ await page.getByRole("button",{name:"Save trip",exact:true}).click();
+ await expect(page.getByLabel("Saved major trip",{exact:true})).not.toHaveValue("");
+ await page.reload();
+ await page.getByText("Plan next job",{exact:true}).click();
+ await page.getByText("Major trips",{exact:true}).click();
+ await expect(page.getByLabel("Saved major trip",{exact:true})).toContainText("MEL to BNE");
+});
