@@ -242,6 +242,7 @@ export interface Workspace {
     backupDays: number;
     lastBackup: string;
     ruleReviewAcknowledged: boolean;
+    majorTripPresets?: Array<{id:string;name:string;workHours:number;restHours:number}>;
   };
   legacy?: Record<string, unknown>;
 }
@@ -333,6 +334,7 @@ export function emptyState(): Workspace {
       backupDays: 0,
       lastBackup: "",
       ruleReviewAcknowledged: false,
+      majorTripPresets: [],
     },
   };
 }
